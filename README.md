@@ -9,8 +9,10 @@ A space exploration addon project for Create and Aeronautics, developed in stage
 - Java: `21`
 - Java package: `io.github.astelev.aerospace`
 
-Build with `./gradlew build`. Create and Aeronautics integration is planned;
-their dependencies are not configured yet. AeroWorks and AeroUtils are intended
+Build with `./gradlew build`. The experimental high-altitude flight integration
+targets Sable 2.0.6, Create 6.0.10 and Aeronautics 1.3.2.
+See [high-altitude flight](docs/high-altitude-flight.md) for behavior, limitations
+and integration tests. AeroWorks and AeroUtils are intended
 to coexist with AeroSpace without being required dependencies. Compatibility
 with those mods has not been tested yet.
 

@@ -1,5 +1,6 @@
 {
   "itemGroup.aerospace": "AeroSpace Tab",
+  "aerospace.flight.waiting_for_terrain": "Preparing terrain for descent…",
   "block.aerospace.example_block": "Example Block",
   "item.aerospace.example_item": "Example Item",
 

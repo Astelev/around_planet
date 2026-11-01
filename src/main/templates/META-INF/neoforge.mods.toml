@@ -52,6 +52,16 @@ A space exploration addon for Create and Aeronautics.
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
 #[[mixins]]
 #config="${mod_id}.mixins.json"
+[[mixins]]
+config="aerospace.mixins.json"
+
+# This integration targets an internal Sable method, so reject unverified versions.
+[[dependencies.${mod_id}]]
+    modId="sable"
+    type="optional"
+    versionRange="[2.0.6]"
+    ordering="AFTER"
+    side="BOTH"
 
 # The [[accessTransformers]] block allows you to declare where your AT file is.
 # If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg

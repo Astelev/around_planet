@@ -3,6 +3,10 @@ package io.github.astelev.aerospace;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
+import io.github.astelev.aerospace.flight.FlightConfig;
+import io.github.astelev.aerospace.flight.SkyFlightTransitions;
+import net.neoforged.fml.ModList;
+import io.github.astelev.aerospace.network.TemporaryViewPayload;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -66,6 +70,7 @@ public class AeroSpace {
     // The constructor for the mod class is the first code that is run when your mod is loaded.
     // FML will recognize some parameter types like IEventBus or ModContainer and pass them in automatically.
     public AeroSpace(IEventBus modEventBus, ModContainer modContainer) {
+        modEventBus.addListener(TemporaryViewPayload.Registration::register);
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
 
@@ -86,6 +91,12 @@ public class AeroSpace {
 
         // Register our mod's ModConfigSpec so that FML can create and load the config file for us
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        modContainer.registerConfig(ModConfig.Type.SERVER, FlightConfig.SPEC);
+        if (ModList.get().isLoaded("sable")) {
+            SkyFlightTransitions.register();
+            modEventBus.addListener((net.neoforged.neoforge.event.RegisterGameTestsEvent event) ->
+                    event.register(io.github.astelev.aerospace.gametest.SableFlightGameTests.class));
+        }
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {

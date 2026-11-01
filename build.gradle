@@ -27,6 +27,17 @@ sourceSets.main.resources {
 }
 
 repositories {
+    mavenCentral()
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+    maven {
+        name = 'Sable'
+        url = 'https://maven.ryanhcode.dev/releases'
+        content { includeGroup 'dev.ryanhcode.sable-companion' }
+    }
     // Add here additional repositories if required by some of the dependencies below.
 }
 
@@ -116,6 +127,25 @@ configurations {
 }
 
 dependencies {
+    // Compile against the exact Sable release inspected for this integration.
+    compileOnly "maven.modrinth:sable:${sable_modrinth_version}"
+    compileOnly("dev.ryanhcode.sable-companion:sable-companion-common-${minecraft_version}:${sable_companion_version}") {
+        transitive = false
+    }
+
+    // Opt-in development runtime; dependencies are not bundled into AeroSpace.
+    if (providers.gradleProperty('integrationRuntime').isPresent()) {
+        localRuntime "maven.modrinth:sable:${sable_modrinth_version}"
+        localRuntime "maven.modrinth:create:${create_modrinth_version}"
+        localRuntime "maven.modrinth:create-aeronautics:${aeronautics_modrinth_version}"
+    }
+    if (providers.gradleProperty('extraIntegrationMod').isPresent()) {
+        localRuntime files(providers.gradleProperty('extraIntegrationMod').get())
+    }
+
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
@@ -137,6 +167,10 @@ dependencies {
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
