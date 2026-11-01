@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package io.github.astelev.aerospace;
 
 import java.util.List;
 import java.util.Set;

@@ -1,3 +1,18 @@
+AeroSpace
+========
+
+A space exploration addon project for Create and Aeronautics, developed in stages.
+
+- Mod ID: `aerospace`
+- Minecraft: `1.21.1`
+- NeoForge development version: `21.1.256`
+- Java: `21`
+- Java package: `io.github.astelev.aerospace`
+
+Build with `./gradlew build`. Create and Aeronautics integration is planned;
+their dependencies are not configured yet. AeroWorks and AeroUtils are intended
+to coexist with AeroSpace without being required dependencies. Compatibility
+with those mods has not been tested yet.
 
 Installation information
 =======
