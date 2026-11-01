@@ -2,6 +2,10 @@ package io.github.astelev.aerospace.gametest;
 
 import io.github.astelev.aerospace.AeroSpace;
 import io.github.astelev.aerospace.compat.dh.DhFlightState;
+import io.github.astelev.aerospace.compat.dh.DhFlightConfig;
+import io.github.astelev.aerospace.client.ClientFlightView;
+import io.github.astelev.aerospace.client.FallbackPlaneRenderer;
+import io.github.astelev.aerospace.network.TemporaryViewPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.neoforged.api.distmarker.Dist;
@@ -16,6 +20,9 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class DhClientSmoke {
     private static int ticks;
     private static boolean finished;
+    private static boolean verified;
+    private static int savedHeight;
+    private static int probeTick;
 
     @SubscribeEvent
     public static void tick(ClientTickEvent.Post event) {
@@ -24,6 +31,18 @@ public final class DhClientSmoke {
         ticks++;
         if (ticks > 2400) throw new AssertionError("AEROSPACE_DH_SMOKE: timeout waiting for the test world");
         if (mc.level == null || mc.player == null || ticks < 100) return;
+        if (verified) {
+            if (FallbackPlaneRenderer.drawnFrames() > 0) {
+                DhFlightConfig.FALLBACK_HEIGHT.set(savedHeight);
+                ClientFlightView.accept(new TemporaryViewPayload(mc.level.dimension().location(), false, 0, 0, 0));
+                finished = true;
+                AeroSpace.LOGGER.info("AEROSPACE_DH_SMOKE PASS: client quadtree, motion pause, fallback pixel/depth probes and native DH render hook");
+                mc.stop();
+            } else if (ticks - probeTick > 200) {
+                throw new AssertionError("Fallback native DH render hook did not draw: " + FallbackPlaneRenderer.lastSkip());
+            }
+            return;
+        }
         try {
             var wrapperType = Class.forName("com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper_neoforge");
             var wrapper = wrapperType.getMethod("getWrapper", ClientLevel.class).invoke(null, mc.level);
@@ -74,9 +93,14 @@ public final class DhClientSmoke {
                 set.invoke(pause, saved);
                 DhFlightState.publish(false, 0);
             }
-            finished = true;
-            AeroSpace.LOGGER.info("AEROSPACE_DH_SMOKE PASS: real client quadtree floor, exit restoration, motion pause scope and native gate diagnostics");
-            mc.stop();
+            Class.forName("com.seibel.distanthorizons.common.wrappers.worldGeneration.DhRoughSurfaceGenerator_neoforge");
+            FallbackPlaneSmoke.verify();
+            savedHeight = DhFlightConfig.FALLBACK_HEIGHT.getAsInt();
+            DhFlightConfig.FALLBACK_HEIGHT.set(-128);
+            var pos = mc.player.chunkPosition();
+            ClientFlightView.accept(new TemporaryViewPayload(mc.level.dimension().location(), true, pos.x, pos.z, 8));
+            verified = true;
+            probeTick = ticks;
         } catch (ReflectiveOperationException e) {
             throw new AssertionError("AEROSPACE_DH_SMOKE failed", e);
         }

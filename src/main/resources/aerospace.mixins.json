@@ -11,7 +11,9 @@
   "client": [
     "ClientChunkCacheMixin",
     "dh.LodQuadTreeMixin",
-    "dh.ThreadPoolUtilMixin"
+    "dh.ThreadPoolUtilMixin",
+    "dh.FallbackPlaneMixin",
+    "dh.FallbackBiomeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

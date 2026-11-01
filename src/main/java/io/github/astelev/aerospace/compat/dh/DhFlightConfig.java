@@ -10,6 +10,10 @@ public final class DhFlightConfig {
     public static final ModConfigSpec.IntValue QUIET_SECONDS;
     public static final ModConfigSpec.IntValue REFINE_SECONDS;
     public static final ModConfigSpec.BooleanValue DIAGNOSTICS;
+    public static final ModConfigSpec.BooleanValue FALLBACK_PLANE;
+    public static final ModConfigSpec.IntValue FALLBACK_HEIGHT;
+    public static final ModConfigSpec.IntValue FALLBACK_COLOR;
+    public static final ModConfigSpec.BooleanValue FALLBACK_BIOMES;
 
     static {
         var builder = new ModConfigSpec.Builder();
@@ -28,6 +32,13 @@ public final class DhFlightConfig {
         DIAGNOSTICS = builder.comment("Show the flight LOD mode and DH's generation gate in F3.",
                 "Also log a short status at most once every 30 seconds during sky flight.")
                 .define("diagnostics", true);
+        FALLBACK_PLANE = builder.comment("Draw a visual-only plane in pixels where neither real chunks nor DH terrain have rendered.")
+                .define("fallbackPlane", true);
+        FALLBACK_HEIGHT = builder.defineInRange("fallbackHeight", 60, -2032, 2032);
+        FALLBACK_COLOR = builder.comment("RGB color used until DH has already calculated a local biome. No extra biome generation is performed.")
+                .defineInRange("fallbackColor", 0x718a54, 0, 0xffffff);
+        FALLBACK_BIOMES = builder.comment("Reuse biomes observed by DH's existing rough-surface work in a bounded 256-block color grid.")
+                .define("fallbackBiomeColors", true);
         builder.pop();
         SPEC = builder.build();
     }
