@@ -64,6 +64,13 @@ config="aerospace.mixins.json"
     side="BOTH"
 
 # The [[accessTransformers]] block allows you to declare where your AT file is.
+[[dependencies.${mod_id}]]
+    modId="distanthorizons"
+    type="optional"
+    versionRange="[3.3.3]"
+    ordering="AFTER"
+    side="CLIENT"
+
 # If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg
 #[[accessTransformers]]
 #file="META-INF/accesstransformer.cfg"

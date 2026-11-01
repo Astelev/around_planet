@@ -12,6 +12,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
+import io.github.astelev.aerospace.compat.dh.DhFlightState;
 
 @EventBusSubscriber(modid = AeroSpace.MODID, value = Dist.CLIENT)
 public final class ClientFlightView {
@@ -41,6 +42,11 @@ public final class ClientFlightView {
                 ? snapshot.cache.get(x, z) : null;
     }
 
+    public static boolean isActive(ClientLevel requestedLevel) {
+        var snapshot = state;
+        return snapshot != null && snapshot.level == requestedLevel;
+    }
+
     @SubscribeEvent
     public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         reset();
@@ -56,6 +62,7 @@ public final class ClientFlightView {
 
     private static void reset() {
         state = null;
+        DhFlightState.publish(false, 0);
     }
 
     private record State(ClientLevel level, TemporaryView view, TemporaryChunkCache cache) {

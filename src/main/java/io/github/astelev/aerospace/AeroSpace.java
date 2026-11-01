@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
 import io.github.astelev.aerospace.flight.FlightConfig;
+import io.github.astelev.aerospace.compat.dh.DhFlightConfig;
 import net.neoforged.fml.ModList;
 import io.github.astelev.aerospace.network.TemporaryViewPayload;
 
@@ -91,6 +92,7 @@ public class AeroSpace {
         // Register our mod's ModConfigSpec so that FML can create and load the config file for us
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         modContainer.registerConfig(ModConfig.Type.SERVER, FlightConfig.SPEC);
+        modContainer.registerConfig(ModConfig.Type.CLIENT, DhFlightConfig.SPEC);
         if (ModList.get().isLoaded("sable")) {
             modEventBus.addListener((net.neoforged.neoforge.event.RegisterGameTestsEvent event) ->
                     event.register(io.github.astelev.aerospace.gametest.SableFlightGameTests.class));

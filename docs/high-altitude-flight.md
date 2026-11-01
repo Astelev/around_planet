@@ -75,10 +75,11 @@ exactly 2.0.6. Other versions require revalidation. The server config is
 - Constraint-connected ships, unusual passenger trackers, custom generators and
   abrupt teleports require manual validation. Teleports and commands that request
   real terrain retain their normal behavior.
-- Distant Horizons is not a dependency. Temporary objects avoid the ordinary
-  terrain-load notification path, but graphical LOD integration has not been
-  tested. DH still needs real terrain data and may generate it independently;
-  this mod does not make unseen LODs free or guarantee that DH keeps up.
+- Distant Horizons remains optional. DH 3.3.3 has a client flight adapter for
+  coarse-first generation, gradual refinement and generation-gate diagnostics.
+  See [Distant Horizons flight](distant-horizons-flight.md). Temporary objects
+  avoid the ordinary terrain-load notification path. New LOD data still costs
+  computation; the adapter cannot guarantee that every modpack keeps up.
 - Vanilla player view generation resumes as a normal queue on descent. Other
   mods' explicit synchronous terrain requests are not globally intercepted.
 

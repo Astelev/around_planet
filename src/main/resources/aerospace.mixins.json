@@ -9,7 +9,9 @@
     "sable.PhysicsChunkTicketManagerMixin"
   ],
   "client": [
-    "ClientChunkCacheMixin"
+    "ClientChunkCacheMixin",
+    "dh.LodQuadTreeMixin",
+    "dh.ThreadPoolUtilMixin"
   ],
   "injectors": {
     "defaultRequire": 1

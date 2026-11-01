@@ -16,6 +16,10 @@ and integration tests. AeroWorks and AeroUtils are intended
 to coexist with AeroSpace without being required dependencies. Compatibility
 with those mods has not been tested yet.
 
+Optional [Distant Horizons 3.3.3 flight support](docs/distant-horizons-flight.md)
+uses coarse LODs while cruising and refines after slowing down, with F3 diagnostics
+for DH's generation gates.
+
 Installation information
 =======
 
