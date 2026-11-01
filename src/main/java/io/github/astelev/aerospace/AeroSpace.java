@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
 import io.github.astelev.aerospace.flight.FlightConfig;
-import io.github.astelev.aerospace.flight.SkyFlightTransitions;
 import net.neoforged.fml.ModList;
 import io.github.astelev.aerospace.network.TemporaryViewPayload;
 
@@ -93,7 +92,6 @@ public class AeroSpace {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         modContainer.registerConfig(ModConfig.Type.SERVER, FlightConfig.SPEC);
         if (ModList.get().isLoaded("sable")) {
-            SkyFlightTransitions.register();
             modEventBus.addListener((net.neoforged.neoforge.event.RegisterGameTestsEvent event) ->
                     event.register(io.github.astelev.aerospace.gametest.SableFlightGameTests.class));
         }

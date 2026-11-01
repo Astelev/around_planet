@@ -3,6 +3,7 @@ package io.github.astelev.aerospace.flight;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.sublevel.SubLevel;
+import dev.ryanhcode.sable.mixinterface.entity.entity_sublevel_collision.EntityMovementExtension;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
@@ -18,23 +19,29 @@ final class SableFlightAccess {
             return false;
         }
         SubLevel ship = Sable.HELPER.getTrackingSubLevel(entity);
-        if (ship == null && entity.getVehicle() != null) {
-            ship = Sable.HELPER.getTrackingSubLevel(entity.getVehicle());
+        var vehicle = entity.getVehicle();
+        for (int depth = 0; ship == null && vehicle != null && depth < 16; depth++) {
+            ship = Sable.HELPER.getTrackingSubLevel(vehicle);
+            vehicle = vehicle.getVehicle();
+        }
+        var container = SubLevelContainer.getContainer(level);
+        if (container == null) {
+            return false;
+        }
+        if (ship == null && entity instanceof EntityMovementExtension movement) {
+            var lastId = movement.sable$getLastTrackingSubLevelID();
+            if (lastId != null) {
+                var previous = container.getSubLevel(lastId);
+                if (previous != null && !previous.isRemoved() && ShipGeometry.containsPassenger(previous, entity)) {
+                    ship = previous;
+                }
+            }
         }
         // Also cover passengers standing/jumping inside a cabin, as Sable's
         // own player-inhabited test does, without granting free-flight mode.
         if (ship == null) {
-            var container = SubLevelContainer.getContainer(level);
-            if (container == null) {
-                return false;
-            }
             for (var candidate : container.getAllSubLevels()) {
-                var b = candidate.boundingBox();
-                var center = entity.getBoundingBox().getCenter();
-                if (!candidate.isRemoved()
-                        && center.x >= b.minX() - 1 && center.x <= b.maxX() + 1
-                        && center.z >= b.minZ() - 1 && center.z <= b.maxZ() + 1
-                        && center.y >= b.minY() - 1 && center.y <= b.maxY() + 2) {
+                if (!candidate.isRemoved() && ShipGeometry.containsPassenger(candidate, entity)) {
                     ship = candidate;
                     break;
                 }
@@ -42,6 +49,6 @@ final class SableFlightAccess {
         }
         return ship != null && !ship.isRemoved() && HighAltitudePolicy.maySkipTerrainTicket(
                 FlightConfig.ENABLED.getAsBoolean(), level.dimension().equals(Level.OVERWORLD), false,
-                ship.boundingBox().minY(), level.getMaxBuildHeight(), FlightConfig.MIN_ALTITUDE.getAsInt());
+                ShipGeometry.currentMinY(ship), level.getMaxBuildHeight(), FlightConfig.MIN_ALTITUDE.getAsInt());
     }
 }

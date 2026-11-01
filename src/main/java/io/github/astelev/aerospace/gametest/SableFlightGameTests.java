@@ -28,8 +28,8 @@ import java.util.UUID;
 /** Registered only in a development runtime with Sable installed. */
 @PrefixGameTestTemplate(false)
 public final class SableFlightGameTests {
-    @GameTest(template = "empty", templateNamespace = "aerospace", timeoutTicks = 400)
-    public static void fastDescentWaitsForRealTerrain(GameTestHelper helper) {
+    @GameTest(template = "empty", templateNamespace = "aerospace", timeoutTicks = 100)
+    public static void nativeForcedDescentKeepsVelocity(GameTestHelper helper) {
         var level = helper.getLevel();
         var anchor = helper.absolutePos(new BlockPos(1, 2, 1));
         level.setBlockAndUpdate(anchor, Blocks.IRON_BLOCK.defaultBlockState());
@@ -39,39 +39,120 @@ public final class SableFlightGameTests {
         var system = container.physicsSystem();
         var pipeline = system.getPipeline();
         var target = new ChunkPos(200000 + level.random.nextInt(10000), 200000);
-        pipeline.teleport(ship, new Vector3d(target.getMiddleBlockX(), 1000, target.getMiddleBlockZ()), ship.logicalPose().orientation());
-        system.updatePose(ship);
-        ship.updateBoundingBox();
-        ship.updateLastPose();
-        // A Sable force-load ticket represents the non-player loading path.
         container.addForceLoadTicket(ship, SubLevelLoadingTicketType.COMMAND_FORCED, Unit.INSTANCE);
-        var launched = new java.util.concurrent.atomic.AtomicBoolean();
-        var waited = new java.util.concurrent.atomic.AtomicBoolean();
-        helper.onEachTick(() -> {
-            if (level.getChunkSource().getChunkNow(target.x, target.z) == null) {
-                helper.assertTrue(ship.boundingBox().minY() > 356, "Ship must stay above missing real terrain");
-                if (launched.get() && pipeline.getLinearVelocity(ship, new Vector3d()).lengthSquared() < 1) {
-                    waited.set(true);
+        try {
+            pipeline.teleport(ship, new Vector3d(target.getMiddleBlockX(), 350, target.getMiddleBlockZ()), ship.logicalPose().orientation());
+            system.updatePose(ship);
+            ship.updateBoundingBox();
+            ship.updateLastPose();
+            pipeline.addLinearAndAngularVelocity(ship, new Vector3d(123, -45, 67), new Vector3d(0.2, 0.3, 0.4));
+            var linear = pipeline.getLinearVelocity(ship, new Vector3d());
+            var angular = pipeline.getAngularVelocity(ship, new Vector3d());
+            var position = new Vector3d(ship.logicalPose().position());
+            helper.assertTrue(level.getChunkSource().getChunkNow(target.x, target.z) == null, "Descent probe must start over missing terrain");
+
+            // Exercise the actual Sable force-loaded-ship path, including its
+            // blocking native FULL request, without stepping the physics world.
+            system.getTicketManager().update(level, container, system, pipeline, 1.0 / 20.0);
+
+            helper.assertTrue(level.getChunkSource().getChunkNow(target.x, target.z) != null, "Sable must load real terrain on descent");
+            helper.assertTrue(linear.distance(pipeline.getLinearVelocity(ship, new Vector3d())) < 1.0e-8,
+                    "Native terrain loading must preserve all linear velocity components");
+            helper.assertTrue(angular.distance(pipeline.getAngularVelocity(ship, new Vector3d())) < 1.0e-8,
+                    "Native terrain loading must preserve all angular velocity components");
+            helper.assertTrue(position.distance(ship.logicalPose().position()) < 1.0e-8,
+                    "AeroSpace must not roll the ship back during native loading");
+            helper.succeed();
+        } finally {
+            container.removeForceLoadTicket(ship, SubLevelLoadingTicketType.COMMAND_FORCED, Unit.INSTANCE);
+            container.removeSubLevel(ship, SubLevelRemovalReason.REMOVED);
+        }
+    }
+
+    @GameTest(template = "empty", templateNamespace = "aerospace", timeoutTicks = 100)
+    public static void fastFlightUsesLivePassengerBounds(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var anchor = helper.absolutePos(new BlockPos(1, 2, 1));
+        level.setBlockAndUpdate(anchor, Blocks.IRON_BLOCK.defaultBlockState());
+        var ship = SubLevelAssemblyHelper.assembleBlocks(level, anchor, List.of(anchor),
+                new BoundingBox3i(anchor.getX(), anchor.getY(), anchor.getZ(), anchor.getX(), anchor.getY(), anchor.getZ()));
+        var container = SubLevelContainer.getContainer(level);
+        var pipeline = container.physicsSystem().getPipeline();
+        var previous = new Vector3d(1000008, 1000, 1000008);
+        var current = new Vector3d(previous).add(1024, 0, 0);
+        try {
+            pipeline.teleport(ship, previous, ship.logicalPose().orientation());
+            ship.updateBoundingBox();
+            ship.updateLastPose();
+            pipeline.teleport(ship, current, ship.logicalPose().orientation());
+            // Deliberately leave Sable's public AABB at the previous tick's pose.
+            helper.assertTrue(ship.boundingBox().maxX() < current.x - 1000, "Probe must have stale cached bounds");
+            var passenger = FakePlayerFactory.getMinecraft(level);
+            passenger.setPos(current.x, current.y + 1, current.z);
+            helper.assertTrue(FlightHooks.isHighShipEntity(passenger), "Live-pose passenger must keep temporary loading despite a stale AABB");
+            var pos = passenger.chunkPosition();
+            helper.assertTrue(level.getChunkSource().getChunkNow(pos.x, pos.z) == null, "Probe column must be unloaded");
+            helper.assertTrue(FlightHooks.movementChunk(passenger, level, pos.x, pos.z)
+                    instanceof io.github.astelev.aerospace.flight.TemporaryLevelChunk,
+                    "Fast movement must not fall through to synchronous terrain generation");
+            helper.assertTrue(level.getChunkSource().getChunkNow(pos.x, pos.z) == null, "Movement fallback must leave real terrain unloaded");
+            boolean listed = level.players().contains(passenger);
+            if (!listed) {
+                level.players().add(passenger);
+            }
+            try {
+                // Sable also uses a cached-AABB player predicate to decide
+                // whether to unload the ship. Exercise that real code path.
+                container.physicsSystem().getTicketManager().update(level, container, container.physicsSystem(), pipeline, 1.0 / 20.0);
+                helper.assertTrue(!ship.isRemoved() && container.getSubLevel(ship.getUniqueId()) == ship,
+                        "Sable must not unload a live-pose player-inhabited ship because its cached bounds lag");
+                helper.assertTrue(level.getChunkSource().getChunkNow(pos.x, pos.z) == null,
+                        "Keeping the fast ship active must not generate terrain");
+            } finally {
+                if (!listed) {
+                    level.players().remove(passenger);
                 }
             }
-        });
-        helper.startSequence()
-                .thenIdle(2)
-                .thenExecute(() -> {
-                    pipeline.addLinearAndAngularVelocity(ship, new Vector3d(0, -4000, 0), new Vector3d());
-                    launched.set(true);
-                })
-                .thenWaitUntil(() -> {
-                    helper.assertTrue(!ship.isRemoved(), "Forced ship must remain active over temporary air");
-                    helper.assertTrue(ship.boundingBox().minY() <= 356, "Ship must eventually finish the handoff");
-                    helper.assertTrue(level.getChunkSource().getChunkNow(target.x, target.z) != null, "Handoff requires real terrain");
-                    helper.assertTrue(waited.get(), "Rapid descent must exercise a nonblocking hold before terrain is ready");
-                })
-                .thenExecute(() -> {
-                    container.removeForceLoadTicket(ship, SubLevelLoadingTicketType.COMMAND_FORCED, Unit.INSTANCE);
-                    container.removeSubLevel(ship, SubLevelRemovalReason.REMOVED);
-                })
-                .thenSucceed();
+            passenger.setPos(previous.x, previous.y + 1, previous.z);
+            helper.assertTrue(FlightHooks.isHighShipEntity(passenger), "Passenger at the previous pose must remain associated during tick handoff");
+            passenger.setPos(previous.x + 512, previous.y + 1, previous.z);
+            helper.assertTrue(!FlightHooks.isHighShipEntity(passenger), "Unrelated players between distant poses must not be treated as crew");
+            passenger.setPosRaw(current.x, current.y + 1, current.z);
+            helper.assertTrue(FlightHooks.isHighShipEntity(passenger),
+                    "Raw movement must use the updated passenger position before its AABB is refreshed");
+            pipeline.teleport(ship, new Vector3d(current.x, 350, current.z), ship.logicalPose().orientation());
+            passenger.setPos(current.x, current.y + 1, current.z);
+            helper.assertTrue(!FlightHooks.isHighShipEntity(passenger), "Live descent must end temporary loading even while cached bounds remain high");
+
+            var low = new Vector3d(previous).add(4096, -936, 0);
+            var high = new Vector3d(low).add(1024, 936, 0);
+            pipeline.teleport(ship, low, ship.logicalPose().orientation());
+            ship.updateBoundingBox();
+            ship.updateLastPose();
+            pipeline.teleport(ship, high, ship.logicalPose().orientation());
+            passenger.setPos(high.x, high.y + 1, high.z);
+            var lowColumn = new ChunkPos((int) low.x >> 4, (int) low.z >> 4);
+            helper.assertTrue(level.getChunkSource().getChunkNow(lowColumn.x, lowColumn.z) == null,
+                    "Stale ascent column must start unloaded");
+            if (!listed) {
+                level.players().add(passenger);
+            }
+            try {
+                container.physicsSystem().getTicketManager().update(level, container, container.physicsSystem(), pipeline, 1.0 / 20.0);
+                helper.assertTrue(!ship.isRemoved(), "Rapidly ascending player-inhabited ship must stay active");
+                helper.assertTrue(level.getChunkSource().getChunkNow(lowColumn.x, lowColumn.z) == null,
+                        "Cached low-altitude bounds must not load collision terrain after a rapid ascent");
+            } finally {
+                if (!listed) {
+                    level.players().remove(passenger);
+                }
+            }
+            helper.succeed();
+        } finally {
+            if (!ship.isRemoved()) {
+                container.removeSubLevel(ship, SubLevelRemovalReason.REMOVED);
+            }
+        }
     }
 
     @GameTest(template = "empty", templateNamespace = "aerospace", timeoutTicks = 100)

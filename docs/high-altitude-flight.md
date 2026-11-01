@@ -17,6 +17,17 @@ remain independent. AeroSpace must be installed on the server and clients.
 - High-altitude passengers stop contributing vanilla terrain generation and
   simulation tickets. Chunk tracking and entity tracking remain active.
   Ground-level players and other chunk loaders retain normal terrain loading.
+- Passenger and altitude checks use the ship's current logical pose. The
+  passenger fallback tests the current and previous poses separately to cover
+  within-tick movement without including unrelated players between them.
+  The same fallback extends Sable's own player-inhabited check at altitude,
+  preventing a stale cached AABB from unloading a fast ship with a passenger.
+  Sable's setting that protects player-inhabited ships from unloading is still
+  respected; AeroSpace does not force-enable it.
+  Sky collision-ticket bounds also use the live pose so a rapid ascent cannot
+  generate terrain using stale low-altitude coordinates.
+  During raw entity movement, passenger checks use the updated position rather
+  than the entity AABB that Minecraft refreshes later in that movement call.
 - NeoForge's synchronous terrain lookup during movement is intercepted only for
   entities aboard eligible ships. It uses a real loaded chunk when available,
   otherwise a marked `TemporaryLevelChunk`.
@@ -32,19 +43,23 @@ remain independent. AeroSpace must be installed on the server and clients.
 
 ## Descent
 
-Within 64 blocks of the threshold, descent faster than 1 block/second begins preparing the ship's
-terrain footprint plus a one-chunk collision ring. Minecraft's existing ticket
-and world-generation machinery performs the actual generation. At most four new
-chunk requests and four new nonempty physics section uploads are admitted per
-level per game tick; physics substeps cannot multiply those budgets.
-Slower descent starts preparation when it reaches the handoff boundary.
+When the live hull reaches the threshold, AeroSpace stops intercepting Sable's
+terrain requests and the passenger's temporary view ends. Client placeholders
+are discarded, ordinary player tickets return, and Sable's existing
+`inhabitChunk` path adds its own tickets and requests real FULL chunks. Existing
+blocks and player edits are never regenerated or replaced with air.
 
-The ship is held at its last safe pose if it would cross the threshold before
-real terrain and its Sable collision sections are ready. This pauses that ship,
-not the server's generation queue. Its saved velocities resume after preparation.
-Passengers see “Preparing terrain for descent…” while waiting. On exit, ordinary
-player tickets return and vanilla chunk delivery replaces temporary air.
-Existing blocks and player edits are never regenerated or replaced with air.
+AeroSpace does not teleport, stop, reset, save or restore physics velocities.
+There is no separate descent queue or manual collider upload. Sable's ordinary
+chunk and collision handling owns the transition, including force-loaded ships.
+The previous custom hold, early terrain prefetch and 256-column handoff limit
+have been removed.
+
+Sable 2.0.6's native request waits synchronously for a FULL chunk. This can stall
+the server while missing terrain is generated; it is not an asynchronous pause
+of only one ship. Physics does not advance during that wait, and AeroSpace does
+not modify either linear or angular velocity. Normal gravity, drag, controllers
+and collisions may still change velocity once physics resumes.
 
 Sable's internal APIs are version-specific: the optional dependency accepts
 exactly 2.0.6. Other versions require revalidation. The server config is
@@ -57,8 +72,6 @@ exactly 2.0.6. Other versions require revalidation. The server config is
   or graphical-client performance. Test in a separate world before merging into
   an existing modpack.
 - Only the Overworld is enabled. Flying without a Sable ship does not activate it.
-- A descent footprint including its ring must fit in 256 columns. Larger ships
-  are held above the threshold; disabling the feature restores ordinary loading.
 - Constraint-connected ships, unusual passenger trackers, custom generators and
   abrupt teleports require manual validation. Teleports and commands that request
   real terrain retain their normal behavior.
@@ -86,18 +99,23 @@ releases from Modrinth. To include a separately supplied SimulatedExtra JAR:
 ./gradlew -PintegrationRuntime -PextraIntegrationMod=/absolute/path/simulatedextra-0.3-beta.jar runGameTestServer
 ```
 
-JUnit tests cover threshold boundaries, taller dimensions, invalid bounds,
-view coordinates, queue deduplication/expiry and per-game-tick budgets.
+JUnit tests cover threshold boundaries, taller dimensions, invalid bounds and
+view coordinates.
 GameTests check non-persistent temporary air and network serialization.
 With Sable installed, additional tests exercise the actual injected request,
-passenger eligibility, ordinary requests below the threshold, and rapid descent
-over initially unloaded terrain with a non-player force-load ticket.
+passenger eligibility, movement with deliberately stale cached bounds, and
+native loading of initially missing terrain with a non-player force-load ticket.
+The stale-bounds test also invokes Sable's actual ticket manager to ensure it
+keeps the ship active without generating terrain.
+The native-loading test compares all components of linear/angular velocity and
+the pose immediately before and after the request, without stepping physics.
 
 Manual acceptance checks still needed:
 
 1. Fly a piloted ship rapidly above Y=356 into new terrain; compare tick timings
    against the feature disabled. Check Distant Horizons visuals separately.
-2. Descend and verify waiting, terrain replacement, collisions and continued flight.
+2. Descend and verify native loading, terrain replacement, collisions and
+   continued flight. Compare horizontal speed and rotation before/after loading.
 3. Keep another player below the same X/Z; their terrain and edits must remain real.
 4. Rotate a tall ship, change dimensions, disconnect/reconnect and change render
    distance. Check that temporary views do not survive these transitions.
