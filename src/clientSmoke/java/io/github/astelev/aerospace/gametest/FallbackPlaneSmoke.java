@@ -78,9 +78,17 @@ public final class FallbackPlaneSmoke {
     private static void setLight(int value) {
         light = value;
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, lightmap);
-        var pixel = BufferUtils.createByteBuffer(4);
-        pixel.put((byte) value).put((byte) value).put((byte) value).put((byte) 255).flip();
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 1, 1, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
+        // An asymmetric 16x16 vanilla-layout map catches transposed sky/block
+        // axes: emissive blocks stay bright even when the exposed sky is dark.
+        var pixel = BufferUtils.createByteBuffer(16 * 16 * 4);
+        for (int sky = 0; sky < 16; sky++) {
+            for (int block = 0; block < 16; block++) {
+                int brightness = block == 0 ? value : 255;
+                pixel.put((byte) brightness).put((byte) brightness).put((byte) brightness).put((byte) 255);
+            }
+        }
+        pixel.flip();
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 16, 16, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
     }

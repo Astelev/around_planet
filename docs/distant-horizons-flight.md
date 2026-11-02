@@ -51,7 +51,9 @@ matrix and its exact camera position, just like native terrain buffers. No inver
 screen-ray reconstruction or separately sampled Minecraft camera is involved.
 The rasterizer writes the actual depth of that surface into the DH render buffer. Native DH fog and far fading therefore see its proper distance
 and height. Surface colors are multiplied by DH's open-sky lightmap, so the plane
-responds to day/night, weather and the lightmap's other adjustments. Biome tints
+responds to day/night, weather and the lightmap's other adjustments. The uploaded
+vanilla lightmap uses block light on X and sky light on Y; the surface samples
+block=0, sky=15, so daylight exposure does not act as emissive block light. Biome tints
 are reduced to 80% saturation and 55% brightness by default to better match
 textured LOD terrain; `fallbackBrightness` controls the brightness multiplier.
 
@@ -168,7 +170,9 @@ budget and modpack load determine whether new surface can keep up in practice.
 The client smoke test also reads back pixels from small offscreen buffers:
 missing terrain is filled; existing vanilla depth, existing DH depth, an upward
 view, and a camera below the plane remain unchanged. Written DH depth is
-unprojected to verify Y=60. Normal/reversed depth and a dark lightmap are checked.
+unprojected to verify Y=60. Normal/reversed depth and an asymmetric 16×16 lightmap are checked: the open
+night sky is dark while emissive block-light entries remain bright. This catches
+accidental swapping of the sky/block axes.
 The test verifies the transformed native generation-queue ranking in and out of
 sky flight, then waits for the actual DH surface hook and independent biome
 sampling to run. These tests do not benchmark an entire flight or guarantee

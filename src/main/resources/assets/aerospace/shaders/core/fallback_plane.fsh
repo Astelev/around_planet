@@ -25,7 +25,9 @@ void main() {
     // Biome grass/water colors are tints, brighter than a textured LOD surface.
     float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
     color = mix(vec3(luminance), color, 0.8) * ColorBrightness;
-    color *= texture(SurfaceLightmap, vec2(15.5 / 16.0, 0.5 / 16.0)).rgb;
+    // Vanilla lightmap upload: X = block light, Y = sky light.
+    // Open surface has no emissive block light and full exposure to the sky.
+    color *= texture(SurfaceLightmap, vec2(0.5 / 16.0, 15.5 / 16.0)).rgb;
     fragColor = vec4(color, 1.0);
     // Depth is rasterized directly from the world-space Y=60 quad, like real LODs.
 }
