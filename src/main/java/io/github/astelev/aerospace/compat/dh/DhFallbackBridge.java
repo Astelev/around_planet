@@ -44,7 +44,7 @@ public final class DhFallbackBridge {
             if (!(value instanceof Holder<?> holder) || !(holder.value() instanceof Biome)) return;
             @SuppressWarnings("unchecked") var typed = (Holder<Biome>) holder;
             int color = biomeColor(typed, x, z);
-            FallbackBiomeColors.observe(level.dimension().location().toString(), x, z, color, biomeHeightOffset(typed));
+            FallbackBiomeColors.observe(level.dimension().location().toString(), x, z, color, biomeHeightOffset(typed, level.getSeaLevel(), DhFlightConfig.FALLBACK_HEIGHT.getAsInt()));
         } catch (ReflectiveOperationException | RuntimeException ignored) {
             // An unavailable color must never fail generation; neutral color remains.
         }
@@ -59,7 +59,9 @@ public final class DhFallbackBridge {
                 ? biome.getWaterColor() : biome.getBaseTemperature() < 0.15f ? 0xdce4e5 : biome.getGrassColor(x, z);
     }
 
-    public static int biomeHeightOffset(Holder<Biome> biome) {
+    public static int biomeHeightOffset(Holder<Biome> biome, int seaLevel, int baseHeight) {
+        if (biome.is(BiomeTags.IS_OCEAN) || biome.is(BiomeTags.IS_RIVER) || biome.is(BiomeTags.IS_BEACH))
+            return BiomeSurfaceHeights.seaOffset(seaLevel,baseHeight);
         return BiomeSurfaceHeights.offset(biome.unwrapKey().map(key -> key.location().toString()).orElse(null),
                 biome.is(BiomeTags.IS_MOUNTAIN), biome.is(BiomeTags.IS_HILL));
     }

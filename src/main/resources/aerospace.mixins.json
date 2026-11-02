@@ -15,7 +15,8 @@
     "dh.FallbackPlaneMixin",
     "dh.FallbackBiomeMixin",
     "dh.WorldGenerationPriorityMixin",
-    "ClientLevelUnloadMixin"
+    "ClientLevelUnloadMixin",
+    "dh.LodCoverageMixin"
   ],
   "injectors": {
     "defaultRequire": 1

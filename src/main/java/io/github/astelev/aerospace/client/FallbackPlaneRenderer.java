@@ -34,7 +34,7 @@ import java.io.IOException;
 @EventBusSubscriber(modid = AeroSpace.MODID, value = Dist.CLIENT)
 public final class FallbackPlaneRenderer {
     private static ShaderInstance shader;
-    private static DynamicTexture palette;
+    private static DynamicTexture palette, coverageAtlas;
     private static VertexBuffer surfaceMesh;
     private static boolean meshHeights;
     private static float meshExtent;
@@ -74,7 +74,7 @@ public final class FallbackPlaneRenderer {
             }
             var camera = frame.cameraPosition();
             if (camera.y <= DhFlightConfig.FALLBACK_HEIGHT.getAsInt()) { lastSkip = "camera " + camera.y; return; }
-            updatePalette(camera, frame.farPlane());
+            updatePalette(camera, frame.farPlane(), renderParams);
             int[] viewport = new int[4];
             GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
             int copiedDepth = copyDepth(viewport[0], viewport[1], viewport[2], viewport[3]);
@@ -83,7 +83,7 @@ public final class FallbackPlaneRenderer {
                     originCellX * (float) FallbackBiomeColors.CELL_SIZE,
                     originCellZ * (float) FallbackBiomeColors.CELL_SIZE,
                     FallbackBiomeColors.WIDTH * (float) FallbackBiomeColors.CELL_SIZE,
-                    DhFlightConfig.FALLBACK_COLOR.getAsInt(), frame.dhClearDepth(), frame.lightmap(), mc.getMainRenderTarget().getDepthTextureId(), frame.vanillaClearDepth(), DhFlightConfig.FALLBACK_BRIGHTNESS.get().floatValue(), surfaceMesh);
+                    DhFlightConfig.FALLBACK_COLOR.getAsInt(), frame.dhClearDepth(), frame.lightmap(), mc.getMainRenderTarget().getDepthTextureId(), frame.vanillaClearDepth(), DhFlightConfig.FALLBACK_BRIGHTNESS.get().floatValue(), surfaceMesh, coverageAtlas.getId());
             frames++;
         } catch (ReflectiveOperationException | RuntimeException e) {
             failed = true;
@@ -94,7 +94,7 @@ public final class FallbackPlaneRenderer {
     public static long drawnFrames() { return frames; }
     public static String lastSkip() { return lastSkip; }
 
-    private static void updatePalette(Vec3 camera, float extent) {
+    private static void updatePalette(Vec3 camera, float extent, Object params) throws ReflectiveOperationException {
         var mc = Minecraft.getInstance();
         int centerX = Math.floorDiv((int) Math.floor(camera.x), FallbackBiomeColors.CELL_SIZE);
         int centerZ = Math.floorDiv((int) Math.floor(camera.z), FallbackBiomeColors.CELL_SIZE);
@@ -111,6 +111,16 @@ public final class FallbackPlaneRenderer {
                 && now - lastPaletteMillis < 200 && newX == originCellX && newZ == originCellZ) return;
         int binding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         RenderSystem.activeTexture(GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
+        int ratio=FallbackBiomeColors.CELL_SIZE/16;
+        int coverageSize=FallbackBiomeColors.WIDTH*ratio;
+        var dhCovered = io.github.astelev.aerospace.compat.dh.DhLodCoverageBridge.coverage(params,newX*ratio,newZ*ratio,coverageSize,16);
+        if(coverageAtlas==null) coverageAtlas=new DynamicTexture(coverageSize,coverageSize,false);
+        var coveragePixels=coverageAtlas.getPixels();
+        for(int x=0;x<coverageSize;x++) for(int z=0;z<coverageSize;z++) {
+            int i=x*coverageSize+z;
+            if(!dhCovered[i] && SurfaceTerrainMask.coveredColumn(mc.level,newX*ratio+x,newZ*ratio+z)) dhCovered[i]=true;
+            coveragePixels.setPixelRGBA(x,z,dhCovered[i] ? 0xffffffff : 0xff000000);
+        }
         if (palette == null) palette = new DynamicTexture(FallbackBiomeColors.WIDTH, FallbackBiomeColors.WIDTH, false);
         originCellX = newX;
         originCellZ = newZ;
@@ -120,10 +130,14 @@ public final class FallbackPlaneRenderer {
         for (int x = 0; x < FallbackBiomeColors.WIDTH; x++) {
             for (int z = 0; z < FallbackBiomeColors.WIDTH; z++) {
                 int rgb = FallbackBiomeColors.color(originCellX + x, originCellZ + z, fallback);
-                int alpha = SurfaceTerrainMask.covered(mc.level, originCellX + x, originCellZ + z) ? 0 : 0xff000000;
+                boolean owned=true;
+                for(int dx=0;dx<ratio && owned;dx++) for(int dz=0;dz<ratio;dz++) {
+                    if(!dhCovered[(x*ratio+dx)*coverageSize+z*ratio+dz]) { owned=false; break; }
+                }
+                int alpha = owned ? 0 : 0xff000000;
                 int abgr = alpha | (rgb & 255) << 16 | (rgb & 0xff00) | rgb >>> 16 & 255;
                 pixels.setPixelRGBA(x, z, abgr);
-                if (DhFlightConfig.FALLBACK_HEIGHTS.getAsBoolean())
+                if (!owned && DhFlightConfig.FALLBACK_HEIGHTS.getAsBoolean())
                     heights[x][z] = FallbackBiomeColors.heightOffset(originCellX + x, originCellZ + z);
             }
         }
@@ -131,6 +145,9 @@ public final class FallbackPlaneRenderer {
         RenderSystem.bindTexture(palette.getId());
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, palette.getId());
         palette.upload();
+        RenderSystem.bindTexture(coverageAtlas.getId());
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D,coverageAtlas.getId());
+        coverageAtlas.upload();
         RenderSystem.bindTexture(binding);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, binding);
         int vao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
@@ -197,6 +214,13 @@ public final class FallbackPlaneRenderer {
     public static void drawPass(Matrix4f viewProjection, Vec3 camera, float height, float maxDistance,
                                 int dhDepth, int colorTexture, float originX, float originZ, float span,
                                 int fallback, float dhClearDepth, int lightmap, int vanillaDepth, float vanillaClearDepth, float brightness, VertexBuffer mesh) {
+        drawPass(viewProjection,camera,height,maxDistance,dhDepth,colorTexture,originX,originZ,span,
+                fallback,dhClearDepth,lightmap,vanillaDepth,vanillaClearDepth,brightness,mesh,0);
+    }
+
+    public static void drawPass(Matrix4f viewProjection, Vec3 camera, float height, float maxDistance,
+                                int dhDepth, int colorTexture, float originX, float originZ, float span,
+                                int fallback, float dhClearDepth, int lightmap, int vanillaDepth, float vanillaClearDepth, float brightness, VertexBuffer mesh, int coverageTexture) {
         if (shader == null) throw new IllegalStateException("Fallback shader not loaded");
         int program = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         int vao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
@@ -206,6 +230,7 @@ public final class FallbackPlaneRenderer {
         int sampler1 = GL30.glGetIntegeri(GL33.GL_SAMPLER_BINDING, 1);
         int sampler2 = GL30.glGetIntegeri(GL33.GL_SAMPLER_BINDING, 2);
         int sampler3 = GL30.glGetIntegeri(GL33.GL_SAMPLER_BINDING, 3);
+        int sampler4 = GL30.glGetIntegeri(GL33.GL_SAMPLER_BINDING, 4);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         int texture0 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
@@ -214,6 +239,8 @@ public final class FallbackPlaneRenderer {
         int texture2 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         GL13.glActiveTexture(GL13.GL_TEXTURE3);
         int texture3 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        GL13.glActiveTexture(GL13.GL_TEXTURE4);
+        int texture4 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         GL13.glActiveTexture(activeTexture);
         boolean depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST), blend = GL11.glIsEnabled(GL11.GL_BLEND);
         boolean cull = GL11.glIsEnabled(GL11.GL_CULL_FACE), depthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
@@ -232,7 +259,8 @@ public final class FallbackPlaneRenderer {
             GL33.glBindSampler(1, 0);
             GL33.glBindSampler(2, 0);
             GL33.glBindSampler(3, 0);
-            for (int unit = 0; unit < 4; unit++) {
+            GL33.glBindSampler(4, 0);
+            for (int unit = 0; unit < 5; unit++) {
                 RenderSystem.activeTexture(GL13.GL_TEXTURE0 + unit);
                 RenderSystem.bindTexture(0);
                 GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
@@ -252,6 +280,8 @@ public final class FallbackPlaneRenderer {
             shader.setSampler("BiomePalette", colorTexture);
             shader.setSampler("SurfaceLightmap", lightmap);
             shader.setSampler("VanillaDepth", vanillaDepth);
+            shader.setSampler("WorldCoverage", coverageTexture);
+            shader.getUniform("HasWorldCoverage").set(coverageTexture == 0 ? 0 : 1);
             // Only clear DH pixels survive the copied-depth mask. Real LODs,
             // including terrain below Y=60, remain authoritative.
             GL11.glEnable(GL11.GL_DEPTH_TEST);
@@ -299,11 +329,15 @@ public final class FallbackPlaneRenderer {
             RenderSystem.activeTexture(GL13.GL_TEXTURE3);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture3);
             RenderSystem.bindTexture(texture3);
+            RenderSystem.activeTexture(GL13.GL_TEXTURE4);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D,texture4);
+            RenderSystem.bindTexture(texture4);
             RenderSystem.activeTexture(activeTexture);
             GL33.glBindSampler(0, sampler0);
             GL33.glBindSampler(1, sampler1);
             GL33.glBindSampler(2, sampler2);
             GL33.glBindSampler(3, sampler3);
+            GL33.glBindSampler(4, sampler4);
             GL11.glDepthFunc(depthFunc);
             GL11.glDepthMask(depthMask);
             set(GL11.GL_DEPTH_TEST, depth);

@@ -75,6 +75,7 @@ public final class FallbackBiomeSampler {
         var generator = level.getChunkSource().getGenerator();
         var sampler = level.getChunkSource().randomState().sampler();
         int height = DhFlightConfig.FALLBACK_HEIGHT.getAsInt();
+        int seaLevel = level.getSeaLevel();
         WORKER.execute(() -> {
             try {
                 long deadline = System.nanoTime() + 2_000_000L;
@@ -85,7 +86,7 @@ public final class FallbackBiomeSampler {
                     var biome = generator.getBiomeSource().getNoiseBiome(QuartPos.fromBlock(x), QuartPos.fromBlock(height),
                             QuartPos.fromBlock(z), sampler);
                     FallbackBiomeColors.observe(batch.generation(), batch.dimension(), x, z,
-                            DhFallbackBridge.biomeColor(biome, x, z), DhFallbackBridge.biomeHeightOffset(biome));
+                            DhFallbackBridge.biomeColor(biome, x, z), DhFallbackBridge.biomeHeightOffset(biome,seaLevel,height));
                     samples++;
                     // Cooperative budget: no queued backlog, one small batch per client tick.
                     // One in-flight biome lookup cannot be interrupted; the next one is deferred.

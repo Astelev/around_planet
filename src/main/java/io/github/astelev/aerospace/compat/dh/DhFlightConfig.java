@@ -34,7 +34,7 @@ public final class DhFlightConfig {
         DIAGNOSTICS = builder.comment("Show the flight LOD mode and DH's generation gate in F3.",
                 "Also log a short status at most once every 30 seconds during sky flight.")
                 .define("diagnostics", true);
-        FALLBACK_PLANE = builder.comment("Draw a temporary Y=60 surface in the DH terrain target, before native lighting/fog compositing.")
+        FALLBACK_PLANE = builder.comment("Draw a temporary biome surface in the DH terrain target, before native fog/compositing.")
                 .define("fallbackPlane", true);
         FALLBACK_HEIGHT = builder.defineInRange("fallbackHeight", 60, -2032, 2032);
         FALLBACK_COLOR = builder.comment("RGB color used until the budgeted biome sampler has calculated a local surface color.")

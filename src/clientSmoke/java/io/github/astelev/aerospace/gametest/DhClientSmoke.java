@@ -33,7 +33,8 @@ public final class DhClientSmoke {
         if (ticks > 2400) throw new AssertionError("AEROSPACE_DH_SMOKE: timeout waiting for the test world");
         if (mc.level == null || mc.player == null || ticks < 100) return;
         if (verified) {
-            if (FallbackPlaneRenderer.drawnFrames() > descentFrames && io.github.astelev.aerospace.client.FallbackBiomeSampler.samples() > 0) {
+            if (FallbackPlaneRenderer.drawnFrames() > descentFrames && io.github.astelev.aerospace.client.FallbackBiomeSampler.samples() > 0
+                    && io.github.astelev.aerospace.compat.dh.DhLodCoverage.trackedCount() > 0) {
                 require(!ClientFlightView.isActive(mc.level), "Temporary sky view unexpectedly active after descent");
                 require(io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.generation() == descentEpoch, "Descent cleared the biome palette");
                 DhFlightConfig.FALLBACK_HEIGHT.set(savedHeight);
@@ -98,6 +99,7 @@ public final class DhClientSmoke {
             }
             Class.forName("com.seibel.distanthorizons.common.wrappers.worldGeneration.DhRoughSurfaceGenerator_neoforge");
             verifyGenerationPriority(tree);
+            verifyLodCoverage();
             FallbackPlaneSmoke.verify();
             savedHeight = DhFlightConfig.FALLBACK_HEIGHT.getAsInt();
             DhFlightConfig.FALLBACK_HEIGHT.set(-128);
@@ -167,6 +169,26 @@ public final class DhClientSmoke {
         }
         DhFlightState.publish(false, 0);
         if (flight != 8 || normal == flight) throw new AssertionError("Native generation queue priority was not changed/scoped: " + normal + "/" + flight);
+    }
+
+    private static void verifyLodCoverage() throws ReflectiveOperationException {
+        var type=Class.forName("com.seibel.distanthorizons.core.dataObjects.render.ColumnRenderSource");
+        var pos=Class.forName("com.seibel.distanthorizons.core.pos.DhSectionPos");
+        long section=(Long)pos.getMethod("encode",byte.class,int.class,int.class).invoke(null,(byte)6,-1,-1);
+        var source=type.getMethod("createEmpty",long.class,int.class,int.class).invoke(null,section,1,-64);
+        try {
+            type.getMethod("markNotEmpty").invoke(source);
+            var data=(it.unimi.dsi.fastutil.longs.LongArrayList)type.getField("renderDataContainer").get(source);
+            for(int i=0;i<4096;i++) data.set(i,1L);
+            var known=io.github.astelev.aerospace.compat.dh.DhLodCoverageBridge.capture(source);
+            require(known!=null,"Native render-source coverage was unavailable");
+            var mask=new boolean[1]; known.mark(mask,-1,-1,1);
+            require(mask[0],"Ready native columns did not mask the world-space tile");
+            data.set(0,0L);
+            mask=new boolean[1];
+            io.github.astelev.aerospace.compat.dh.DhLodCoverageBridge.capture(source).mark(mask,-1,-1,1);
+            require(!mask[0],"Partial native columns hid unfinished terrain");
+        } finally { type.getMethod("close").invoke(source); }
     }
 
 }

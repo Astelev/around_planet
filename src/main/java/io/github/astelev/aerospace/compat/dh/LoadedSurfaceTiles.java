@@ -14,6 +14,7 @@ public final class LoadedSurfaceTiles {
     public void unload(int x, int z) {
         if (columns.remove(key(x,z))) counts.computeIfPresent(tile(x,z),(key,value) -> value == 1 ? null : value - 1);
     }
+    public boolean hasColumn(int x, int z) { return columns.contains(key(x,z)); }
     public boolean covered(int cellX, int cellZ) {
         return counts.getOrDefault(key(cellX,cellZ),0) == CHUNKS_PER_TILE * CHUNKS_PER_TILE;
     }

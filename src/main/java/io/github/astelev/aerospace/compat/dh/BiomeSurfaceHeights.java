@@ -3,6 +3,7 @@ package io.github.astelev.aerospace.compat.dh;
 /** Artist-defined offsets above the configured sea plane, NOT measured terrain heights. */
 public final class BiomeSurfaceHeights {
     private BiomeSurfaceHeights() {}
+    public static int seaOffset(int seaLevel, int neutralBase) { return seaLevel - neutralBase; }
     public static int offset(String id, boolean mountain, boolean hill) {
         if (id == null) return 0;
         if (id.equals("minecraft:cherry_grove")) return 64;

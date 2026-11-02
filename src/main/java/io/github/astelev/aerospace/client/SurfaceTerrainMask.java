@@ -35,6 +35,12 @@ public final class SurfaceTerrainMask {
         }
         return true;
     }
+    public static boolean coveredColumn(ClientLevel level, int x, int z) {
+        if(world!=level || !loaded.hasColumn(x,z)) return false;
+        var chunk=level.getChunkSource().getChunk(x,z,ChunkStatus.FULL,false);
+        if(chunk==null || chunk instanceof EmptyLevelChunk) { loaded.unload(x,z); return false; }
+        return true;
+    }
     @SubscribeEvent
     public static void load(ChunkEvent.Load event) {
         if (!(event.getLevel() instanceof ClientLevel level) || event.getChunk() instanceof EmptyLevelChunk) return;

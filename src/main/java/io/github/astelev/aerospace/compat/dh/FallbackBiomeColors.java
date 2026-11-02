@@ -40,7 +40,7 @@ public final class FallbackBiomeColors {
         int x = Math.floorDiv(blockX, CELL_SIZE), z = Math.floorDiv(blockZ, CELL_SIZE);
         if (snapshot != null && snapshot.dimension.equals(dimension) && snapshot.contains(x, z)
                 && COLORS.size() < WIDTH * WIDTH * 2) {
-            COLORS.put(key(x, z), new Sample(rgb & 0xffffff, Math.max(0, Math.min(192, heightOffset))));
+            COLORS.put(key(x, z), new Sample(rgb & 0xffffff, Math.max(-4096, Math.min(4096, heightOffset))));
         }
     }
 

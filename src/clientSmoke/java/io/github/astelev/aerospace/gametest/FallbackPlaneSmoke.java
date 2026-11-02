@@ -12,7 +12,8 @@ import org.lwjgl.opengl.GL30;
 
 public final class FallbackPlaneSmoke {
     private FallbackPlaneSmoke() {}
-    private static int lightmap, mcDepth;
+    private static int lightmap, mcDepth, coverage;
+    private static int probeX=8, probeY=8;
     private static com.mojang.blaze3d.vertex.VertexBuffer raisedMesh;
     private static int light = 255;
 
@@ -47,11 +48,13 @@ public final class FallbackPlaneSmoke {
                     .rotateX((float) Math.PI / 2).invert();
             probe(target, depth, palette, down, 500, 1, 1, true, "empty terrain");
             probe(target, depth, palette, down, 500, 0.5f, 1, false, "existing vanilla depth");
-            probe(target, depth, palette, down, 500, 1, 0.5f, false, "existing LOD depth");
+            probe(target, depth, palette, down, 500, 1, 0.5f, false, "existing nearer LOD depth");
+            probe(target, depth, palette, down, 500, 1, 0.9999f, true, "nearer fallback occludes distant LOD");
             probe(target, depth, palette, down, 40, 1, 1, false, "camera below plane");
             var reversedDown = new Matrix4f(down).mul(new Matrix4f().scaling(1, 1, -1));
             probe(target, depth, palette, reversedDown, 500, 1, 0, true, "reversed DH depth", 0, 1);
-            probe(target, depth, palette, reversedDown, 500, 1, 0.5f, false, "reversed existing LOD", 0, 1);
+            probe(target, depth, palette, reversedDown, 500, 1, 0.5f, false, "reversed existing nearer LOD", 0, 1);
+            probe(target, depth, palette, reversedDown, 500, 1, 0.0001f, true, "reversed nearer fallback", 0, 1);
             probe(target, depth, palette, reversedDown, 500, 0, 0, true, "both depths reversed", 0, 0);
             probe(target, depth, palette, reversedDown, 500, 0.5f, 0, false, "reversed existing vanilla", 0, 0);
             var up = new Matrix4f().perspective((float) Math.PI / 2, 1, 0.1f, 10000)
@@ -65,6 +68,19 @@ public final class FallbackPlaneSmoke {
             probe(target, depth, palette, down, 500, 1, 1, true, "raised biome surface");
             probe(target, depth, palette, reversedDown, 500, 1, 0, true, "reversed raised biome", 0, 1);
             probe(target, depth, palette, down, 500, 1, 0.5f, false, "real LOD masks raised surface");
+            coverage=GL11.glGenTextures();
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D,coverage);
+            var cells=BufferUtils.createByteBuffer(16);
+            for(int i=0;i<4;i++) { byte value=(byte)(i%2==1 ? 255 : 0); cells.put(value).put(value).put(value).put((byte)255); }
+            cells.flip();
+            GL11.glTexImage2D(GL11.GL_TEXTURE_2D,0,GL11.GL_RGBA8,2,2,0,GL11.GL_RGBA,GL11.GL_UNSIGNED_BYTE,cells);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D,GL11.GL_TEXTURE_MIN_FILTER,GL11.GL_NEAREST);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D,GL11.GL_TEXTURE_MAG_FILTER,GL11.GL_NEAREST);
+            probe(target,depth,palette,down,500,1,1,false,"ready LOD footprint masks sky above its terrain");
+            probeX=7; probeY=7;
+            probe(target,depth,palette,down,500,1,1,true,"unfinished neighboring footprint keeps fallback");
+            probeX=8; probeY=8;
+            GL11.glDeleteTextures(coverage); coverage=0;
             paletteAlpha(palette,0);
             probe(target, depth, palette, down, 500, 1, 1, false, "real terrain footprint masks sky pixels");
             paletteAlpha(palette,255);
@@ -77,6 +93,7 @@ public final class FallbackPlaneSmoke {
             GL11.glDeleteTextures(palette);
             GL11.glDeleteTextures(lightmap);
             GL11.glDeleteTextures(mcDepth);
+            if(coverage!=0) { GL11.glDeleteTextures(coverage); coverage=0; }
             RenderSystem.bindTexture(texture);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
             GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
@@ -152,14 +169,14 @@ public final class FallbackPlaneSmoke {
         boolean previousCull = GL11.glIsEnabled(GL11.GL_CULL_FACE);
         FallbackPlaneRenderer.drawPass(new Matrix4f(inverse).invert(), new Vec3(0, cameraY, 0), 60, 100000,
                 depthTexture, palette, raisedMesh == null ? -4096 : -io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.CELL_SIZE, raisedMesh == null ? -4096 : -io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.CELL_SIZE,
-                raisedMesh == null ? 8192 : 2 * io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.CELL_SIZE, 0x718a54, dhClearDepth, lightmap, mcDepth, vanillaClearDepth, 0.55f, raisedMesh);
+                raisedMesh == null ? 8192 : 2 * io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.CELL_SIZE, 0x718a54, dhClearDepth, lightmap, mcDepth, vanillaClearDepth, 0.55f, raisedMesh, coverage);
         if (GL11.glGetInteger(GL11.GL_DEPTH_FUNC) != previousDepthFunc) throw new AssertionError("Fallback changed depth-test state");
         if (GL11.glGetInteger(GL11.GL_CULL_FACE_MODE) != previousCullFace
                 || GL11.glGetInteger(GL11.GL_FRONT_FACE) != previousFrontFace
                 || GL11.glIsEnabled(GL11.GL_CULL_FACE) != previousCull) throw new AssertionError("Surface changed culling state");
         var pixel = BufferUtils.createByteBuffer(4);
         GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, target.frameBufferId);
-        GL11.glReadPixels(8, 8, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
+        GL11.glReadPixels(probeX, probeY, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
         int r = Byte.toUnsignedInt(pixel.get(0)), g = Byte.toUnsignedInt(pixel.get(1)), b = Byte.toUnsignedInt(pixel.get(2));
         float luminance = 0x71 * 0.2126f + 0x8a * 0.7152f + 0x54 * 0.0722f;
         int er = Math.round((luminance * 0.2f + 0x71 * 0.8f) * 0.55f * light / 255);
@@ -170,10 +187,10 @@ public final class FallbackPlaneSmoke {
             throw new AssertionError("Fallback probe failed for " + description + ": " + r + "," + g + "," + b);
         }
         var preservedDepth = BufferUtils.createFloatBuffer(1);
-        GL11.glReadPixels(8, 8, 1, 1, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, preservedDepth);
+        GL11.glReadPixels(probeX, probeY, 1, 1, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, preservedDepth);
         if (shouldDraw) {
             // Unproject the written DH depth: it must hit Y=60, not far depth.
-            var hit = new org.joml.Vector4f(0.0625f, 0.0625f, preservedDepth.get(0) * 2 - 1, 1);
+            var hit = new org.joml.Vector4f(2*(probeX+0.5f)/16-1, 2*(probeY+0.5f)/16-1, preservedDepth.get(0) * 2 - 1, 1);
             inverse.transform(hit);
             double worldY = hit.y / hit.w + cameraY;
             if (Math.abs(worldY - (raisedMesh == null ? 60 : 92)) > 0.5) throw new AssertionError("Surface height mismatch: " + worldY);

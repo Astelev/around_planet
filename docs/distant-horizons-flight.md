@@ -63,22 +63,38 @@ block=0, sky=15, so daylight exposure does not act as emissive block light. Biom
 are reduced to 80% saturation and 55% brightness by default to better match
 textured LOD terrain; `fallbackBrightness` controls the brightness multiplier.
 
-The surface is drawn only where both existing LOD depth and vanilla depth are
-clear. Tile tops are one-sided and risers face outward, so looking up from
-inside/below the approximate surface cannot show a green ceiling. Real rendered terrain, including valleys below Y=60, wins. Sky above the
-horizon remains untouched. A GPU depth copy avoids sampling the same depth texture
-being written; it is reused and resized with the viewport. There is no CPU
-readback in production. The DH render buffer is cleared normally each frame;
-no fake terrain data is stored in chunks or the DH database.
+Inside the sampled area, a 16-block world-space ownership atlas masks the
+approximate surface wherever DH already has enabled, uploaded terrain data or
+ordinary client terrain columns are loaded. This includes empty sky pixels above
+that terrain: camera depth alone cannot tell that an estimated biome tile belongs
+to an already-ready part of the world. Fully owned biome tiles also lose their
+estimated height in the temporary mesh, preventing leftover boundary risers.
 
-A complete footprint of real client chunks also masks the entire corresponding
-biome tile, including pixels where the real scene contains sky. This prevents
-an estimated biome height from painting a fake hill/ceiling above already loaded
-nearby terrain. A 64-block tile requires all 16 ordinary chunk columns; temporary
-air does not count. Load events populate the mask, actual client column unloads
-remove it, and non-generating cache reads revalidate completed tiles after storage
-radius changes. Partial/missing footprints retain fallback coverage. The mask
-clears with the client world and updates with the small palette texture.
+DH coverage is copied from the existing 64×64 column render source during mesh
+building, then attached to the **exact buffer container after its GPU upload**.
+It is not attached merely to a section position: a pending rebuild cannot claim
+coverage on behalf of an older displayed buffer. The mask reads enabled sections
+before camera-frustum culling, so looking up or viewing from the ground does not
+resurrect a fallback over ready ground. A partial section masks only complete
+16-block footprints; its missing data still has fallback coverage. Closed/old
+buffer metadata uses weak keys and is released with those buffers. No database,
+height, biome, or world-generation query is added for DH ownership.
+
+Unknown footprints use ordinary forward/reversed **DH depth testing**, rather
+than always being composited behind every LOD pixel. A nearer fallback in a
+missing area can occlude farther real terrain; closer real terrain still wins.
+Real vanilla geometry retains its separate pixel-depth protection. Beyond the
+bounded atlas, only the neutral base backdrop remains and it keeps the
+conservative clear-DH-pixel mask. Tile tops are one-sided and risers face outward,
+so looking from inside/below cannot show their underside as a green ceiling.
+
+Real client columns are tracked by load/unload events and non-generating cache
+validation. Temporary air does not count as real terrain. Ownership masks refresh
+with the palette, normally within 200 ms; their GPU atlas is 528×528 for the
+current 8,448-block-wide surface area. The biome/height grid remains 64 blocks.
+There is no production CPU depth readback, and no fake data is saved in Minecraft
+chunks or the DH database. Native DH fog and compositing handle the resulting
+surface depth normally.
 
 Standard OpenGL forward/reversed depth is supported, including reversed DH with
 conventional Minecraft depth. A shared vanilla/DH depth texture or a target whose
@@ -123,7 +139,8 @@ With the default base of Y=60:
 
 | Biome group | Surface Y |
 | --- | --- |
-| Oceans, rivers, beaches, unknown biomes | 60 |
+| Known oceans, rivers, beaches | World sea level (normally 63) |
+| Unknown biomes/samples | Configured base (60) |
 | Swamps | 64 |
 | Plains, desert, savanna | 68 |
 | Forest, jungle, taiga | 76 |
@@ -132,6 +149,10 @@ With the default base of Y=60:
 | Savanna plateau, wooded/eroded badlands | 100 |
 | Meadow / cherry grove | 116 / 124 |
 | Other mountain-tagged biomes | 172 |
+
+Known water/coast samples use the integrated server's actual sea level, rather
+than assuming the neutral plane is the sea surface. Signed offsets also allow a
+sea below a custom neutral base, without generating terrain.
 
 Exact table entries take precedence over generic mountain/hill tags. Modded
 biomes can use those tags; otherwise they stay at the neutral base. Unknown
@@ -242,3 +263,11 @@ The test verifies the transformed native generation, retrieval and mesh comparat
 including turns and a stable in-progress sort, then verifies that the native surface hook continues drawing after the
 temporary sky view is disabled, without clearing the palette. These tests do not benchmark an entire flight or guarantee
 compatibility with shader packs.
+
+World-space coverage regression checks include complete/partial native render
+sources, negative coordinates, coverage at chunk resolution, metadata belonging
+to distinct GPU buffers, and a live upload through the transformed DH code. GPU
+probes verify that a ready footprint masks sky while its unknown neighbor remains
+visible, and that a closer fallback can occlude farther DH depth in both depth
+directions. Sea-height checks cover the standard sea level and a neutral base
+above the sea.

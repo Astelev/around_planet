@@ -10,6 +10,13 @@ class BiomeSurfaceHeightsTest {
         assertEquals(112, BiomeSurfaceHeights.offset("custom:peaks",true,false));
         assertEquals(0, BiomeSurfaceHeights.offset("custom:unknown",false,false));
     }
+    @Test void oceanFollowsWorldSeaLevelEvenWhenNeutralPlaneIsHigher() {
+        assertEquals(3,BiomeSurfaceHeights.seaOffset(63,60));
+        FallbackBiomeColors.setView("water",0,0);
+        FallbackBiomeColors.observe("water",0,0,123,BiomeSurfaceHeights.seaOffset(63,100));
+        assertEquals(63,100+FallbackBiomeColors.heightOffset(0,0));
+        FallbackBiomeColors.clear();
+    }
     @Test void heightAndColorShareWorldEpoch() {
         FallbackBiomeColors.clear();
         FallbackBiomeColors.setView("one", 0, 0);
