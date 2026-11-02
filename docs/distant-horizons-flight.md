@@ -38,6 +38,7 @@ The client config is `config/aerospace-client.toml`, section
 | `fallbackPlane` | `true` | Draw a temporary surface in DH's terrain pass |
 | `fallbackHeight` | `60` | Height of the temporary plane |
 | `fallbackColor` | `0x718a54` | Neutral RGB color until a biome sample is available |
+| `fallbackBrightness` | `0.55` | Surface brightness multiplier, before world lighting |
 | `fallbackBiomeColors` | `true` | Budgeted independent biome sampling in singleplayer |
 | `nearbyGenerationPriority` | `true` | Rank queued DH tasks by distance to their bounds during sky flight |
 
@@ -45,11 +46,14 @@ The client config is `config/aerospace-client.toml`, section
 
 During sky flight, the temporary surface is inserted into **DH's terrain target**
 after opaque LODs and before SSAO, transparency, fog and compositing. It is a
-world-space plane at Y=60, reconstructed with DH's own view/projection. Unlike
-the old final-screen fill, it writes the actual depth of that surface into the
-DH render buffer. Native DH fog and far fading therefore see its proper distance
+world-space quad at Y=60, projected directly with DH's forward view/projection
+matrix and its exact camera position, just like native terrain buffers. No inverse
+screen-ray reconstruction or separately sampled Minecraft camera is involved.
+The rasterizer writes the actual depth of that surface into the DH render buffer. Native DH fog and far fading therefore see its proper distance
 and height. Surface colors are multiplied by DH's open-sky lightmap, so the plane
-responds to day/night, weather and the lightmap's other adjustments.
+responds to day/night, weather and the lightmap's other adjustments. Biome tints
+are reduced to 80% saturation and 55% brightness by default to better match
+textured LOD terrain; `fallbackBrightness` controls the brightness multiplier.
 
 The plane is drawn only where both existing LOD depth and vanilla depth are
 clear. Real rendered terrain, including valleys below Y=60, wins. Sky above the

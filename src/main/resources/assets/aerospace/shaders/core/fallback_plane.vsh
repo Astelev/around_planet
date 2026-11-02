@@ -1,7 +1,8 @@
 #version 150
 in vec3 Position;
-out vec2 texCoord;
+uniform mat4 DhViewProjection;
+out vec3 surfacePosition;
 void main() {
-    texCoord = Position.xy * 0.5 + 0.5;
-    gl_Position = vec4(Position.xy, 0.0, 1.0);
+    surfacePosition = Position;
+    gl_Position = DhViewProjection * vec4(Position, 1.0);
 }

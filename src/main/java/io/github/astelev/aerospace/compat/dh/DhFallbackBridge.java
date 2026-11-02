@@ -25,11 +25,13 @@ public final class DhFallbackBridge {
         var a = access();
         Object result = a.depth.invoke(a.renderProxy.get(null));
         if (!a.success.getBoolean(result) || !(a.payload.get(result) instanceof Integer id) || id <= 0) return null;
-        var inverse = (Matrix4f) a.toJoml.invoke(null, a.inverse.get(renderParams));
+        var viewProjection = (Matrix4f) a.toJoml.invoke(null, a.combined.get(renderParams));
         var dhProjection = (Matrix4f) a.toJoml.invoke(null, a.dhProjection.get(renderParams));
         var mcProjection = (Matrix4f) a.toJoml.invoke(null, a.mcProjection.get(renderParams));
-        return new Frame(id, inverse, a.farPlane.getFloat(renderParams), dhProjection.m32() > 0 ? 0 : 1,
-                (Integer) a.lightmapId.invoke(a.lightmap.get(renderParams)), mcProjection.m32() > 0 ? 0 : 1);
+        Object camera = a.camera.get(renderParams);
+        var position = new net.minecraft.world.phys.Vec3(a.cameraX.getDouble(camera), a.cameraY.getDouble(camera), a.cameraZ.getDouble(camera));
+        return new Frame(id, viewProjection, a.farPlane.getFloat(renderParams), dhProjection.m32() > 0 ? 0 : 1,
+                (Integer) a.lightmapId.invoke(a.lightmap.get(renderParams)), mcProjection.m32() > 0 ? 0 : 1, position);
     }
 
     public static void observeBiome(Object levelWrapper, Object biomeWrapper, int x, int z) {
@@ -57,10 +59,10 @@ public final class DhFallbackBridge {
                 ? biome.getWaterColor() : biome.getBaseTemperature() < 0.15f ? 0xdce4e5 : biome.getGrassColor(x, z);
     }
 
-    public record Frame(int depthTexture, Matrix4f inverseViewProjection, float farPlane, float dhClearDepth, int lightmap, float vanillaClearDepth) {}
+    public record Frame(int depthTexture, Matrix4f viewProjection, float farPlane, float dhClearDepth, int lightmap, float vanillaClearDepth, net.minecraft.world.phys.Vec3 cameraPosition) {}
 
     private static final class Access {
-        private final Field renderProxy, success, payload, inverse, farPlane, biome, dhProjection, lightmap, mcProjection;
+        private final Field renderProxy, success, payload, combined, farPlane, biome, dhProjection, lightmap, mcProjection, camera, cameraX, cameraY, cameraZ;
         private final Method depth, toJoml, serverLevel, lightmapId;
 
         private Access() throws ReflectiveOperationException {
@@ -72,11 +74,16 @@ public final class DhFallbackBridge {
             success = result.getField("success");
             payload = result.getField("payload");
             var params = Class.forName("com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam");
-            inverse = params.getField("dhInverseMvmProjectionMatrix");
+            combined = params.getField("dhMvmProjMatrix");
             farPlane = params.getField("farClipPlane");
             dhProjection = params.getField("dhProjectionMatrix");
             mcProjection = params.getField("mcProjectionMatrix");
-            lightmap = Class.forName("com.seibel.distanthorizons.core.render.RenderParams").getField("lightmap");
+            var internalParams = Class.forName("com.seibel.distanthorizons.core.render.RenderParams");
+            lightmap = internalParams.getField("lightmap");
+            camera = internalParams.getField("exactCameraPosition");
+            cameraX = camera.getType().getField("x");
+            cameraY = camera.getType().getField("y");
+            cameraZ = camera.getType().getField("z");
             lightmapId = Class.forName("com.seibel.distanthorizons.common.wrappers.misc.LightMapWrapper_neoforge").getMethod("getOpenGlId");
             toJoml = Class.forName("com.seibel.distanthorizons.core.util.math.DhMat4f").getMethod("createJomlMatrix", apiMatrix);
             serverLevel = Class.forName("com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper_neoforge").getMethod("getWrappedMcObject");

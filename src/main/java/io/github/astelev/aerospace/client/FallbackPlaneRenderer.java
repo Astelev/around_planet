@@ -68,18 +68,18 @@ public final class FallbackPlaneRenderer {
                 lastSkip = "unsupported DH target/lightmap";
                 return;
             }
-            var camera = mc.gameRenderer.getMainCamera().getPosition();
+            var camera = frame.cameraPosition();
             if (camera.y <= DhFlightConfig.FALLBACK_HEIGHT.getAsInt()) { lastSkip = "camera " + camera.y; return; }
             updatePalette(camera);
             int[] viewport = new int[4];
             GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
             int copiedDepth = copyDepth(viewport[0], viewport[1], viewport[2], viewport[3]);
-            drawPass(frame.inverseViewProjection(), camera, DhFlightConfig.FALLBACK_HEIGHT.getAsInt(),
+            drawPass(frame.viewProjection(), camera, DhFlightConfig.FALLBACK_HEIGHT.getAsInt(),
                     frame.farPlane(), copiedDepth, palette.getId(),
                     originCellX * (float) FallbackBiomeColors.CELL_SIZE,
                     originCellZ * (float) FallbackBiomeColors.CELL_SIZE,
                     FallbackBiomeColors.WIDTH * (float) FallbackBiomeColors.CELL_SIZE,
-                    DhFlightConfig.FALLBACK_COLOR.getAsInt(), frame.dhClearDepth(), frame.lightmap(), mc.getMainRenderTarget().getDepthTextureId(), frame.vanillaClearDepth());
+                    DhFlightConfig.FALLBACK_COLOR.getAsInt(), frame.dhClearDepth(), frame.lightmap(), mc.getMainRenderTarget().getDepthTextureId(), frame.vanillaClearDepth(), DhFlightConfig.FALLBACK_BRIGHTNESS.get().floatValue());
             frames++;
         } catch (ReflectiveOperationException | RuntimeException e) {
             failed = true;
@@ -153,9 +153,9 @@ public final class FallbackPlaneRenderer {
     }
 
     /** Also exercised against small offscreen depth buffers by the opt-in client smoke test. */
-    public static void drawPass(Matrix4f inverse, Vec3 camera, float height, float maxDistance,
+    public static void drawPass(Matrix4f viewProjection, Vec3 camera, float height, float maxDistance,
                                 int dhDepth, int colorTexture, float originX, float originZ, float span,
-                                int fallback, float dhClearDepth, int lightmap, int vanillaDepth, float vanillaClearDepth) {
+                                int fallback, float dhClearDepth, int lightmap, int vanillaDepth, float vanillaClearDepth, float brightness) {
         if (shader == null) throw new IllegalStateException("Fallback shader not loaded");
         int program = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         int vao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
@@ -194,11 +194,10 @@ public final class FallbackPlaneRenderer {
                 RenderSystem.bindTexture(0);
                 GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
             }
-            shader.getUniform("InverseDhViewProjection").set(inverse);
             shader.getUniform("CameraPosition").set((float) camera.x, (float) camera.y, (float) camera.z);
-            shader.getUniform("PlaneHeight").set(height);
             shader.getUniform("MaxDistance").set(Math.max(128, maxDistance));
-            shader.getUniform("DhViewProjection").set(new Matrix4f(inverse).invert());
+            shader.getUniform("ColorBrightness").set(brightness);
+            shader.getUniform("DhViewProjection").set(viewProjection);
             shader.getUniform("PaletteOrigin").set(originX, originZ);
             shader.getUniform("PaletteSpan").set(span);
             shader.getUniform("FallbackColor").set((fallback >> 16 & 255) / 255f, (fallback >> 8 & 255) / 255f, (fallback & 255) / 255f);
@@ -219,11 +218,16 @@ public final class FallbackPlaneRenderer {
             GL11.glDisable(GL11.GL_STENCIL_TEST);
             GL11.glColorMask(true, true, true, true);
             RenderSystem.setShader(() -> shader);
+            // Same camera-relative coordinates as DH's terrain VBOs. A true
+            // horizontal quad avoids assumptions about inverse screen rays.
+            float y = (float) (height - camera.y);
+            float radius = Math.max(128, maxDistance);
+            if (y >= 0) return;
             var buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
-            buffer.addVertex(-1, -1, 0);
-            buffer.addVertex(1, -1, 0);
-            buffer.addVertex(1, 1, 0);
-            buffer.addVertex(-1, 1, 0);
+            buffer.addVertex(-radius, y, -radius);
+            buffer.addVertex(-radius, y, radius);
+            buffer.addVertex(radius, y, radius);
+            buffer.addVertex(radius, y, -radius);
             BufferUploader.drawWithShader(buffer.buildOrThrow());
         } finally {
             BufferUploader.reset();

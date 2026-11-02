@@ -13,6 +13,7 @@ public final class DhFlightConfig {
     public static final ModConfigSpec.BooleanValue FALLBACK_PLANE;
     public static final ModConfigSpec.IntValue FALLBACK_HEIGHT;
     public static final ModConfigSpec.IntValue FALLBACK_COLOR;
+    public static final ModConfigSpec.DoubleValue FALLBACK_BRIGHTNESS;
     public static final ModConfigSpec.BooleanValue FALLBACK_BIOMES;
     public static final ModConfigSpec.BooleanValue NEARBY_PRIORITY;
 
@@ -38,6 +39,8 @@ public final class DhFlightConfig {
         FALLBACK_HEIGHT = builder.defineInRange("fallbackHeight", 60, -2032, 2032);
         FALLBACK_COLOR = builder.comment("RGB color used until the budgeted biome sampler has calculated a local surface color.")
                 .defineInRange("fallbackColor", 0x718a54, 0, 0xffffff);
+        FALLBACK_BRIGHTNESS = builder.comment("Surface tint brightness before lighting. Lower values better match textured terrain.")
+                .defineInRange("fallbackBrightness", 0.55, 0.0, 1.0);
         FALLBACK_BIOMES = builder.comment("Sample surface biomes independently of DH terrain work in a bounded 128-block grid. No chunks are generated.")
                 .define("fallbackBiomeColors", true);
         NEARBY_PRIORITY = builder.comment("During sky flight, rank waiting DH generation tasks by distance to their bounds, nearest first.")

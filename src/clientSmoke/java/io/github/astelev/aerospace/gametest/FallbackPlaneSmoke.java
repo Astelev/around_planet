@@ -119,14 +119,18 @@ public final class FallbackPlaneSmoke {
         GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_COLOR_BUFFER_BIT);
         GL11.glClearDepth(1);
         int previousDepthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
-        FallbackPlaneRenderer.drawPass(inverse, new Vec3(0, cameraY, 0), 60, 100000,
-                depthTexture, palette, -4096, -4096, 8192, 0x718a54, dhClearDepth, lightmap, mcDepth, vanillaClearDepth);
+        FallbackPlaneRenderer.drawPass(new Matrix4f(inverse).invert(), new Vec3(0, cameraY, 0), 60, 100000,
+                depthTexture, palette, -4096, -4096, 8192, 0x718a54, dhClearDepth, lightmap, mcDepth, vanillaClearDepth, 0.55f);
         if (GL11.glGetInteger(GL11.GL_DEPTH_FUNC) != previousDepthFunc) throw new AssertionError("Fallback changed depth-test state");
         var pixel = BufferUtils.createByteBuffer(4);
         GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, target.frameBufferId);
         GL11.glReadPixels(8, 8, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
         int r = Byte.toUnsignedInt(pixel.get(0)), g = Byte.toUnsignedInt(pixel.get(1)), b = Byte.toUnsignedInt(pixel.get(2));
-        int expected = shouldDraw ? ((0x71 * light / 255) << 16 | (0x8a * light / 255) << 8 | 0x54 * light / 255) : 0x203040;
+        float luminance = 0x71 * 0.2126f + 0x8a * 0.7152f + 0x54 * 0.0722f;
+        int er = Math.round((luminance * 0.2f + 0x71 * 0.8f) * 0.55f * light / 255);
+        int eg = Math.round((luminance * 0.2f + 0x8a * 0.8f) * 0.55f * light / 255);
+        int eb = Math.round((luminance * 0.2f + 0x54 * 0.8f) * 0.55f * light / 255);
+        int expected = shouldDraw ? er << 16 | eg << 8 | eb : 0x203040;
         if (Math.abs(r - (expected >> 16 & 255)) > 1 || Math.abs(g - (expected >> 8 & 255)) > 1 || Math.abs(b - (expected & 255)) > 1) {
             throw new AssertionError("Fallback probe failed for " + description + ": " + r + "," + g + "," + b);
         }
