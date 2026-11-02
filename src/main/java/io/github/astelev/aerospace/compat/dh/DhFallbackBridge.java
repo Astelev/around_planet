@@ -44,7 +44,7 @@ public final class DhFallbackBridge {
             if (!(value instanceof Holder<?> holder) || !(holder.value() instanceof Biome)) return;
             @SuppressWarnings("unchecked") var typed = (Holder<Biome>) holder;
             int color = biomeColor(typed, x, z);
-            FallbackBiomeColors.observe(level.dimension().location().toString(), x, z, color);
+            FallbackBiomeColors.observe(level.dimension().location().toString(), x, z, color, biomeHeightOffset(typed));
         } catch (ReflectiveOperationException | RuntimeException ignored) {
             // An unavailable color must never fail generation; neutral color remains.
         }
@@ -57,6 +57,11 @@ public final class DhFallbackBridge {
         if (holder.is(BiomeTags.IS_BADLANDS)) return 0xb66b44;
         return holder.is(BiomeTags.IS_OCEAN) || holder.is(BiomeTags.IS_RIVER)
                 ? biome.getWaterColor() : biome.getBaseTemperature() < 0.15f ? 0xdce4e5 : biome.getGrassColor(x, z);
+    }
+
+    public static int biomeHeightOffset(Holder<Biome> biome) {
+        return BiomeSurfaceHeights.offset(biome.unwrapKey().map(key -> key.location().toString()).orElse(null),
+                biome.is(BiomeTags.IS_MOUNTAIN), biome.is(BiomeTags.IS_HILL));
     }
 
     public record Frame(int depthTexture, Matrix4f viewProjection, float farPlane, float dhClearDepth, int lightmap, float vanillaClearDepth, net.minecraft.world.phys.Vec3 cameraPosition) {}

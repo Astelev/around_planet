@@ -7,7 +7,7 @@ public final class FallbackBiomeColors {
     public static final int CELL_SIZE = 128;
     public static final int HALF_SIZE = 33;
     public static final int WIDTH = HALF_SIZE * 2;
-    private static final ConcurrentHashMap<Long, Integer> COLORS = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Long, Sample> COLORS = new ConcurrentHashMap<>();
     private static volatile View view;
     private static volatile long generation;
 
@@ -32,17 +32,28 @@ public final class FallbackBiomeColors {
     }
 
     public static synchronized void observe(String dimension, int blockX, int blockZ, int rgb) {
+        observe(dimension, blockX, blockZ, rgb, 0);
+    }
+
+    public static synchronized void observe(String dimension, int blockX, int blockZ, int rgb, int heightOffset) {
         var snapshot = view;
         int x = Math.floorDiv(blockX, CELL_SIZE), z = Math.floorDiv(blockZ, CELL_SIZE);
         if (snapshot != null && snapshot.dimension.equals(dimension) && snapshot.contains(x, z)
                 && COLORS.size() < WIDTH * WIDTH * 2) {
-            COLORS.put(key(x, z), rgb & 0xffffff);
+            COLORS.put(key(x, z), new Sample(rgb & 0xffffff, Math.max(0, Math.min(192, heightOffset))));
         }
     }
 
     public static int color(int cellX, int cellZ, int fallback) {
-        return COLORS.getOrDefault(key(cellX, cellZ), fallback);
+        var sample = COLORS.get(key(cellX, cellZ));
+        return sample == null ? fallback : sample.rgb;
     }
+
+    public static int heightOffset(int cellX, int cellZ) {
+        var sample = COLORS.get(key(cellX, cellZ));
+        return sample == null ? 0 : sample.heightOffset;
+    }
+    private record Sample(int rgb, int heightOffset) {}
 
     public static synchronized void clear() {
         if (view != null || !COLORS.isEmpty()) generation++;
@@ -70,6 +81,10 @@ public final class FallbackBiomeColors {
 
     public static synchronized void observe(long epoch, String dimension, int x, int z, int color) {
         if (epoch == generation) observe(dimension, x, z, color);
+    }
+
+    public static synchronized void observe(long epoch, String dimension, int x, int z, int color, int height) {
+        if (epoch == generation) observe(dimension, x, z, color, height);
     }
 
     public record Cell(int x, int z) {}

@@ -49,6 +49,11 @@ public final class DhFlightController {
         long now = System.nanoTime() / 1_000_000L;
         var position = mc.gameRenderer.getMainCamera().getPosition();
         speed = lastPosition == null || now <= lastSampleMillis ? 0 : position.distanceTo(lastPosition) * 1000.0 / (now - lastSampleMillis);
+        var travel = position;
+        if (lastPosition != null && now > lastSampleMillis && DhFlightConfig.FORWARD_PRIORITY.getAsBoolean()) {
+            double scale = 1000.0 / (now - lastSampleMillis);
+            DhFlightState.travelVelocity((travel.x - lastPosition.x) * scale, (travel.z - lastPosition.z) * scale);
+        } else DhFlightState.travelVelocity(0, 0);
         lastPosition = position;
         lastSampleMillis = now;
         DhFlightState.publish(true, policy.sample(true, speed, now));

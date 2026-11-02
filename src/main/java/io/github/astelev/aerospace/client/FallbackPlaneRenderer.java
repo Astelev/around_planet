@@ -5,6 +5,8 @@ import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexBuffer;
+import io.github.astelev.aerospace.compat.dh.FallbackSurfaceMesh;
 import io.github.astelev.aerospace.AeroSpace;
 import io.github.astelev.aerospace.compat.dh.DhFallbackBridge;
 import io.github.astelev.aerospace.compat.dh.DhFlightConfig;
@@ -33,6 +35,9 @@ import java.io.IOException;
 public final class FallbackPlaneRenderer {
     private static ShaderInstance shader;
     private static DynamicTexture palette;
+    private static VertexBuffer surfaceMesh;
+    private static boolean meshHeights;
+    private static float meshExtent;
     private static long lastPaletteMillis;
     private static long paletteGeneration = -1;
     private static int originCellX, originCellZ;
@@ -70,7 +75,7 @@ public final class FallbackPlaneRenderer {
             }
             var camera = frame.cameraPosition();
             if (camera.y <= DhFlightConfig.FALLBACK_HEIGHT.getAsInt()) { lastSkip = "camera " + camera.y; return; }
-            updatePalette(camera);
+            updatePalette(camera, frame.farPlane());
             int[] viewport = new int[4];
             GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
             int copiedDepth = copyDepth(viewport[0], viewport[1], viewport[2], viewport[3]);
@@ -79,7 +84,7 @@ public final class FallbackPlaneRenderer {
                     originCellX * (float) FallbackBiomeColors.CELL_SIZE,
                     originCellZ * (float) FallbackBiomeColors.CELL_SIZE,
                     FallbackBiomeColors.WIDTH * (float) FallbackBiomeColors.CELL_SIZE,
-                    DhFlightConfig.FALLBACK_COLOR.getAsInt(), frame.dhClearDepth(), frame.lightmap(), mc.getMainRenderTarget().getDepthTextureId(), frame.vanillaClearDepth(), DhFlightConfig.FALLBACK_BRIGHTNESS.get().floatValue());
+                    DhFlightConfig.FALLBACK_COLOR.getAsInt(), frame.dhClearDepth(), frame.lightmap(), mc.getMainRenderTarget().getDepthTextureId(), frame.vanillaClearDepth(), DhFlightConfig.FALLBACK_BRIGHTNESS.get().floatValue(), surfaceMesh);
             frames++;
         } catch (ReflectiveOperationException | RuntimeException e) {
             failed = true;
@@ -90,7 +95,7 @@ public final class FallbackPlaneRenderer {
     public static long drawnFrames() { return frames; }
     public static String lastSkip() { return lastSkip; }
 
-    private static void updatePalette(Vec3 camera) {
+    private static void updatePalette(Vec3 camera, float extent) {
         var mc = Minecraft.getInstance();
         int centerX = Math.floorDiv((int) Math.floor(camera.x), FallbackBiomeColors.CELL_SIZE);
         int centerZ = Math.floorDiv((int) Math.floor(camera.z), FallbackBiomeColors.CELL_SIZE);
@@ -103,6 +108,7 @@ public final class FallbackPlaneRenderer {
         }
         long now = System.nanoTime() / 1_000_000L;
         if (palette != null && paletteGeneration == FallbackBiomeColors.generation()
+                && meshHeights == DhFlightConfig.FALLBACK_HEIGHTS.getAsBoolean() && meshExtent == extent
                 && now - lastPaletteMillis < 200 && newX == originCellX && newZ == originCellZ) return;
         int binding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         RenderSystem.activeTexture(GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
@@ -111,11 +117,14 @@ public final class FallbackPlaneRenderer {
         originCellZ = newZ;
         int fallback = DhFlightConfig.FALLBACK_COLOR.getAsInt();
         var pixels = palette.getPixels();
+        int[][] heights = new int[FallbackBiomeColors.WIDTH][FallbackBiomeColors.WIDTH];
         for (int x = 0; x < FallbackBiomeColors.WIDTH; x++) {
             for (int z = 0; z < FallbackBiomeColors.WIDTH; z++) {
                 int rgb = FallbackBiomeColors.color(originCellX + x, originCellZ + z, fallback);
                 int abgr = 0xff000000 | (rgb & 255) << 16 | (rgb & 0xff00) | rgb >>> 16 & 255;
                 pixels.setPixelRGBA(x, z, abgr);
+                if (DhFlightConfig.FALLBACK_HEIGHTS.getAsBoolean())
+                    heights[x][z] = FallbackBiomeColors.heightOffset(originCellX + x, originCellZ + z);
             }
         }
         // Preserve bindings: DH/vanilla cache texture state between render passes.
@@ -124,8 +133,33 @@ public final class FallbackPlaneRenderer {
         palette.upload();
         RenderSystem.bindTexture(binding);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, binding);
+        int vao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
+        int array = GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING);
+        try {
+            BufferUploader.reset();
+            if (surfaceMesh == null) surfaceMesh = new VertexBuffer(VertexBuffer.Usage.STATIC);
+            uploadSurface(surfaceMesh, heights, extent);
+        } finally {
+            BufferUploader.reset();
+            GL30.glBindVertexArray(vao);
+            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, array);
+        }
+        meshHeights = DhFlightConfig.FALLBACK_HEIGHTS.getAsBoolean();
+        meshExtent = extent;
         lastPaletteMillis = now;
         paletteGeneration = FallbackBiomeColors.generation();
+    }
+
+    /** Cached GPU geometry refreshes with the palette, never with every frame. */
+    public static void uploadSurface(VertexBuffer target, int[][] heights, float extent) {
+        var buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
+        FallbackSurfaceMesh.build(heights, FallbackBiomeColors.CELL_SIZE, extent,
+                (x0,y0,z0, x1,y1,z1, x2,y2,z2, x3,y3,z3) -> {
+                    buffer.addVertex(x0,y0,z0); buffer.addVertex(x1,y1,z1);
+                    buffer.addVertex(x2,y2,z2); buffer.addVertex(x3,y3,z3);
+                });
+        target.bind();
+        target.upload(buffer.buildOrThrow());
     }
 
     /** Copy on GPU: sampling the depth attached to the draw target would be feedback. */
@@ -156,6 +190,13 @@ public final class FallbackPlaneRenderer {
     public static void drawPass(Matrix4f viewProjection, Vec3 camera, float height, float maxDistance,
                                 int dhDepth, int colorTexture, float originX, float originZ, float span,
                                 int fallback, float dhClearDepth, int lightmap, int vanillaDepth, float vanillaClearDepth, float brightness) {
+        drawPass(viewProjection, camera, height, maxDistance, dhDepth, colorTexture, originX, originZ, span,
+                fallback, dhClearDepth, lightmap, vanillaDepth, vanillaClearDepth, brightness, null);
+    }
+
+    public static void drawPass(Matrix4f viewProjection, Vec3 camera, float height, float maxDistance,
+                                int dhDepth, int colorTexture, float originX, float originZ, float span,
+                                int fallback, float dhClearDepth, int lightmap, int vanillaDepth, float vanillaClearDepth, float brightness, VertexBuffer mesh) {
         if (shader == null) throw new IllegalStateException("Fallback shader not loaded");
         int program = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         int vao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
@@ -194,6 +235,8 @@ public final class FallbackPlaneRenderer {
                 RenderSystem.bindTexture(0);
                 GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
             }
+            shader.getUniform("SurfaceOffset").set(mesh == null ? 0 : (float) (originX - camera.x),
+                    mesh == null ? 0 : (float) (height - camera.y), mesh == null ? 0 : (float) (originZ - camera.z));
             shader.getUniform("CameraPosition").set((float) camera.x, (float) camera.y, (float) camera.z);
             shader.getUniform("MaxDistance").set(Math.max(128, maxDistance));
             shader.getUniform("ColorBrightness").set(brightness);
@@ -210,7 +253,7 @@ public final class FallbackPlaneRenderer {
             // Only clear DH pixels survive the copied-depth mask. Real LODs,
             // including terrain below Y=60, remain authoritative.
             GL11.glEnable(GL11.GL_DEPTH_TEST);
-            GL11.glDepthFunc(GL11.GL_ALWAYS);
+            GL11.glDepthFunc(dhClearDepth == 0 ? GL11.GL_GREATER : GL11.GL_LESS);
             GL11.glDepthMask(true);
             GL11.glDisable(GL11.GL_BLEND);
             GL11.glDisable(GL11.GL_CULL_FACE);
@@ -218,17 +261,24 @@ public final class FallbackPlaneRenderer {
             GL11.glDisable(GL11.GL_STENCIL_TEST);
             GL11.glColorMask(true, true, true, true);
             RenderSystem.setShader(() -> shader);
-            // Same camera-relative coordinates as DH's terrain VBOs. A true
-            // horizontal quad avoids assumptions about inverse screen rays.
-            float y = (float) (height - camera.y);
-            float radius = Math.max(128, maxDistance);
-            if (y >= 0) return;
-            var buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
-            buffer.addVertex(-radius, y, -radius);
-            buffer.addVertex(-radius, y, radius);
-            buffer.addVertex(radius, y, radius);
-            buffer.addVertex(radius, y, -radius);
-            BufferUploader.drawWithShader(buffer.buildOrThrow());
+            if (mesh != null) {
+                shader.apply();
+                mesh.bind();
+                mesh.draw();
+                shader.clear();
+            } else {
+                // Same camera-relative coordinates as DH's terrain VBOs. A true
+                // horizontal quad avoids assumptions about inverse screen rays.
+                float y = (float) (height - camera.y);
+                float radius = Math.max(128, maxDistance);
+                if (y >= 0) return;
+                var buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
+                buffer.addVertex(-radius, y, -radius);
+                buffer.addVertex(-radius, y, radius);
+                buffer.addVertex(radius, y, radius);
+                buffer.addVertex(radius, y, -radius);
+                BufferUploader.drawWithShader(buffer.buildOrThrow());
+            }
         } finally {
             BufferUploader.reset();
             GL30.glBindVertexArray(vao);

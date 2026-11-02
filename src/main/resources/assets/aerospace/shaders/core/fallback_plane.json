@@ -4,6 +4,7 @@
   "attributes": ["Position"],
   "samplers": [{"name": "DhDepth"}, {"name": "BiomePalette"}, {"name": "SurfaceLightmap"}, {"name": "VanillaDepth"}],
   "uniforms": [
+    {"name":"SurfaceOffset", "type":"float", "count":3, "values":[0,0,0]},
     {"name": "CameraPosition", "type": "float", "count": 3, "values": [0, 500, 0]},
     {"name": "MaxDistance", "type": "float", "count": 1, "values": [4096]},
     {"name": "PaletteOrigin", "type": "float", "count": 2, "values": [0, 0]},

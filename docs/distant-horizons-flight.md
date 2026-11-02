@@ -41,15 +41,20 @@ The client config is `config/aerospace-client.toml`, section
 | `fallbackBrightness` | `0.55` | Surface brightness multiplier, before world lighting |
 | `fallbackBiomeColors` | `true` | Budgeted independent biome sampling in singleplayer |
 | `nearbyGenerationPriority` | `true` | Rank queued DH tasks by distance to their bounds during sky flight |
+| `forwardGenerationPriority` | `true` | Add camera-travel weight to generation, retrieval and mesh-request ordering |
+| `fallbackBiomeHeights` | `true` | Raise surface tiles using a static biome-height table |
 
 ## Temporary visual floor
 
 During sky flight, the temporary surface is inserted into **DH's terrain target**
 after opaque LODs and before SSAO, transparency, fog and compositing. It is a
-world-space quad at Y=60, projected directly with DH's forward view/projection
+world-space tiled surface above the configured Y=60 base, projected directly with DH's forward view/projection
 matrix and its exact camera position, just like native terrain buffers. No inverse
 screen-ray reconstruction or separately sampled Minecraft camera is involved.
-The rasterizer writes the actual depth of that surface into the DH render buffer. Native DH fog and far fading therefore see its proper distance
+The rasterizer writes the actual depth of that surface into the DH render buffer.
+Tile tops and closed vertical risers are cached in a GPU vertex buffer, refreshed
+with the biome palette rather than rebuilt on each frame. Outside the sampled
+area, a neutral base plane continues to the DH far distance. Native DH fog and far fading therefore see its proper distance
 and height. Surface colors are multiplied by DH's open-sky lightmap, so the plane
 responds to day/night, weather and the lightmap's other adjustments. The uploaded
 vanilla lightmap uses block light on X and sky light on Y; the surface samples
@@ -94,6 +99,36 @@ samples, their cells remain neutral. No seed request or server protocol is added
 The palette clears on flight/world exit and dimension change. In-flight jobs
 carry a world epoch, so old-world results cannot color a new world.
 
+## Approximate biome heights
+
+The same biome observation now supplies color **and** a static height offset.
+There is no second biome query, heightmap lookup, chunk request or terrain-density
+pass. These are deliberately chosen visual estimates: Minecraft 1.21.1 does not
+provide a universal average-height field for each biome, and terrain can vary
+substantially inside one biome.
+
+With the default base of Y=60:
+
+| Biome group | Surface Y |
+| --- | --- |
+| Oceans, rivers, beaches, unknown biomes | 60 |
+| Swamps | 64 |
+| Plains, desert, savanna | 68 |
+| Forest, jungle, taiga | 76 |
+| Badlands, old-growth taiga | 84 |
+| Hill-tagged biomes | 92 |
+| Savanna plateau, wooded/eroded badlands | 100 |
+| Meadow / cherry grove | 116 / 124 |
+| Other mountain-tagged biomes | 172 |
+
+Exact table entries take precedence over generic mountain/hill tags. Modded
+biomes can use those tags; otherwise they stay at the neutral base. Unknown
+samples also stay at the base until the worker supplies their biome. Heights
+are stepped at the existing 128-block tile boundaries; vertical faces close the
+steps and the outer edge, so raising neighboring tiles does not expose the void.
+Normal DH/vanilla depth still masks all of this approximate geometry. Set
+`fallbackBiomeHeights=false` to return to a flat surface.
+
 ## Nearby generation priority
 
 DH 3.3.3 already sorts retrieval requests by distance. Its generation queue,
@@ -105,6 +140,23 @@ During sky flight, the optional adapter ranks waiting generation tasks by
 horizontal distance to the section's **bounds**, without the coarse discount.
 A section containing the target comes first; equal distances prefer the smaller
 section. This operates on DH's current generation target, so it follows movement.
+The forward preference is added to distance, rather than replacing it. Horizontal
+camera velocity supplies direction; camera look direction and ship identity are
+not used. At least 5 blocks/s of horizontal movement is required; stops, flight
+exit and teleport-sized jumps clear the heading. The first 512 blocks retain pure
+distance ordering. Beyond that, the effective distance is:
+
+`distance - 0.6 × alignment × (distance - 512)`
+
+Here alignment is the cosine toward camera travel, between -1 and 1. An equally
+distant forward section is favored over one behind; sufficiently close sections
+still win. The modifier applies to waiting generation tasks, data retrieval, and
+mesh/build-upload request ordering. It does not preempt an already running job or
+reorder DH's internal GPU driver queue. A sort snapshots its heading and enable
+state so a turn/stop cannot invalidate the comparator midway through sorting.
+At rest, retrieval/mesh ordering returns to DH's native behavior, while the
+existing near-first generation adaptation remains active during sky flight.
+
 Already running jobs finish normally, and native generation/load limits remain
 in force. Leaving sky flight restores DH's original ranking. This cannot make
 all nearby LODs appear immediately: generation, data processing and mesh building
@@ -170,10 +222,10 @@ budget and modpack load determine whether new surface can keep up in practice.
 The client smoke test also reads back pixels from small offscreen buffers:
 missing terrain is filled; existing vanilla depth, existing DH depth, an upward
 view, and a camera below the plane remain unchanged. Written DH depth is
-unprojected to verify Y=60. Normal/reversed depth and an asymmetric 16×16 lightmap are checked: the open
+unprojected to verify both the Y=60 base and a raised Y=92 tile. Normal/reversed depth and an asymmetric 16×16 lightmap are checked: the open
 night sky is dark while emissive block-light entries remain bright. This catches
 accidental swapping of the sky/block axes.
-The test verifies the transformed native generation-queue ranking in and out of
-sky flight, then waits for the actual DH surface hook and independent biome
+The test verifies the transformed native generation, retrieval and mesh comparators,
+including turns and a stable in-progress sort, then waits for the actual DH surface hook and independent biome
 sampling to run. These tests do not benchmark an entire flight or guarantee
 compatibility with shader packs.

@@ -15,7 +15,7 @@ public final class DhFlightConfig {
     public static final ModConfigSpec.IntValue FALLBACK_COLOR;
     public static final ModConfigSpec.DoubleValue FALLBACK_BRIGHTNESS;
     public static final ModConfigSpec.BooleanValue FALLBACK_BIOMES;
-    public static final ModConfigSpec.BooleanValue NEARBY_PRIORITY;
+    public static final ModConfigSpec.BooleanValue NEARBY_PRIORITY, FORWARD_PRIORITY, FALLBACK_HEIGHTS;
 
     static {
         var builder = new ModConfigSpec.Builder();
@@ -45,6 +45,10 @@ public final class DhFlightConfig {
                 .define("fallbackBiomeColors", true);
         NEARBY_PRIORITY = builder.comment("During sky flight, rank waiting DH generation tasks by distance to their bounds, nearest first.")
                 .define("nearbyGenerationPriority", true);
+        FORWARD_PRIORITY = builder.comment("Prefer LOD generation, retrieval and mesh requests along camera travel; keep the nearest 512 blocks first.")
+                .define("forwardGenerationPriority", true);
+        FALLBACK_HEIGHTS = builder.comment("Use approximate biome height offsets from a static table. No terrain generation or height queries.")
+                .define("fallbackBiomeHeights", true);
         builder.pop();
         SPEC = builder.build();
     }

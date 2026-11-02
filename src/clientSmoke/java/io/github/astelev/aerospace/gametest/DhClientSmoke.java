@@ -94,7 +94,7 @@ public final class DhClientSmoke {
                 DhFlightState.publish(false, 0);
             }
             Class.forName("com.seibel.distanthorizons.common.wrappers.worldGeneration.DhRoughSurfaceGenerator_neoforge");
-            verifyGenerationPriority();
+            verifyGenerationPriority(tree);
             FallbackPlaneSmoke.verify();
             savedHeight = DhFlightConfig.FALLBACK_HEIGHT.getAsInt();
             DhFlightConfig.FALLBACK_HEIGHT.set(-128);
@@ -110,7 +110,7 @@ public final class DhClientSmoke {
     private static void require(boolean condition, String message) {
         if (!condition) throw new AssertionError("AEROSPACE_DH_SMOKE: " + message);
     }
-    private static void verifyGenerationPriority() throws ReflectiveOperationException {
+    private static void verifyGenerationPriority(Object tree) throws ReflectiveOperationException {
         var pos = Class.forName("com.seibel.distanthorizons.core.pos.DhSectionPos");
         var block = Class.forName("com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D");
         var task = Class.forName("com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalTask");
@@ -127,6 +127,38 @@ public final class DhClientSmoke {
         int normal = distance.getInt(rank.invoke(null, target, entry));
         DhFlightState.publish(true, 4);
         int flight = distance.getInt(rank.invoke(null, target, entry));
+        var encode = pos.getMethod("encode", byte.class, int.class, int.class);
+        long ahead = (Long) encode.invoke(null, (byte) 8, 5, 0);
+        long behind = (Long) encode.invoke(null, (byte) 8, -6, 0);
+        var aheadTask = task.getConstructor(long.class, byte.class).newInstance(ahead, (byte) 2);
+        var behindTask = task.getConstructor(long.class, byte.class).newInstance(behind, (byte) 2);
+        DhFlightState.travelVelocity(100, 0);
+        int frontRank = distance.getInt(rank.invoke(null, target, java.util.Map.entry(ahead, aheadTask)));
+        int backRank = distance.getInt(rank.invoke(null, target, java.util.Map.entry(behind, behindTask)));
+        require(frontRank < backRank, "Generation did not add forward weight");
+        var retrieval = tree.getClass().getDeclaredMethod("lambda$startQueuedRetrievalTasks$0", block, Long.class, Long.class);
+        retrieval.setAccessible(true);
+        require((Integer) retrieval.invoke(null,target,ahead,behind) < 0, "Retrieval did not prefer forward travel");
+        var levelField = tree.getClass().getDeclaredField("level");
+        levelField.setAccessible(true);
+        var sectionType = Class.forName("com.seibel.distanthorizons.core.render.QuadTree.LodRenderSection");
+        var constructor = sectionType.getConstructors()[0];
+        var frontSection = constructor.newInstance(ahead, tree, levelField.get(tree), null);
+        var backSection = constructor.newInstance(behind, tree, levelField.get(tree), null);
+        try {
+            var meshes = tree.getClass().getDeclaredMethod("lambda$loadQueuedSections$0",block,sectionType,sectionType);
+            meshes.setAccessible(true);
+            require((Integer) meshes.invoke(null,target,frontSection,backSection) < 0, "Mesh queue did not prefer forward travel");
+            io.github.astelev.aerospace.compat.dh.DhGenerationPriority.beginSort();
+            try {
+                DhFlightState.travelVelocity(-100,0);
+                require((Integer) retrieval.invoke(null,target,ahead,behind) < 0, "Sort heading changed mid-sort");
+            } finally { io.github.astelev.aerospace.compat.dh.DhGenerationPriority.endSort(); }
+            require((Integer) retrieval.invoke(null,target,ahead,behind) > 0, "Turn did not update forward weight");
+        } finally {
+            sectionType.getMethod("close").invoke(frontSection);
+            sectionType.getMethod("close").invoke(backSection);
+        }
         DhFlightState.publish(false, 0);
         if (flight != 8 || normal == flight) throw new AssertionError("Native generation queue priority was not changed/scoped: " + normal + "/" + flight);
     }

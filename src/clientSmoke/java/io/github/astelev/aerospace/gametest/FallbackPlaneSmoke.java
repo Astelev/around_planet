@@ -13,6 +13,7 @@ import org.lwjgl.opengl.GL30;
 public final class FallbackPlaneSmoke {
     private FallbackPlaneSmoke() {}
     private static int lightmap, mcDepth;
+    private static com.mojang.blaze3d.vertex.VertexBuffer raisedMesh;
     private static int light = 255;
 
     public static void verify() {
@@ -56,9 +57,15 @@ public final class FallbackPlaneSmoke {
             var up = new Matrix4f().perspective((float) Math.PI / 2, 1, 0.1f, 10000)
                     .rotateX(-(float) Math.PI / 2).invert();
             probe(target, depth, palette, up, 500, 1, 1, false, "sky above horizon");
+            raisedMesh = new com.mojang.blaze3d.vertex.VertexBuffer(com.mojang.blaze3d.vertex.VertexBuffer.Usage.STATIC);
+            FallbackPlaneRenderer.uploadSurface(raisedMesh, new int[][]{{32,32},{32,32}}, 100000);
+            probe(target, depth, palette, down, 500, 1, 1, true, "raised biome surface");
+            probe(target, depth, palette, reversedDown, 500, 1, 0, true, "reversed raised biome", 0, 1);
+            probe(target, depth, palette, down, 500, 1, 0.5f, false, "real LOD masks raised surface");
             setLight(32);
             probe(target, depth, palette, down, 500, 1, 1, true, "night lightmap");
         } finally {
+            if (raisedMesh != null) { raisedMesh.close(); raisedMesh = null; }
             target.destroyBuffers();
             GL11.glDeleteTextures(depth);
             GL11.glDeleteTextures(palette);
@@ -128,7 +135,8 @@ public final class FallbackPlaneSmoke {
         GL11.glClearDepth(1);
         int previousDepthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
         FallbackPlaneRenderer.drawPass(new Matrix4f(inverse).invert(), new Vec3(0, cameraY, 0), 60, 100000,
-                depthTexture, palette, -4096, -4096, 8192, 0x718a54, dhClearDepth, lightmap, mcDepth, vanillaClearDepth, 0.55f);
+                depthTexture, palette, raisedMesh == null ? -4096 : -128, raisedMesh == null ? -4096 : -128,
+                raisedMesh == null ? 8192 : 256, 0x718a54, dhClearDepth, lightmap, mcDepth, vanillaClearDepth, 0.55f, raisedMesh);
         if (GL11.glGetInteger(GL11.GL_DEPTH_FUNC) != previousDepthFunc) throw new AssertionError("Fallback changed depth-test state");
         var pixel = BufferUtils.createByteBuffer(4);
         GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, target.frameBufferId);
@@ -149,7 +157,7 @@ public final class FallbackPlaneSmoke {
             var hit = new org.joml.Vector4f(0.0625f, 0.0625f, preservedDepth.get(0) * 2 - 1, 1);
             inverse.transform(hit);
             double worldY = hit.y / hit.w + cameraY;
-            if (Math.abs(worldY - 60) > 0.5) throw new AssertionError("Surface is not at Y=60: " + worldY);
+            if (Math.abs(worldY - (raisedMesh == null ? 60 : 92)) > 0.5) throw new AssertionError("Surface height mismatch: " + worldY);
         } else if (Math.abs(preservedDepth.get(0) - dhDepth) > 0.00001)
             throw new AssertionError("Fallback overwrote an existing depth");
     }
