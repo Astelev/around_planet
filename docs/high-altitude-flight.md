@@ -121,3 +121,27 @@ Manual acceptance checks still needed:
 4. Rotate a tall ship, change dimensions, disconnect/reconnect and change render
    distance. Check that temporary views do not survive these transitions.
 5. Repeat with a Sable force-loaded ship, connected ships, AeroWorks and AeroUtils.
+
+## Passenger pose-handoff protection
+
+Native Sable attachment (including a tracked/containing vehicle) now counts as
+crew before testing the current and previous hull bounds. Previously, temporary
+terrain eligibility already trusted Sable tracking, but the ticket-manager
+unload safeguard only checked geometry. A tracked player between asynchronously
+sampled poses could therefore enable temporary air yet fail to protect the ship
+from unloading. A GameTest reproduces this mismatch with unloaded terrain and
+verifies that the ship stays active without generating terrain. Removing native
+attachment outside both hulls removes the exemption again.
+
+This does not pin players to a ship, modify their velocity, or override native
+collision/contact decisions. It is not a full reproduction of the reported case
+where a standing player falls off while the ship continues flying.
+
+A client-only, read-only diagnostic observes native attachment loss while the
+temporary sky view is active (including its exit tick). At most once every ten
+seconds it writes `AeroSpace sky passenger contact lost` to the log, with ship
+presence, native last-tracking ID, temporary view/chunk availability, position
+change, on-ground state and velocity. Normal walking/jumping away can also
+produce this record; the record alone does not prove an error. If the standing
+passenger issue persists, the surrounding client log can distinguish loss of
+ship tracking, loss of temporary chunks, and a native collision transition.

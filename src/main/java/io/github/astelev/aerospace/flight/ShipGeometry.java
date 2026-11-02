@@ -1,6 +1,7 @@
 package io.github.astelev.aerospace.flight;
 
 import dev.ryanhcode.sable.companion.math.BoundingBox3d;
+import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.world.entity.Entity;
@@ -18,6 +19,17 @@ public final class ShipGeometry {
 
     public static BoundingBox3d currentBounds(SubLevel ship) {
         return atPose(ship, ship.logicalPose());
+    }
+
+    /** Native attachment is stronger evidence than an asynchronously sampled AABB. */
+    public static boolean isPassenger(SubLevel ship, Entity entity) {
+        if (ship.isRemoved() || entity.level() != ship.getLevel()) return false;
+        if (Sable.HELPER.getTrackingSubLevel(entity) == ship) return true;
+        var vehicle = entity.getVehicle();
+        for (int depth = 0; vehicle != null && depth < 16; depth++, vehicle = vehicle.getVehicle()) {
+            if (Sable.HELPER.getTrackingSubLevel(vehicle) == ship || Sable.HELPER.getContaining(vehicle) == ship) return true;
+        }
+        return containsPassenger(ship, entity);
     }
 
     public static boolean containsPassenger(SubLevel ship, Entity entity) {

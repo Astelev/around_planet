@@ -56,10 +56,11 @@ public abstract class PhysicsChunkTicketManagerMixin {
                 level.dimension().equals(Level.OVERWORLD), false, ShipGeometry.currentMinY(ship),
                 level.getMaxBuildHeight(), FlightConfig.MIN_ALTITUDE.getAsInt())) {
             // Keep Sable's cannot-unload-with-players decision intact when its
-            // cached AABB lags behind the current ship/passenger pose. This call
+            // cached AABB lags behind the current ship/passenger pose. Native
+            // attachment must also count while the position is between poses. This call
             // is only reached when Sable itself enables that player safeguard.
             return original.call(level, (Predicate<ServerPlayer>) player -> predicate.test(player)
-                    || ShipGeometry.containsPassenger(ship, player));
+                    || ShipGeometry.isPassenger(ship, player));
         }
         return original.call(level, predicate);
     }

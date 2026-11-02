@@ -32,7 +32,7 @@ final class SableFlightAccess {
             var lastId = movement.sable$getLastTrackingSubLevelID();
             if (lastId != null) {
                 var previous = container.getSubLevel(lastId);
-                if (previous != null && !previous.isRemoved() && ShipGeometry.containsPassenger(previous, entity)) {
+                if (previous != null && !previous.isRemoved() && ShipGeometry.isPassenger(previous, entity)) {
                     ship = previous;
                 }
             }
@@ -41,7 +41,7 @@ final class SableFlightAccess {
         // own player-inhabited test does, without granting free-flight mode.
         if (ship == null) {
             for (var candidate : container.getAllSubLevels()) {
-                if (!candidate.isRemoved() && ShipGeometry.containsPassenger(candidate, entity)) {
+                if (!candidate.isRemoved() && ShipGeometry.isPassenger(candidate, entity)) {
                     ship = candidate;
                     break;
                 }

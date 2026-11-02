@@ -29,6 +29,53 @@ import java.util.UUID;
 @PrefixGameTestTemplate(false)
 public final class SableFlightGameTests {
     @GameTest(template = "empty", templateNamespace = "aerospace", timeoutTicks = 100)
+    public static void nativeTrackedPassengerSurvivesPoseHandoff(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var anchor = helper.absolutePos(new BlockPos(1,2,1));
+        level.setBlockAndUpdate(anchor, Blocks.IRON_BLOCK.defaultBlockState());
+        var ship = SubLevelAssemblyHelper.assembleBlocks(level, anchor, List.of(anchor),
+                new BoundingBox3i(anchor.getX(),anchor.getY(),anchor.getZ(),anchor.getX(),anchor.getY(),anchor.getZ()));
+        var container = SubLevelContainer.getContainer(level);
+        var system = container.physicsSystem();
+        var pipeline = system.getPipeline();
+        var player = FakePlayerFactory.get(level, new com.mojang.authlib.GameProfile(UUID.randomUUID(), "AeroSkyCrew"));
+        var tracking = (dev.ryanhcode.sable.mixinterface.entity.entity_sublevel_collision.EntityMovementExtension) player;
+        boolean listed = level.players().contains(player);
+        try {
+            var previous = new Vector3d(1100008, 1000, 1100008);
+            var current = new Vector3d(previous).add(1024,0,0);
+            pipeline.teleport(ship, previous, ship.logicalPose().orientation());
+            ship.updateBoundingBox();
+            ship.updateLastPose();
+            pipeline.teleport(ship, current, ship.logicalPose().orientation());
+            tracking.sable$setTrackingSubLevel(ship);
+            player.setPos(previous.x + 512, previous.y + 1, previous.z);
+            helper.assertTrue(!io.github.astelev.aerospace.flight.ShipGeometry.containsPassenger(ship,player),
+                    "Probe must be outside both endpoint hulls during pose handoff");
+            helper.assertTrue(FlightHooks.isHighShipEntity(player), "Native tracking must grant temporary terrain mode");
+            var pos = player.chunkPosition();
+            helper.assertTrue(level.getChunkSource().getChunkNow(pos.x,pos.z) == null, "Probe terrain must stay unloaded");
+            if (!listed) level.players().add(player);
+            system.getTicketManager().update(level,container,system,pipeline,1.0/20.0);
+            helper.assertTrue(container.getSubLevel(ship.getUniqueId()) == ship && !ship.isRemoved(),
+                    "Native tracked passenger must prevent sky ship unload during pose handoff");
+            helper.assertTrue(level.getChunkSource().getChunkNow(pos.x,pos.z) == null,
+                    "Protecting crew must not force terrain generation");
+            tracking.sable$setTrackingSubLevel(null);
+            tracking.sable$setLastTrackingSubLevelID(null);
+            helper.assertTrue(!io.github.astelev.aerospace.flight.ShipGeometry.isPassenger(ship,player),
+                    "Unattached players between poses must not become crew");
+            helper.assertTrue(!FlightHooks.isHighShipEntity(player), "Removed native attachment must end the exemption outside the hull");
+            helper.succeed();
+        } finally {
+            tracking.sable$setTrackingSubLevel(null);
+            tracking.sable$setLastTrackingSubLevelID(null);
+            if (!listed) level.players().remove(player);
+            if (container.getSubLevel(ship.getUniqueId()) != null) container.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);
+        }
+    }
+
+    @GameTest(template = "empty", templateNamespace = "aerospace", timeoutTicks = 100)
     public static void nativeForcedDescentKeepsVelocity(GameTestHelper helper) {
         var level = helper.getLevel();
         var anchor = helper.absolutePos(new BlockPos(1, 2, 1));
