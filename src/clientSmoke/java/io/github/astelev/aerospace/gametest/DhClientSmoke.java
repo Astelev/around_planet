@@ -23,6 +23,7 @@ public final class DhClientSmoke {
     private static boolean verified;
     private static int savedHeight;
     private static int probeTick;
+    private static long descentFrames, descentEpoch;
 
     @SubscribeEvent
     public static void tick(ClientTickEvent.Post event) {
@@ -32,11 +33,13 @@ public final class DhClientSmoke {
         if (ticks > 2400) throw new AssertionError("AEROSPACE_DH_SMOKE: timeout waiting for the test world");
         if (mc.level == null || mc.player == null || ticks < 100) return;
         if (verified) {
-            if (FallbackPlaneRenderer.drawnFrames() > 0 && io.github.astelev.aerospace.client.FallbackBiomeSampler.samples() > 0) {
+            if (FallbackPlaneRenderer.drawnFrames() > descentFrames && io.github.astelev.aerospace.client.FallbackBiomeSampler.samples() > 0) {
+                require(!ClientFlightView.isActive(mc.level), "Temporary sky view unexpectedly active after descent");
+                require(io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.generation() == descentEpoch, "Descent cleared the biome palette");
                 DhFlightConfig.FALLBACK_HEIGHT.set(savedHeight);
                 ClientFlightView.accept(new TemporaryViewPayload(mc.level.dimension().location(), false, 0, 0, 0));
                 finished = true;
-                AeroSpace.LOGGER.info("AEROSPACE_DH_SMOKE PASS: client quadtree, motion pause, surface depth, night lightmap, biome sampling, nearby generation priority and native DH render hook");
+                AeroSpace.LOGGER.info("AEROSPACE_DH_SMOKE PASS: client quadtree, motion pause, surface depth, night lightmap, biome sampling, nearby generation priority, 64-block grid and continued surface after descent");
                 mc.stop();
             } else if (ticks - probeTick > 200) {
                 throw new AssertionError("Fallback native DH render hook did not draw: " + FallbackPlaneRenderer.lastSkip());
@@ -100,6 +103,9 @@ public final class DhClientSmoke {
             DhFlightConfig.FALLBACK_HEIGHT.set(-128);
             var pos = mc.player.chunkPosition();
             ClientFlightView.accept(new TemporaryViewPayload(mc.level.dimension().location(), true, pos.x, pos.z, 8));
+            descentFrames = FallbackPlaneRenderer.drawnFrames();
+            descentEpoch = io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.generation();
+            ClientFlightView.accept(new TemporaryViewPayload(mc.level.dimension().location(), false, 0, 0, 0));
             verified = true;
             probeTick = ticks;
         } catch (ReflectiveOperationException e) {

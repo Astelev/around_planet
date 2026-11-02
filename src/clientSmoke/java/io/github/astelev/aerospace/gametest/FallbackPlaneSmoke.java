@@ -135,8 +135,8 @@ public final class FallbackPlaneSmoke {
         GL11.glClearDepth(1);
         int previousDepthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
         FallbackPlaneRenderer.drawPass(new Matrix4f(inverse).invert(), new Vec3(0, cameraY, 0), 60, 100000,
-                depthTexture, palette, raisedMesh == null ? -4096 : -128, raisedMesh == null ? -4096 : -128,
-                raisedMesh == null ? 8192 : 256, 0x718a54, dhClearDepth, lightmap, mcDepth, vanillaClearDepth, 0.55f, raisedMesh);
+                depthTexture, palette, raisedMesh == null ? -4096 : -io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.CELL_SIZE, raisedMesh == null ? -4096 : -io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.CELL_SIZE,
+                raisedMesh == null ? 8192 : 2 * io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.CELL_SIZE, 0x718a54, dhClearDepth, lightmap, mcDepth, vanillaClearDepth, 0.55f, raisedMesh);
         if (GL11.glGetInteger(GL11.GL_DEPTH_FUNC) != previousDepthFunc) throw new AssertionError("Fallback changed depth-test state");
         var pixel = BufferUtils.createByteBuffer(4);
         GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, target.frameBufferId);

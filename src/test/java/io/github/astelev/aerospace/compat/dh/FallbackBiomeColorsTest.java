@@ -46,6 +46,18 @@ class FallbackBiomeColorsTest {
         assertEquals(456, FallbackBiomeColors.color(-1, -1, 456));
     }
 
+    @Test void finerGridKeepsCoverageAndDistinguishesNeighboring64BlockTiles() {
+        assertEquals(64, FallbackBiomeColors.CELL_SIZE);
+        assertEquals(8448, FallbackBiomeColors.WIDTH * FallbackBiomeColors.CELL_SIZE);
+        FallbackBiomeColors.setView("world",0,0);
+        FallbackBiomeColors.observe("world",0,0,123,8);
+        FallbackBiomeColors.observe("world",64,0,456,40);
+        assertEquals(123,FallbackBiomeColors.color(0,0,789));
+        assertEquals(456,FallbackBiomeColors.color(1,0,789));
+        assertEquals(40,FallbackBiomeColors.heightOffset(1,0));
+        assertEquals(128,FallbackBiomeColors.missingNearest(128).cells().stream().distinct().count());
+    }
+
     @Test void movementPrunesDistantCells() {
         FallbackBiomeColors.setView("world", 0, 0);
         FallbackBiomeColors.observe("world", 0, 0, 123);

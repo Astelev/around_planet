@@ -20,7 +20,7 @@ public final class DhFlightConfig {
     static {
         var builder = new ModConfigSpec.Builder();
         builder.push("distantHorizonsFlight");
-        ENABLED = builder.comment("Adapt DH 3.3.3 only while the server-authorized temporary sky view is active.",
+        ENABLED = builder.comment("Enable DH 3.3.3 integration. Flight detail/queue changes require the temporary sky view; the visual surface also works near the ground.",
                 "Allows generation during fast flight without disabling DH's server-load or queue safeguards.")
                 .define("enabled", true);
         COARSE_DETAIL = builder.comment("Minimum LOD cell size during cruise: 2^value blocks. 4 means 16-block cells.",
@@ -41,7 +41,7 @@ public final class DhFlightConfig {
                 .defineInRange("fallbackColor", 0x718a54, 0, 0xffffff);
         FALLBACK_BRIGHTNESS = builder.comment("Surface tint brightness before lighting. Lower values better match textured terrain.")
                 .defineInRange("fallbackBrightness", 0.55, 0.0, 1.0);
-        FALLBACK_BIOMES = builder.comment("Sample surface biomes independently of DH terrain work in a bounded 128-block grid. No chunks are generated.")
+        FALLBACK_BIOMES = builder.comment("Sample surface biomes independently of DH terrain work in a bounded 64-block grid. No chunks are generated.")
                 .define("fallbackBiomeColors", true);
         NEARBY_PRIORITY = builder.comment("During sky flight, rank waiting DH generation tasks by distance to their bounds, nearest first.")
                 .define("nearbyGenerationPriority", true);

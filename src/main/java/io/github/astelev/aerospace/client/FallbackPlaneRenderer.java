@@ -62,8 +62,7 @@ public final class FallbackPlaneRenderer {
 
     public static void render(Object renderParams) {
         var mc = Minecraft.getInstance();
-        if (failed || shader == null || mc.level == null || !ClientFlightView.isActive(mc.level)
-                || !DhFlightConfig.ENABLED.getAsBoolean() || !DhFlightConfig.FALLBACK_PLANE.getAsBoolean()) { lastSkip = "inactive"; return; }
+        if (failed || shader == null || !FallbackBiomeSampler.surfaceEnabled(mc.level)) { lastSkip = "inactive"; return; }
         try {
             var frame = DhFallbackBridge.frame(renderParams);
             if (frame == null || frame.depthTexture() == mc.getMainRenderTarget().getDepthTextureId()) { lastSkip = "missing/shared DH depth"; return; }

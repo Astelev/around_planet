@@ -13,7 +13,6 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import io.github.astelev.aerospace.compat.dh.DhFlightState;
-import io.github.astelev.aerospace.compat.dh.FallbackBiomeColors;
 
 @EventBusSubscriber(modid = AeroSpace.MODID, value = Dist.CLIENT)
 public final class ClientFlightView {
@@ -64,7 +63,6 @@ public final class ClientFlightView {
     private static void reset() {
         state = null;
         DhFlightState.publish(false, 0);
-        FallbackBiomeColors.clear();
     }
 
     private record State(ClientLevel level, TemporaryView view, TemporaryChunkCache cache) {

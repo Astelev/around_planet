@@ -4,8 +4,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** Bounded, disposable surface palette shared by biome sampling and DH observation. */
 public final class FallbackBiomeColors {
-    public static final int CELL_SIZE = 128;
-    public static final int HALF_SIZE = 33;
+    public static final int CELL_SIZE = 64;
+    public static final int HALF_SIZE = 66;
     public static final int WIDTH = HALF_SIZE * 2;
     private static final ConcurrentHashMap<Long, Sample> COLORS = new ConcurrentHashMap<>();
     private static volatile View view;
@@ -65,18 +65,24 @@ public final class FallbackBiomeColors {
     public static synchronized Batch missingNearest(int limit) {
         var snapshot = view;
         var cells = new java.util.ArrayList<Cell>();
-        if (snapshot != null) {
-            for (int radius = 0; radius <= HALF_SIZE && cells.size() < limit; radius++) {
+        if (snapshot != null && COLORS.size() < WIDTH * WIDTH) {
+            addMissing(cells, snapshot, snapshot.x, snapshot.z, limit);
+            for (int radius = 1; radius <= HALF_SIZE && cells.size() < limit; radius++) {
                 for (int dx = -radius; dx <= radius && cells.size() < limit; dx++) {
-                    for (int dz = -radius; dz <= radius && cells.size() < limit; dz++) {
-                        if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
-                        int x = snapshot.x + dx, z = snapshot.z + dz;
-                        if (snapshot.contains(x, z) && !COLORS.containsKey(key(x, z))) cells.add(new Cell(x, z));
-                    }
+                    addMissing(cells, snapshot, snapshot.x + dx, snapshot.z - radius, limit);
+                    addMissing(cells, snapshot, snapshot.x + dx, snapshot.z + radius, limit);
+                }
+                for (int dz = -radius + 1; dz < radius && cells.size() < limit; dz++) {
+                    addMissing(cells, snapshot, snapshot.x - radius, snapshot.z + dz, limit);
+                    addMissing(cells, snapshot, snapshot.x + radius, snapshot.z + dz, limit);
                 }
             }
         }
         return new Batch(generation, snapshot == null ? "" : snapshot.dimension, java.util.List.copyOf(cells));
+    }
+
+    private static void addMissing(java.util.List<Cell> cells, View view, int x, int z, int limit) {
+        if (cells.size() < limit && view.contains(x, z) && !COLORS.containsKey(key(x, z))) cells.add(new Cell(x, z));
     }
 
     public static synchronized void observe(long epoch, String dimension, int x, int z, int color) {

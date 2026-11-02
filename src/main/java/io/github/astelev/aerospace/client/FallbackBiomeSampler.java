@@ -5,6 +5,10 @@ import io.github.astelev.aerospace.compat.dh.DhFlightConfig;
 import io.github.astelev.aerospace.compat.dh.DhFallbackBridge;
 import io.github.astelev.aerospace.compat.dh.FallbackBiomeColors;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
 import net.minecraft.core.QuartPos;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -26,18 +30,39 @@ public final class FallbackBiomeSampler {
         thread.setPriority(Thread.MIN_PRIORITY);
         return thread;
     });
+    private static ClientLevel sampledLevel;
     private static volatile long samples;
     private static volatile long failedGeneration = -1;
 
     private FallbackBiomeSampler() {}
     public static long samples() { return samples; }
 
+    public static boolean surfaceEnabled(ClientLevel level) {
+        return level != null && level.dimension().equals(Level.OVERWORLD) && ModList.get().isLoaded("distanthorizons")
+                && DhFlightConfig.ENABLED.getAsBoolean() && DhFlightConfig.FALLBACK_PLANE.getAsBoolean();
+    }
+
+    @SubscribeEvent
+    public static void logout(ClientPlayerNetworkEvent.LoggingOut event) { clearWorld(); }
+
+    @SubscribeEvent
+    public static void unload(LevelEvent.Unload event) {
+        if (event.getLevel() == sampledLevel) clearWorld();
+    }
+
+    private static void clearWorld() {
+        sampledLevel = null;
+        FallbackBiomeColors.clear();
+    }
+
     @SubscribeEvent
     public static void tick(ClientTickEvent.Post event) {
         var mc = Minecraft.getInstance();
-        if (mc.level == null || !ClientFlightView.isActive(mc.level) || !ModList.get().isLoaded("distanthorizons")
-                || !DhFlightConfig.ENABLED.getAsBoolean() || !DhFlightConfig.FALLBACK_PLANE.getAsBoolean()
-                || !DhFlightConfig.FALLBACK_BIOMES.getAsBoolean()) return;
+        if (sampledLevel != mc.level) {
+            FallbackBiomeColors.clear();
+            sampledLevel = mc.level;
+        }
+        if (!surfaceEnabled(mc.level) || !DhFlightConfig.FALLBACK_BIOMES.getAsBoolean()) return;
         var camera = mc.gameRenderer.getMainCamera().getPosition();
         FallbackBiomeColors.setView(mc.level.dimension().location().toString(), (int) Math.floor(camera.x), (int) Math.floor(camera.z));
         // The integrated server has the seed/sampler. Remote servers do not reveal it;

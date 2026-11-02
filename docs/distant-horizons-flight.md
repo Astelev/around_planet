@@ -1,7 +1,8 @@
 # Distant Horizons flight LODs
 
-Optional client integration for **DH 3.3.3 / Minecraft 1.21.1**. It activates only
-while AeroSpace's server-authorized temporary sky view is active. Sable flight
+Optional client integration for **DH 3.3.3 / Minecraft 1.21.1**. Flight detail and queue adaptation activate only
+while AeroSpace's server-authorized temporary sky view is active. The visual
+biome surface works independently of that mode throughout the Overworld. Sable flight
 and ordinary terrain generation do not depend on DH being installed.
 
 ## Coarse first, refine after slowing
@@ -46,7 +47,7 @@ The client config is `config/aerospace-client.toml`, section
 
 ## Temporary visual floor
 
-During sky flight, the temporary surface is inserted into **DH's terrain target**
+The temporary surface is inserted into **DH's terrain target**
 after opaque LODs and before SSAO, transparency, fog and compositing. It is a
 world-space tiled surface above the configured Y=60 base, projected directly with DH's forward view/projection
 matrix and its exact camera position, just like native terrain buffers. No inverse
@@ -79,7 +80,7 @@ compatibility beyond this standard path is not established.
 In singleplayer, a low-priority background worker directly samples the integrated
 server's biome source and climate sampler at the plane height. This **does not**
 request chunks or run the terrain's final-density or surface-generation passes.
-The bounded palette has 66×66 cells of 128 blocks, about 4.2 km in each direction.
+The bounded palette has 132×132 cells of 64 blocks, about 4.2 km in each direction.
 Missing colors are sampled nearest-first, starting under the camera.
 
 At most one batch runs at a time, with no queued backlog. Each client tick can
@@ -96,7 +97,8 @@ The integration can also reuse existing DH biome observations. Multiplayer
 clients cannot independently sample an undisclosed world seed: without available
 samples, their cells remain neutral. No seed request or server protocol is added.
 
-The palette clears on flight/world exit and dimension change. In-flight jobs
+The palette survives descent and exit from temporary sky mode. It clears on
+world exit and dimension change. In-flight jobs
 carry a world epoch, so old-world results cannot color a new world.
 
 ## Approximate biome heights
@@ -124,7 +126,7 @@ With the default base of Y=60:
 Exact table entries take precedence over generic mountain/hill tags. Modded
 biomes can use those tags; otherwise they stay at the neutral base. Unknown
 samples also stay at the base until the worker supplies their biome. Heights
-are stepped at the existing 128-block tile boundaries; vertical faces close the
+are stepped at the existing 64-block tile boundaries; vertical faces close the
 steps and the outer edge, so raising neighboring tiles does not expose the void.
 Normal DH/vanilla depth still masks all of this approximate geometry. Set
 `fallbackBiomeHeights=false` to return to a flat surface.
@@ -226,6 +228,6 @@ unprojected to verify both the Y=60 base and a raised Y=92 tile. Normal/reversed
 night sky is dark while emissive block-light entries remain bright. This catches
 accidental swapping of the sky/block axes.
 The test verifies the transformed native generation, retrieval and mesh comparators,
-including turns and a stable in-progress sort, then waits for the actual DH surface hook and independent biome
-sampling to run. These tests do not benchmark an entire flight or guarantee
+including turns and a stable in-progress sort, then verifies that the native surface hook continues drawing after the
+temporary sky view is disabled, without clearing the palette. These tests do not benchmark an entire flight or guarantee
 compatibility with shader packs.
