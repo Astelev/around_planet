@@ -14,7 +14,8 @@
     "dh.ThreadPoolUtilMixin",
     "dh.FallbackPlaneMixin",
     "dh.FallbackBiomeMixin",
-    "dh.WorldGenerationPriorityMixin"
+    "dh.WorldGenerationPriorityMixin",
+    "ClientLevelUnloadMixin"
   ],
   "injectors": {
     "defaultRequire": 1

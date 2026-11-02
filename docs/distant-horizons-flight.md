@@ -63,12 +63,22 @@ block=0, sky=15, so daylight exposure does not act as emissive block light. Biom
 are reduced to 80% saturation and 55% brightness by default to better match
 textured LOD terrain; `fallbackBrightness` controls the brightness multiplier.
 
-The plane is drawn only where both existing LOD depth and vanilla depth are
-clear. Real rendered terrain, including valleys below Y=60, wins. Sky above the
+The surface is drawn only where both existing LOD depth and vanilla depth are
+clear. Tile tops are one-sided and risers face outward, so looking up from
+inside/below the approximate surface cannot show a green ceiling. Real rendered terrain, including valleys below Y=60, wins. Sky above the
 horizon remains untouched. A GPU depth copy avoids sampling the same depth texture
 being written; it is reused and resized with the viewport. There is no CPU
 readback in production. The DH render buffer is cleared normally each frame;
 no fake terrain data is stored in chunks or the DH database.
+
+A complete footprint of real client chunks also masks the entire corresponding
+biome tile, including pixels where the real scene contains sky. This prevents
+an estimated biome height from painting a fake hill/ceiling above already loaded
+nearby terrain. A 64-block tile requires all 16 ordinary chunk columns; temporary
+air does not count. Load events populate the mask, actual client column unloads
+remove it, and non-generating cache reads revalidate completed tiles after storage
+radius changes. Partial/missing footprints retain fallback coverage. The mask
+clears with the client world and updates with the small palette texture.
 
 Standard OpenGL forward/reversed depth is supported, including reversed DH with
 conventional Minecraft depth. A shared vanilla/DH depth texture or a target whose
@@ -224,7 +234,8 @@ budget and modpack load determine whether new surface can keep up in practice.
 The client smoke test also reads back pixels from small offscreen buffers:
 missing terrain is filled; existing vanilla depth, existing DH depth, an upward
 view, and a camera below the plane remain unchanged. Written DH depth is
-unprojected to verify both the Y=60 base and a raised Y=92 tile. Normal/reversed depth and an asymmetric 16×16 lightmap are checked: the open
+unprojected to verify both the Y=60 base and a raised Y=92 tile. Ground views from below raised tiles, a masked real-terrain footprint, culling
+state restoration, normal/reversed depth and an asymmetric 16×16 lightmap are checked: the open
 night sky is dark while emissive block-light entries remain bright. This catches
 accidental swapping of the sky/block axes.
 The test verifies the transformed native generation, retrieval and mesh comparators,

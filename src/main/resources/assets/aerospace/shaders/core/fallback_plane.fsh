@@ -20,8 +20,12 @@ void main() {
     if (length(surfacePosition.xz) > MaxDistance) discard;
     vec2 paletteUV = (CameraPosition.xz + surfacePosition.xz - PaletteOrigin) / PaletteSpan;
     vec3 color = FallbackColor;
-    if (all(greaterThanEqual(paletteUV, vec2(0.0))) && all(lessThan(paletteUV, vec2(1.0))))
-        color = texture(BiomePalette, paletteUV).rgb;
+    if (all(greaterThanEqual(paletteUV, vec2(0.0))) && all(lessThan(paletteUV, vec2(1.0)))) {
+        vec4 tile = texture(BiomePalette, paletteUV);
+        // A complete real-chunk footprint owns its sky pixels as well as blocks.
+        if (tile.a < 0.5) discard;
+        color = tile.rgb;
+    }
     // Biome grass/water colors are tints, brighter than a textured LOD surface.
     float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
     color = mix(vec3(luminance), color, 0.8) * ColorBrightness;

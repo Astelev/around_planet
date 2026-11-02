@@ -120,7 +120,8 @@ public final class FallbackPlaneRenderer {
         for (int x = 0; x < FallbackBiomeColors.WIDTH; x++) {
             for (int z = 0; z < FallbackBiomeColors.WIDTH; z++) {
                 int rgb = FallbackBiomeColors.color(originCellX + x, originCellZ + z, fallback);
-                int abgr = 0xff000000 | (rgb & 255) << 16 | (rgb & 0xff00) | rgb >>> 16 & 255;
+                int alpha = SurfaceTerrainMask.covered(mc.level, originCellX + x, originCellZ + z) ? 0 : 0xff000000;
+                int abgr = alpha | (rgb & 255) << 16 | (rgb & 0xff00) | rgb >>> 16 & 255;
                 pixels.setPixelRGBA(x, z, abgr);
                 if (DhFlightConfig.FALLBACK_HEIGHTS.getAsBoolean())
                     heights[x][z] = FallbackBiomeColors.heightOffset(originCellX + x, originCellZ + z);
@@ -220,6 +221,8 @@ public final class FallbackPlaneRenderer {
         var colorMask = org.lwjgl.BufferUtils.createByteBuffer(4);
         GL11.glGetBooleanv(GL11.GL_COLOR_WRITEMASK, colorMask);
         int depthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
+        int cullFace = GL11.glGetInteger(GL11.GL_CULL_FACE_MODE);
+        int frontFace = GL11.glGetInteger(GL11.GL_FRONT_FACE);
         var previousShader = RenderSystem.getShader();
         try {
             // DH uses raw GL, so invalidate vanilla's cached immediate VAO and
@@ -255,7 +258,9 @@ public final class FallbackPlaneRenderer {
             GL11.glDepthFunc(dhClearDepth == 0 ? GL11.GL_GREATER : GL11.GL_LESS);
             GL11.glDepthMask(true);
             GL11.glDisable(GL11.GL_BLEND);
-            GL11.glDisable(GL11.GL_CULL_FACE);
+            GL11.glEnable(GL11.GL_CULL_FACE);
+            GL11.glCullFace(GL11.GL_BACK);
+            GL11.glFrontFace(GL11.GL_CCW);
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
             GL11.glDisable(GL11.GL_STENCIL_TEST);
             GL11.glColorMask(true, true, true, true);
@@ -303,6 +308,8 @@ public final class FallbackPlaneRenderer {
             GL11.glDepthMask(depthMask);
             set(GL11.GL_DEPTH_TEST, depth);
             set(GL11.GL_BLEND, blend);
+            GL11.glCullFace(cullFace);
+            GL11.glFrontFace(frontFace);
             set(GL11.GL_CULL_FACE, cull);
             set(GL11.GL_SCISSOR_TEST, scissor);
             set(GL11.GL_STENCIL_TEST, stencil);

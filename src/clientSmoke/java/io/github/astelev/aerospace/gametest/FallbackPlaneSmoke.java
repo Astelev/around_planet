@@ -59,9 +59,15 @@ public final class FallbackPlaneSmoke {
             probe(target, depth, palette, up, 500, 1, 1, false, "sky above horizon");
             raisedMesh = new com.mojang.blaze3d.vertex.VertexBuffer(com.mojang.blaze3d.vertex.VertexBuffer.Usage.STATIC);
             FallbackPlaneRenderer.uploadSurface(raisedMesh, new int[][]{{32,32},{32,32}}, 100000);
+            probe(target, depth, palette, up, 80, 1, 1, false, "raised tile underside seen from ground");
+            var reversedUp = new Matrix4f(up).mul(new Matrix4f().scaling(1, 1, -1));
+            probe(target, depth, palette, reversedUp, 80, 1, 0, false, "reversed raised tile underside", 0, 1);
             probe(target, depth, palette, down, 500, 1, 1, true, "raised biome surface");
             probe(target, depth, palette, reversedDown, 500, 1, 0, true, "reversed raised biome", 0, 1);
             probe(target, depth, palette, down, 500, 1, 0.5f, false, "real LOD masks raised surface");
+            paletteAlpha(palette,0);
+            probe(target, depth, palette, down, 500, 1, 1, false, "real terrain footprint masks sky pixels");
+            paletteAlpha(palette,255);
             setLight(32);
             probe(target, depth, palette, down, 500, 1, 1, true, "night lightmap");
         } finally {
@@ -80,6 +86,13 @@ public final class FallbackPlaneSmoke {
             if (stencil) GL11.glEnable(GL11.GL_STENCIL_TEST);
             for (int i = 0; i < stores.length; i++) GL11.glPixelStorei(stores[i], savedStores[i]);
         }
+    }
+
+    private static void paletteAlpha(int palette, int alpha) {
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D,palette);
+        var pixel = BufferUtils.createByteBuffer(4);
+        pixel.put((byte)0x71).put((byte)0x8a).put((byte)0x54).put((byte)alpha).flip();
+        GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D,0,0,0,1,1,GL11.GL_RGBA,GL11.GL_UNSIGNED_BYTE,pixel);
     }
 
     private static void setLight(int value) {
@@ -134,10 +147,16 @@ public final class FallbackPlaneSmoke {
         GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_COLOR_BUFFER_BIT);
         GL11.glClearDepth(1);
         int previousDepthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
+        int previousCullFace = GL11.glGetInteger(GL11.GL_CULL_FACE_MODE);
+        int previousFrontFace = GL11.glGetInteger(GL11.GL_FRONT_FACE);
+        boolean previousCull = GL11.glIsEnabled(GL11.GL_CULL_FACE);
         FallbackPlaneRenderer.drawPass(new Matrix4f(inverse).invert(), new Vec3(0, cameraY, 0), 60, 100000,
                 depthTexture, palette, raisedMesh == null ? -4096 : -io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.CELL_SIZE, raisedMesh == null ? -4096 : -io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.CELL_SIZE,
                 raisedMesh == null ? 8192 : 2 * io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.CELL_SIZE, 0x718a54, dhClearDepth, lightmap, mcDepth, vanillaClearDepth, 0.55f, raisedMesh);
         if (GL11.glGetInteger(GL11.GL_DEPTH_FUNC) != previousDepthFunc) throw new AssertionError("Fallback changed depth-test state");
+        if (GL11.glGetInteger(GL11.GL_CULL_FACE_MODE) != previousCullFace
+                || GL11.glGetInteger(GL11.GL_FRONT_FACE) != previousFrontFace
+                || GL11.glIsEnabled(GL11.GL_CULL_FACE) != previousCull) throw new AssertionError("Surface changed culling state");
         var pixel = BufferUtils.createByteBuffer(4);
         GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, target.frameBufferId);
         GL11.glReadPixels(8, 8, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
