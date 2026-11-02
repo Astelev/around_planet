@@ -2,10 +2,10 @@ package io.github.astelev.aerospace.compat.dh;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Bounded, disposable colors observed from DH's existing biome work. No queries or generation. */
+/** Bounded, disposable surface palette shared by biome sampling and DH observation. */
 public final class FallbackBiomeColors {
-    public static final int CELL_SIZE = 256;
-    public static final int HALF_SIZE = 17;
+    public static final int CELL_SIZE = 128;
+    public static final int HALF_SIZE = 33;
     public static final int WIDTH = HALF_SIZE * 2;
     private static final ConcurrentHashMap<Long, Integer> COLORS = new ConcurrentHashMap<>();
     private static volatile View view;
@@ -49,6 +49,33 @@ public final class FallbackBiomeColors {
         view = null;
         COLORS.clear();
     }
+
+    /** Read a bounded nearest-first batch; running work carries this world's epoch. */
+    public static synchronized Batch missingNearest(int limit) {
+        var snapshot = view;
+        var cells = new java.util.ArrayList<Cell>();
+        if (snapshot != null) {
+            for (int radius = 0; radius <= HALF_SIZE && cells.size() < limit; radius++) {
+                for (int dx = -radius; dx <= radius && cells.size() < limit; dx++) {
+                    for (int dz = -radius; dz <= radius && cells.size() < limit; dz++) {
+                        if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
+                        int x = snapshot.x + dx, z = snapshot.z + dz;
+                        if (snapshot.contains(x, z) && !COLORS.containsKey(key(x, z))) cells.add(new Cell(x, z));
+                    }
+                }
+            }
+        }
+        return new Batch(generation, snapshot == null ? "" : snapshot.dimension, java.util.List.copyOf(cells));
+    }
+
+    public static synchronized void observe(long epoch, String dimension, int x, int z, int color) {
+        if (epoch == generation) observe(dimension, x, z, color);
+    }
+
+    public record Cell(int x, int z) {}
+    public record Batch(long generation, String dimension, java.util.List<Cell> cells) {}
+
+    public static int knownCount() { return COLORS.size(); }
 
     public static long generation() { return generation; }
 

@@ -33,6 +33,19 @@ class FallbackBiomeColorsTest {
         assertFalse(FallbackBiomeColors.wantsSample(0, 0));
     }
 
+    @Test void backgroundSamplesStartUnderCameraAndCannotLeakAcrossWorldReload() {
+        FallbackBiomeColors.setView("world", -1, -1);
+        var batch = FallbackBiomeColors.missingNearest(10);
+        assertEquals(new FallbackBiomeColors.Cell(-1, -1), batch.cells().getFirst());
+        assertEquals(10, batch.cells().size());
+        FallbackBiomeColors.observe(batch.generation(), "world", -64, -64, 123);
+        assertFalse(FallbackBiomeColors.missingNearest(10).cells().contains(new FallbackBiomeColors.Cell(-1, -1)));
+        FallbackBiomeColors.clear();
+        FallbackBiomeColors.setView("world", -1, -1);
+        FallbackBiomeColors.observe(batch.generation(), "world", -64, -64, 789);
+        assertEquals(456, FallbackBiomeColors.color(-1, -1, 456));
+    }
+
     @Test void movementPrunesDistantCells() {
         FallbackBiomeColors.setView("world", 0, 0);
         FallbackBiomeColors.observe("world", 0, 0, 123);

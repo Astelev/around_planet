@@ -35,34 +35,74 @@ The client config is `config/aerospace-client.toml`, section
 | `quietSeconds` | `5` | Delay before the first refinement |
 | `refineSeconds` | `10` | Time between later refinements |
 | `diagnostics` | `true` | F3 status and a log line at most every 30 seconds |
-| `fallbackPlane` | `true` | Fill otherwise empty terrain pixels with a visual plane |
+| `fallbackPlane` | `true` | Draw a temporary surface in DH's terrain pass |
 | `fallbackHeight` | `60` | Height of the temporary plane |
-| `fallbackColor` | `0x718a54` | Neutral RGB color until an observed biome color is available |
-| `fallbackBiomeColors` | `true` | Reuse biome samples already calculated by DH |
+| `fallbackColor` | `0x718a54` | Neutral RGB color until a biome sample is available |
+| `fallbackBiomeColors` | `true` | Budgeted independent biome sampling in singleplayer |
+| `nearbyGenerationPriority` | `true` | Rank queued DH tasks by distance to their bounds during sky flight |
 
 ## Temporary visual floor
 
-During sky flight, a single fullscreen pass intersects downward camera rays with
-Y=60. It draws **only** if both vanilla depth and DH's depth are clear at that
-pixel. Real rendered terrain wins at any height, including valleys below Y=60;
-the plane cannot paint over ready LODs, ships, entities or ordinary chunks.
-Nothing is written to world depth, Minecraft chunks or the DH database. Missing
-pixels disappear automatically as actual geometry starts rendering there.
+During sky flight, the temporary surface is inserted into **DH's terrain target**
+after opaque LODs and before SSAO, transparency, fog and compositing. It is a
+world-space plane at Y=60, reconstructed with DH's own view/projection. Unlike
+the old final-screen fill, it writes the actual depth of that surface into the
+DH render buffer. Native DH fog and far fading therefore see its proper distance
+and height. Surface colors are multiplied by DH's open-sky lightmap, so the plane
+responds to day/night, weather and the lightmap's other adjustments.
 
-The pass uses DH's inverse view/projection and fades toward the current fog color
-at distance. It leaves the sky above the horizon untouched. Standard OpenGL with
-forward or reversed depth is supported, including reversed DH with conventional
-Minecraft depth. Unknown shader-pack framebuffers and shared vanilla/DH depth
-textures are skipped rather than modifying an unsupported render pipeline.
+The plane is drawn only where both existing LOD depth and vanilla depth are
+clear. Real rendered terrain, including valleys below Y=60, wins. Sky above the
+horizon remains untouched. A GPU depth copy avoids sampling the same depth texture
+being written; it is reused and resized with the viewport. There is no CPU
+readback in production. The DH render buffer is cleared normally each frame;
+no fake terrain data is stored in chunks or the DH database.
 
-Biome colors are opportunistic, not an additional biome-map generator. The
-integration observes sparse points from DH's **existing** rough-surface biome
-queries. Water biomes use water color, cold biomes use a snow tint, and other
-biomes use their grass color. A bounded 34×34 grid of 256-block cells is uploaded
-at most five times a second, apart from moving the grid or resetting the world.
-Unknown cells retain the neutral color. No chunk requests, density calculations,
-DB reads, server jobs, or extra biome queries are added to obtain colors.
-The palette clears on flight/world exit and dimension change.
+Standard OpenGL forward/reversed depth is supported, including reversed DH with
+conventional Minecraft depth. A shared vanilla/DH depth texture or a target whose
+depth attachment differs from DH's active depth texture is skipped. Shader-pack
+compatibility beyond this standard path is not established.
+
+## Independent biome colors
+
+In singleplayer, a low-priority background worker directly samples the integrated
+server's biome source and climate sampler at the plane height. This **does not**
+request chunks or run the terrain's final-density or surface-generation passes.
+The bounded palette has 66×66 cells of 128 blocks, about 4.2 km in each direction.
+Missing colors are sampled nearest-first, starting under the camera.
+
+At most one batch runs at a time, with no queued backlog. Each client tick can
+start up to 64 samples with a cooperative 2 ms budget. A single ongoing lookup
+cannot be interrupted; subsequent lookups are deferred once the budget expires.
+Neutral cells remain visible immediately if sampling cannot keep up with flight.
+The small color texture refreshes at most five times a second, except when the
+camera moves the grid or the world changes. F3 reports known palette cells.
+
+Oceans/rivers use water color; deserts/beaches use sand or stone; badlands use a
+terracotta tint; cold biomes use snow; other biomes use their grass color. These
+are coarse biome colors, not a prediction of individual blocks or terrain height.
+The integration can also reuse existing DH biome observations. Multiplayer
+clients cannot independently sample an undisclosed world seed: without available
+samples, their cells remain neutral. No seed request or server protocol is added.
+
+The palette clears on flight/world exit and dimension change. In-flight jobs
+carry a world epoch, so old-world results cannot color a new world.
+
+## Nearby generation priority
+
+DH 3.3.3 already sorts retrieval requests by distance. Its generation queue,
+however, ranks a task using **distance to the section's center divided by its
+detail level**. A coarse, large section can receive a discount, while a section
+covering the player can be penalized because its center is far away.
+
+During sky flight, the optional adapter ranks waiting generation tasks by
+horizontal distance to the section's **bounds**, without the coarse discount.
+A section containing the target comes first; equal distances prefer the smaller
+section. This operates on DH's current generation target, so it follows movement.
+Already running jobs finish normally, and native generation/load limits remain
+in force. Leaving sky flight restores DH's original ranking. This cannot make
+all nearby LODs appear immediately: generation, data processing and mesh building
+still take time and have their own queues.
 
 ## Why generation may stop while stationary
 
@@ -123,6 +163,9 @@ budget and modpack load determine whether new surface can keep up in practice.
 
 The client smoke test also reads back pixels from small offscreen buffers:
 missing terrain is filled; existing vanilla depth, existing DH depth, an upward
-view, and a camera below the plane remain unchanged. It checks that world depth
-is preserved, covers both normal and reversed depth, and verifies that the actual
-DH render hook executes.
+view, and a camera below the plane remain unchanged. Written DH depth is
+unprojected to verify Y=60. Normal/reversed depth and a dark lightmap are checked.
+The test verifies the transformed native generation-queue ranking in and out of
+sky flight, then waits for the actual DH surface hook and independent biome
+sampling to run. These tests do not benchmark an entire flight or guarantee
+compatibility with shader packs.

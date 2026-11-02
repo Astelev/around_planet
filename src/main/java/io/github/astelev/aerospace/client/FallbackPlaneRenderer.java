@@ -38,6 +38,8 @@ public final class FallbackPlaneRenderer {
     private static int originCellX, originCellZ;
     private static boolean failed;
     private static long frames;
+    private static int depthCopy;
+    private static int depthWidth, depthHeight;
     private static String lastSkip = "not called";
 
     private FallbackPlaneRenderer() {}
@@ -57,26 +59,27 @@ public final class FallbackPlaneRenderer {
         var mc = Minecraft.getInstance();
         if (failed || shader == null || mc.level == null || !ClientFlightView.isActive(mc.level)
                 || !DhFlightConfig.ENABLED.getAsBoolean() || !DhFlightConfig.FALLBACK_PLANE.getAsBoolean()) { lastSkip = "inactive"; return; }
-        // Unknown shader-pack destinations are left untouched. MC and DH can
-        // use different depth directions; infer each from its own projection.
-        if (GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING) != mc.getMainRenderTarget().frameBufferId) {
-            lastSkip = "destination " + GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING) + "/" + mc.getMainRenderTarget().frameBufferId
-                    + ", clear=" + GL11.glGetFloat(GL11.GL_DEPTH_CLEAR_VALUE);
-            return;
-        }
         try {
             var frame = DhFallbackBridge.frame(renderParams);
             if (frame == null || frame.depthTexture() == mc.getMainRenderTarget().getDepthTextureId()) { lastSkip = "missing/shared DH depth"; return; }
+            int attachment = GL30.glGetFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER,
+                    GL30.GL_DEPTH_ATTACHMENT, GL30.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME);
+            if (attachment != frame.depthTexture() || frame.lightmap() <= 0) {
+                lastSkip = "unsupported DH target/lightmap";
+                return;
+            }
             var camera = mc.gameRenderer.getMainCamera().getPosition();
             if (camera.y <= DhFlightConfig.FALLBACK_HEIGHT.getAsInt()) { lastSkip = "camera " + camera.y; return; }
             updatePalette(camera);
-            float[] fog = RenderSystem.getShaderFogColor();
+            int[] viewport = new int[4];
+            GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
+            int copiedDepth = copyDepth(viewport[0], viewport[1], viewport[2], viewport[3]);
             drawPass(frame.inverseViewProjection(), camera, DhFlightConfig.FALLBACK_HEIGHT.getAsInt(),
-                    frame.farPlane(), frame.depthTexture(), palette.getId(),
+                    frame.farPlane(), copiedDepth, palette.getId(),
                     originCellX * (float) FallbackBiomeColors.CELL_SIZE,
                     originCellZ * (float) FallbackBiomeColors.CELL_SIZE,
                     FallbackBiomeColors.WIDTH * (float) FallbackBiomeColors.CELL_SIZE,
-                    DhFlightConfig.FALLBACK_COLOR.getAsInt(), fog[0], fog[1], fog[2], frame.dhClearDepth(), frame.vanillaClearDepth());
+                    DhFlightConfig.FALLBACK_COLOR.getAsInt(), frame.dhClearDepth(), frame.lightmap(), mc.getMainRenderTarget().getDepthTextureId(), frame.vanillaClearDepth());
             frames++;
         } catch (ReflectiveOperationException | RuntimeException e) {
             failed = true;
@@ -125,10 +128,34 @@ public final class FallbackPlaneRenderer {
         paletteGeneration = FallbackBiomeColors.generation();
     }
 
+    /** Copy on GPU: sampling the depth attached to the draw target would be feedback. */
+    private static int copyDepth(int x, int y, int width, int height) {
+        int texture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        int readFbo = GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
+        try {
+            if (depthCopy == 0) depthCopy = GL11.glGenTextures();
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, depthCopy);
+            if (width != depthWidth || height != depthHeight) {
+                GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH_COMPONENT32F, width, height, 0,
+                        GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (java.nio.ByteBuffer) null);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+                depthWidth = width;
+                depthHeight = height;
+            }
+            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING));
+            GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, x, y, width, height);
+            return depthCopy;
+        } finally {
+            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        }
+    }
+
     /** Also exercised against small offscreen depth buffers by the opt-in client smoke test. */
-    public static void drawPass(Matrix4f inverse, Vec3 camera, float height, float fogDistance,
+    public static void drawPass(Matrix4f inverse, Vec3 camera, float height, float maxDistance,
                                 int dhDepth, int colorTexture, float originX, float originZ, float span,
-                                int fallback, float fogR, float fogG, float fogB, float dhClearDepth, float vanillaClearDepth) {
+                                int fallback, float dhClearDepth, int lightmap, int vanillaDepth, float vanillaClearDepth) {
         if (shader == null) throw new IllegalStateException("Fallback shader not loaded");
         int program = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         int vao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
@@ -136,10 +163,16 @@ public final class FallbackPlaneRenderer {
         int activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
         int sampler0 = GL30.glGetIntegeri(GL33.GL_SAMPLER_BINDING, 0);
         int sampler1 = GL30.glGetIntegeri(GL33.GL_SAMPLER_BINDING, 1);
+        int sampler2 = GL30.glGetIntegeri(GL33.GL_SAMPLER_BINDING, 2);
+        int sampler3 = GL30.glGetIntegeri(GL33.GL_SAMPLER_BINDING, 3);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         int texture0 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
         int texture1 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        GL13.glActiveTexture(GL13.GL_TEXTURE2);
+        int texture2 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        GL13.glActiveTexture(GL13.GL_TEXTURE3);
+        int texture3 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         GL13.glActiveTexture(activeTexture);
         boolean depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST), blend = GL11.glIsEnabled(GL11.GL_BLEND);
         boolean cull = GL11.glIsEnabled(GL11.GL_CULL_FACE), depthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
@@ -154,7 +187,9 @@ public final class FallbackPlaneRenderer {
             BufferUploader.reset();
             GL33.glBindSampler(0, 0);
             GL33.glBindSampler(1, 0);
-            for (int unit = 0; unit < 2; unit++) {
+            GL33.glBindSampler(2, 0);
+            GL33.glBindSampler(3, 0);
+            for (int unit = 0; unit < 4; unit++) {
                 RenderSystem.activeTexture(GL13.GL_TEXTURE0 + unit);
                 RenderSystem.bindTexture(0);
                 GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
@@ -162,20 +197,22 @@ public final class FallbackPlaneRenderer {
             shader.getUniform("InverseDhViewProjection").set(inverse);
             shader.getUniform("CameraPosition").set((float) camera.x, (float) camera.y, (float) camera.z);
             shader.getUniform("PlaneHeight").set(height);
-            shader.getUniform("FogDistance").set(Math.max(128, fogDistance));
+            shader.getUniform("MaxDistance").set(Math.max(128, maxDistance));
+            shader.getUniform("DhViewProjection").set(new Matrix4f(inverse).invert());
             shader.getUniform("PaletteOrigin").set(originX, originZ);
             shader.getUniform("PaletteSpan").set(span);
             shader.getUniform("FallbackColor").set((fallback >> 16 & 255) / 255f, (fallback >> 8 & 255) / 255f, (fallback & 255) / 255f);
-            shader.getUniform("PlaneFogColor").set(fogR, fogG, fogB);
             shader.getUniform("DhClearDepth").set(dhClearDepth);
             shader.getUniform("VanillaClearDepth").set(vanillaClearDepth);
             shader.setSampler("DhDepth", dhDepth);
             shader.setSampler("BiomePalette", colorTexture);
-            // The fragment shader emits far depth. Equal-to-clear admits ONLY
-            // pixels without vanilla geometry; its DH texture test excludes LODs.
+            shader.setSampler("SurfaceLightmap", lightmap);
+            shader.setSampler("VanillaDepth", vanillaDepth);
+            // Only clear DH pixels survive the copied-depth mask. Real LODs,
+            // including terrain below Y=60, remain authoritative.
             GL11.glEnable(GL11.GL_DEPTH_TEST);
-            GL11.glDepthFunc(GL11.GL_EQUAL);
-            GL11.glDepthMask(false);
+            GL11.glDepthFunc(GL11.GL_ALWAYS);
+            GL11.glDepthMask(true);
             GL11.glDisable(GL11.GL_BLEND);
             GL11.glDisable(GL11.GL_CULL_FACE);
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
@@ -198,9 +235,17 @@ public final class FallbackPlaneRenderer {
             RenderSystem.activeTexture(GL13.GL_TEXTURE1);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture1);
             RenderSystem.bindTexture(texture1);
+            RenderSystem.activeTexture(GL13.GL_TEXTURE2);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture2);
+            RenderSystem.bindTexture(texture2);
+            RenderSystem.activeTexture(GL13.GL_TEXTURE3);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture3);
+            RenderSystem.bindTexture(texture3);
             RenderSystem.activeTexture(activeTexture);
             GL33.glBindSampler(0, sampler0);
             GL33.glBindSampler(1, sampler1);
+            GL33.glBindSampler(2, sampler2);
+            GL33.glBindSampler(3, sampler3);
             GL11.glDepthFunc(depthFunc);
             GL11.glDepthMask(depthMask);
             set(GL11.GL_DEPTH_TEST, depth);

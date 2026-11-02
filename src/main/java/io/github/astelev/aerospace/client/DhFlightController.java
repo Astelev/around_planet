@@ -4,6 +4,7 @@ import io.github.astelev.aerospace.AeroSpace;
 import io.github.astelev.aerospace.compat.dh.DhFlightConfig;
 import io.github.astelev.aerospace.compat.dh.DhFlightState;
 import io.github.astelev.aerospace.compat.dh.FlightLodPolicy;
+import io.github.astelev.aerospace.compat.dh.FallbackBiomeColors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -64,6 +65,10 @@ public final class DhFlightController {
             event.getLeft().add("AeroSpace LOD: min cell " + (1 << DhFlightState.minimumDetail())
                     + " blocks; DH gate " + DhFlightState.recentGate());
             event.getLeft().add("AeroSpace " + serverTiming());
+            if (DhFlightConfig.FALLBACK_PLANE.getAsBoolean() && DhFlightConfig.FALLBACK_BIOMES.getAsBoolean()) {
+                event.getLeft().add("AeroSpace surface biomes: " + FallbackBiomeColors.knownCount() + "/"
+                        + FallbackBiomeColors.WIDTH * FallbackBiomeColors.WIDTH + " cells");
+            }
         }
     }
 

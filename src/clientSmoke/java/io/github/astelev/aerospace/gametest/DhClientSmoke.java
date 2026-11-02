@@ -32,11 +32,11 @@ public final class DhClientSmoke {
         if (ticks > 2400) throw new AssertionError("AEROSPACE_DH_SMOKE: timeout waiting for the test world");
         if (mc.level == null || mc.player == null || ticks < 100) return;
         if (verified) {
-            if (FallbackPlaneRenderer.drawnFrames() > 0) {
+            if (FallbackPlaneRenderer.drawnFrames() > 0 && io.github.astelev.aerospace.client.FallbackBiomeSampler.samples() > 0) {
                 DhFlightConfig.FALLBACK_HEIGHT.set(savedHeight);
                 ClientFlightView.accept(new TemporaryViewPayload(mc.level.dimension().location(), false, 0, 0, 0));
                 finished = true;
-                AeroSpace.LOGGER.info("AEROSPACE_DH_SMOKE PASS: client quadtree, motion pause, fallback pixel/depth probes and native DH render hook");
+                AeroSpace.LOGGER.info("AEROSPACE_DH_SMOKE PASS: client quadtree, motion pause, surface depth, night lightmap, biome sampling, nearby generation priority and native DH render hook");
                 mc.stop();
             } else if (ticks - probeTick > 200) {
                 throw new AssertionError("Fallback native DH render hook did not draw: " + FallbackPlaneRenderer.lastSkip());
@@ -94,6 +94,7 @@ public final class DhClientSmoke {
                 DhFlightState.publish(false, 0);
             }
             Class.forName("com.seibel.distanthorizons.common.wrappers.worldGeneration.DhRoughSurfaceGenerator_neoforge");
+            verifyGenerationPriority();
             FallbackPlaneSmoke.verify();
             savedHeight = DhFlightConfig.FALLBACK_HEIGHT.getAsInt();
             DhFlightConfig.FALLBACK_HEIGHT.set(-128);
@@ -109,4 +110,25 @@ public final class DhClientSmoke {
     private static void require(boolean condition, String message) {
         if (!condition) throw new AssertionError("AEROSPACE_DH_SMOKE: " + message);
     }
+    private static void verifyGenerationPriority() throws ReflectiveOperationException {
+        var pos = Class.forName("com.seibel.distanthorizons.core.pos.DhSectionPos");
+        var block = Class.forName("com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D");
+        var task = Class.forName("com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalTask");
+        var queue = Class.forName("com.seibel.distanthorizons.core.generation.queues.WorldGenerationQueue");
+        var rank = queue.getDeclaredMethod("lambda$tryStartNextWorldGenTask$0", block, java.util.Map.Entry.class);
+        rank.setAccessible(true);
+        long section = (Long) pos.getMethod("encode", byte.class, int.class, int.class).invoke(null, (byte) 8, 0, 0);
+        var request = task.getConstructor(long.class, byte.class).newInstance(section, (byte) 2);
+        var target = block.getConstructor(int.class, int.class).newInstance(0, 0);
+        var entry = java.util.Map.entry(section, request);
+        var distance = rank.getReturnType().getDeclaredField("dist");
+        distance.setAccessible(true);
+        DhFlightState.publish(false, 0);
+        int normal = distance.getInt(rank.invoke(null, target, entry));
+        DhFlightState.publish(true, 4);
+        int flight = distance.getInt(rank.invoke(null, target, entry));
+        DhFlightState.publish(false, 0);
+        if (flight != 8 || normal == flight) throw new AssertionError("Native generation queue priority was not changed/scoped: " + normal + "/" + flight);
+    }
+
 }

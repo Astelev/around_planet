@@ -14,6 +14,7 @@ public final class DhFlightConfig {
     public static final ModConfigSpec.IntValue FALLBACK_HEIGHT;
     public static final ModConfigSpec.IntValue FALLBACK_COLOR;
     public static final ModConfigSpec.BooleanValue FALLBACK_BIOMES;
+    public static final ModConfigSpec.BooleanValue NEARBY_PRIORITY;
 
     static {
         var builder = new ModConfigSpec.Builder();
@@ -32,13 +33,15 @@ public final class DhFlightConfig {
         DIAGNOSTICS = builder.comment("Show the flight LOD mode and DH's generation gate in F3.",
                 "Also log a short status at most once every 30 seconds during sky flight.")
                 .define("diagnostics", true);
-        FALLBACK_PLANE = builder.comment("Draw a visual-only plane in pixels where neither real chunks nor DH terrain have rendered.")
+        FALLBACK_PLANE = builder.comment("Draw a temporary Y=60 surface in the DH terrain target, before native lighting/fog compositing.")
                 .define("fallbackPlane", true);
         FALLBACK_HEIGHT = builder.defineInRange("fallbackHeight", 60, -2032, 2032);
-        FALLBACK_COLOR = builder.comment("RGB color used until DH has already calculated a local biome. No extra biome generation is performed.")
+        FALLBACK_COLOR = builder.comment("RGB color used until the budgeted biome sampler has calculated a local surface color.")
                 .defineInRange("fallbackColor", 0x718a54, 0, 0xffffff);
-        FALLBACK_BIOMES = builder.comment("Reuse biomes observed by DH's existing rough-surface work in a bounded 256-block color grid.")
+        FALLBACK_BIOMES = builder.comment("Sample surface biomes independently of DH terrain work in a bounded 128-block grid. No chunks are generated.")
                 .define("fallbackBiomeColors", true);
+        NEARBY_PRIORITY = builder.comment("During sky flight, rank waiting DH generation tasks by distance to their bounds, nearest first.")
+                .define("nearbyGenerationPriority", true);
         builder.pop();
         SPEC = builder.build();
     }

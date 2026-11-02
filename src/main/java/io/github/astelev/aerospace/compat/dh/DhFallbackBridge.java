@@ -4,6 +4,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Biomes;
 import org.joml.Matrix4f;
 
 import java.lang.reflect.Field;
@@ -28,7 +29,7 @@ public final class DhFallbackBridge {
         var dhProjection = (Matrix4f) a.toJoml.invoke(null, a.dhProjection.get(renderParams));
         var mcProjection = (Matrix4f) a.toJoml.invoke(null, a.mcProjection.get(renderParams));
         return new Frame(id, inverse, a.farPlane.getFloat(renderParams), dhProjection.m32() > 0 ? 0 : 1,
-                mcProjection.m32() > 0 ? 0 : 1);
+                (Integer) a.lightmapId.invoke(a.lightmap.get(renderParams)), mcProjection.m32() > 0 ? 0 : 1);
     }
 
     public static void observeBiome(Object levelWrapper, Object biomeWrapper, int x, int z) {
@@ -38,21 +39,29 @@ public final class DhFallbackBridge {
             Object world = a.serverLevel.invoke(levelWrapper);
             if (!(world instanceof ServerLevel level)) return;
             Object value = a.biome.get(biomeWrapper);
-            if (!(value instanceof Holder<?> holder) || !(holder.value() instanceof Biome biome)) return;
+            if (!(value instanceof Holder<?> holder) || !(holder.value() instanceof Biome)) return;
             @SuppressWarnings("unchecked") var typed = (Holder<Biome>) holder;
-            int color = typed.is(BiomeTags.IS_OCEAN) || typed.is(BiomeTags.IS_RIVER) ? biome.getWaterColor()
-                    : biome.getBaseTemperature() < 0.15f ? 0xdce4e5 : biome.getGrassColor(x, z);
+            int color = biomeColor(typed, x, z);
             FallbackBiomeColors.observe(level.dimension().location().toString(), x, z, color);
         } catch (ReflectiveOperationException | RuntimeException ignored) {
             // An unavailable color must never fail generation; neutral color remains.
         }
     }
 
-    public record Frame(int depthTexture, Matrix4f inverseViewProjection, float farPlane, float dhClearDepth, float vanillaClearDepth) {}
+    public static int biomeColor(Holder<Biome> holder, int x, int z) {
+        var biome = holder.value();
+        if (holder.is(Biomes.DESERT) || holder.is(BiomeTags.IS_BEACH))
+            return holder.is(Biomes.STONY_SHORE) ? 0x858585 : 0xd9c58c;
+        if (holder.is(BiomeTags.IS_BADLANDS)) return 0xb66b44;
+        return holder.is(BiomeTags.IS_OCEAN) || holder.is(BiomeTags.IS_RIVER)
+                ? biome.getWaterColor() : biome.getBaseTemperature() < 0.15f ? 0xdce4e5 : biome.getGrassColor(x, z);
+    }
+
+    public record Frame(int depthTexture, Matrix4f inverseViewProjection, float farPlane, float dhClearDepth, int lightmap, float vanillaClearDepth) {}
 
     private static final class Access {
-        private final Field renderProxy, success, payload, inverse, farPlane, biome, dhProjection, mcProjection;
-        private final Method depth, toJoml, serverLevel;
+        private final Field renderProxy, success, payload, inverse, farPlane, biome, dhProjection, lightmap, mcProjection;
+        private final Method depth, toJoml, serverLevel, lightmapId;
 
         private Access() throws ReflectiveOperationException {
             var apiMatrix = Class.forName("com.seibel.distanthorizons.api.objects.math.DhApiMat4f");
@@ -67,6 +76,8 @@ public final class DhFallbackBridge {
             farPlane = params.getField("farClipPlane");
             dhProjection = params.getField("dhProjectionMatrix");
             mcProjection = params.getField("mcProjectionMatrix");
+            lightmap = Class.forName("com.seibel.distanthorizons.core.render.RenderParams").getField("lightmap");
+            lightmapId = Class.forName("com.seibel.distanthorizons.common.wrappers.misc.LightMapWrapper_neoforge").getMethod("getOpenGlId");
             toJoml = Class.forName("com.seibel.distanthorizons.core.util.math.DhMat4f").getMethod("createJomlMatrix", apiMatrix);
             serverLevel = Class.forName("com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper_neoforge").getMethod("getWrappedMcObject");
             biome = Class.forName("com.seibel.distanthorizons.common.wrappers.block.BiomeWrapper_neoforge").getField("biome");

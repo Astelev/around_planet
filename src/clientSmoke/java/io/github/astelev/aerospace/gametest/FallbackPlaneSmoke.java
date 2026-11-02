@@ -12,6 +12,8 @@ import org.lwjgl.opengl.GL30;
 
 public final class FallbackPlaneSmoke {
     private FallbackPlaneSmoke() {}
+    private static int lightmap, mcDepth;
+    private static int light = 255;
 
     public static void verify() {
         int previousFbo = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
@@ -25,6 +27,8 @@ public final class FallbackPlaneSmoke {
                 GL11.GL_PACK_ROW_LENGTH, GL11.GL_PACK_SKIP_ROWS, GL11.GL_PACK_SKIP_PIXELS, GL11.GL_PACK_ALIGNMENT};
         int[] savedStores = java.util.Arrays.stream(stores).map(GL11::glGetInteger).toArray();
         int depth = GL11.glGenTextures(), palette = GL11.glGenTextures();
+        lightmap = GL11.glGenTextures();
+        mcDepth = GL11.glGenTextures();
         var target = new TextureTarget(16, 16, true, Minecraft.ON_OSX);
         try {
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
@@ -37,6 +41,7 @@ public final class FallbackPlaneSmoke {
             GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 1, 1, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, color);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+            setLight(255);
             var down = new Matrix4f().perspective((float) Math.PI / 2, 1, 0.1f, 10000)
                     .rotateX((float) Math.PI / 2).invert();
             probe(target, depth, palette, down, 500, 1, 1, true, "empty terrain");
@@ -51,10 +56,14 @@ public final class FallbackPlaneSmoke {
             var up = new Matrix4f().perspective((float) Math.PI / 2, 1, 0.1f, 10000)
                     .rotateX(-(float) Math.PI / 2).invert();
             probe(target, depth, palette, up, 500, 1, 1, false, "sky above horizon");
+            setLight(32);
+            probe(target, depth, palette, down, 500, 1, 1, true, "night lightmap");
         } finally {
             target.destroyBuffers();
             GL11.glDeleteTextures(depth);
             GL11.glDeleteTextures(palette);
+            GL11.glDeleteTextures(lightmap);
+            GL11.glDeleteTextures(mcDepth);
             RenderSystem.bindTexture(texture);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
             GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
@@ -64,6 +73,16 @@ public final class FallbackPlaneSmoke {
             if (stencil) GL11.glEnable(GL11.GL_STENCIL_TEST);
             for (int i = 0; i < stores.length; i++) GL11.glPixelStorei(stores[i], savedStores[i]);
         }
+    }
+
+    private static void setLight(int value) {
+        light = value;
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, lightmap);
+        var pixel = BufferUtils.createByteBuffer(4);
+        pixel.put((byte) value).put((byte) value).put((byte) value).put((byte) 255).flip();
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 1, 1, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
     }
 
     private static void probe(TextureTarget target, int depthTexture, int palette, Matrix4f inverse, double cameraY,
@@ -82,29 +101,44 @@ public final class FallbackPlaneSmoke {
                 GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, depths);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, mcDepth);
+        depths.clear();
+        for (int i = 0; i < 256; i++) depths.put(vanillaDepth);
+        depths.flip();
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH_COMPONENT32F, 16, 16, 0,
+                GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, depths);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         target.setClearColor(0x20 / 255f, 0x30 / 255f, 0x40 / 255f, 1);
         target.clear(Minecraft.ON_OSX);
         target.bindWrite(true);
         GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, target.frameBufferId);
-        GL11.glClearDepth(vanillaDepth);
+        GL11.glClearDepth(dhDepth);
         GL11.glDepthMask(true);
         GL11.glClearColor(0x20 / 255f, 0x30 / 255f, 0x40 / 255f, 1);
         GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_COLOR_BUFFER_BIT);
         GL11.glClearDepth(1);
         int previousDepthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
         FallbackPlaneRenderer.drawPass(inverse, new Vec3(0, cameraY, 0), 60, 100000,
-                depthTexture, palette, -4096, -4096, 8192, 0x718a54, 0, 0, 0, dhClearDepth, vanillaClearDepth);
+                depthTexture, palette, -4096, -4096, 8192, 0x718a54, dhClearDepth, lightmap, mcDepth, vanillaClearDepth);
         if (GL11.glGetInteger(GL11.GL_DEPTH_FUNC) != previousDepthFunc) throw new AssertionError("Fallback changed depth-test state");
         var pixel = BufferUtils.createByteBuffer(4);
         GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, target.frameBufferId);
         GL11.glReadPixels(8, 8, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
         int r = Byte.toUnsignedInt(pixel.get(0)), g = Byte.toUnsignedInt(pixel.get(1)), b = Byte.toUnsignedInt(pixel.get(2));
-        int expected = shouldDraw ? 0x718a54 : 0x203040;
+        int expected = shouldDraw ? ((0x71 * light / 255) << 16 | (0x8a * light / 255) << 8 | 0x54 * light / 255) : 0x203040;
         if (Math.abs(r - (expected >> 16 & 255)) > 1 || Math.abs(g - (expected >> 8 & 255)) > 1 || Math.abs(b - (expected & 255)) > 1) {
             throw new AssertionError("Fallback probe failed for " + description + ": " + r + "," + g + "," + b);
         }
         var preservedDepth = BufferUtils.createFloatBuffer(1);
         GL11.glReadPixels(8, 8, 1, 1, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, preservedDepth);
-        if (Math.abs(preservedDepth.get(0) - vanillaDepth) > 0.00001) throw new AssertionError("Fallback wrote world depth");
+        if (shouldDraw) {
+            // Unproject the written DH depth: it must hit Y=60, not far depth.
+            var hit = new org.joml.Vector4f(0.0625f, 0.0625f, preservedDepth.get(0) * 2 - 1, 1);
+            inverse.transform(hit);
+            double worldY = hit.y / hit.w + cameraY;
+            if (Math.abs(worldY - 60) > 0.5) throw new AssertionError("Surface is not at Y=60: " + worldY);
+        } else if (Math.abs(preservedDepth.get(0) - dhDepth) > 0.00001)
+            throw new AssertionError("Fallback overwrote an existing depth");
     }
 }

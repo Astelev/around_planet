@@ -13,7 +13,8 @@
     "dh.LodQuadTreeMixin",
     "dh.ThreadPoolUtilMixin",
     "dh.FallbackPlaneMixin",
-    "dh.FallbackBiomeMixin"
+    "dh.FallbackBiomeMixin",
+    "dh.WorldGenerationPriorityMixin"
   ],
   "injectors": {
     "defaultRequire": 1
