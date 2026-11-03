@@ -14,12 +14,22 @@ public final class EastWestClientSmoke {
     private static int ticks, phase, started;
     private static volatile Throwable serverFailure;
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
+        if(Boolean.getBoolean("around_planet.visualSmoke")) return;
         var mc=Minecraft.getInstance(); ticks++;
         if(serverFailure!=null) throw new AssertionError("AROUND_EW_SMOKE server packet regression",serverFailure);
-        if(ticks>1800) throw new AssertionError("AROUND_EW_SMOKE timeout");
+        if(ticks>1800) throw new AssertionError("AROUND_EW_SMOKE timeout: phase="+phase+" x="+(mc.player==null?"none":mc.player.getX()));
         if(mc.level==null || mc.player==null || mc.getSingleplayerServer()==null || ticks<100) return;
         mc.player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
         mc.player.setNoGravity(true);
+        if(phase==3 && ticks%100==0) {
+            AroundPlanet.LOGGER.info("VEHICLE regression client: playerX={}, vehicle={}",mc.player.getX(),
+                    mc.player.getVehicle()==null?"none":mc.player.getVehicle().getId()+"@"+mc.player.getVehicle().getX());
+            mc.getSingleplayerServer().execute(()->{
+                var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();var v=p.getVehicle();
+                AroundPlanet.LOGGER.info("VEHICLE regression server: vehicle={}, watch={}",v==null?"none":v.getId()+"@"+v.getX(),p.getChunkTrackingView());
+                if(v!=null) mc.execute(()->AroundPlanet.LOGGER.info("VEHICLE client lookup: {}",mc.level.getEntity(v.getId())));
+            });
+        }
         if(phase==0) {
             require(mc.level.getWorldBorder().getMinX()==-264 && mc.level.getWorldBorder().getMaxX()==264,"Client border/config sync failed");
             require(mc.level.getWorldBorder().getMaxZ()>1000000,"Unexpected north/south limit");
@@ -43,10 +53,18 @@ public final class EastWestClientSmoke {
                 p.teleportTo(-256.125,200,0);
             });
         } else if(phase==2 && ticks-started>40 && Math.abs(mc.player.getX()-255.875)<0.01) {
-            phase=3;started=ticks;
+            phase=30;started=ticks;
             mc.getSingleplayerServer().execute(()->{
                 var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
                 for(int x:new int[]{-17,-16,15,16}) for(int z=1;z<=3;z++) p.serverLevel().getChunk(x,z);
+            });
+        } else if(phase==30 && ticks-started>40) {
+            phase=3;started=ticks;
+            mc.getSingleplayerServer().execute(()->{
+                var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+                // Reused smoke worlds may contain previous parked fixtures; wait for entity NBT loading before clearing them.
+                p.serverLevel().getEntitiesOfClass(net.minecraft.world.entity.vehicle.Boat.class,
+                        new net.minecraft.world.phys.AABB(-300,-128,25,300,400,40)).forEach(net.minecraft.world.entity.Entity::discard);
                 var boat=net.minecraft.world.entity.EntityType.BOAT.create(p.serverLevel());
                 boat.moveTo(256.5,200,32);boat.setNoGravity(true);p.serverLevel().addFreshEntity(boat);
                 p.startRiding(boat,true);

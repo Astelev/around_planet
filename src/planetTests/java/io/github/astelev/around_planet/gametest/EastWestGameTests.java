@@ -64,6 +64,12 @@ public final class EastWestGameTests {
             var west=new ItemEntity(level,-256.125,200,8,new ItemStack(Items.STICK)); level.addFreshEntity(west); entities.add(west);
             TransferService.tick(new EntityTickEvent.Post(west));
             h.assertTrue(west.getX()==255.875,"West fractional offset lost");
+            var inactive=new ItemEntity(level,257,200,25,new ItemStack(Items.STICK));
+            level.addFreshEntity(inactive);entities.add(inactive);
+            // View-distance filtering can leave the guard chunk without entity ticks.
+            // The join event plus level retry must transfer it without EntityTickEvent.Post.
+            TransferService.retry(new net.neoforged.neoforge.event.tick.LevelTickEvent.Post(()->true,level));
+            h.assertTrue(inactive.getX()==-255,"Entity in a non-ticking guard chunk was stranded");
             var blocked=new ItemEntity(level,256.5,200,10.5,new ItemStack(Items.STICK)); level.addFreshEntity(blocked); entities.add(blocked);
             level.setBlockAndUpdate(obstacle,Blocks.STONE.defaultBlockState());
             TransferService.tick(new EntityTickEvent.Post(blocked));

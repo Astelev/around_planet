@@ -12,7 +12,9 @@ public final class AroundPlanet {
     public static final String MOD_ID = "around_planet";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public AroundPlanet(ModContainer container) {
+    public AroundPlanet(net.neoforged.bus.api.IEventBus bus, ModContainer container) {
+        bus.addListener(io.github.astelev.around_planet.network.SeamChunkPayload::register);
+        bus.addListener(io.github.astelev.around_planet.network.SeamVehiclePayload::register);
         container.registerConfig(ModConfig.Type.SERVER, PlanetConfig.SPEC);
     }
 }

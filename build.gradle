@@ -104,7 +104,8 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     }
     neoForge.mods.named(mod_id) { sourceSet(sourceSets.planetClientSmoke) }
     neoForge.runs.named('client') {
-        programArguments.addAll('--quickPlaySingleplayer', 'around-ew-smoke')
+        programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('around-ew-smoke'))
         jvmArguments.add('-Xmx3G')
+        if (providers.gradleProperty('planetVisualSmoke').isPresent()) jvmArguments.add('-Daround_planet.visualSmoke=true')
     }
 }

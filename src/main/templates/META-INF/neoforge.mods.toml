@@ -26,3 +26,10 @@ side="BOTH"
 
 [[mixins]]
 config="around_planet.mixins.json"
+
+[[dependencies.${mod_id}]]
+modId="distanthorizons"
+type="optional"
+versionRange="[3.3.3]"
+ordering="AFTER"
+side="BOTH"

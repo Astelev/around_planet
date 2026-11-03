@@ -5,12 +5,25 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "WorldBorderMixin",
-    "PlayerMovementMixin"
+    "PlayerMovementMixin",
+    "SeamPlayerTicketsMixin",
+    "SeamChunkSendingMixin",
+    "SeamDhGenerationMixin",
+    "ChunkTrackingAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
   },
   "client": [
-    "BorderVignetteMixin"
+    "BorderVignetteMixin",
+    "SeamRenderRegionMixin",
+    "SeamRenderSectionMixin",
+    "SeamTintMixin",
+    "SeamDhRenderMixin",
+    "SeamCruisingMaskMixin",
+    "SeamBorderRenderMixin",
+    "SeamAlternativeCloneMixin",
+    "SeamAlternativeSectionMixin",
+    "SeamAlternativeSliceMixin"
   ]
 }
