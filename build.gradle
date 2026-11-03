@@ -36,6 +36,9 @@ neoForge {
 // Local compatibility checks only; no external mods are compiled against or bundled.
 configurations { runtimeClasspath.extendsFrom localRuntime }
 dependencies {
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     if (providers.gradleProperty('compatModsDir').isPresent()) {
         localRuntime fileTree(dir: providers.gradleProperty('compatModsDir').get(), include: ['*.jar'])
     }
@@ -71,4 +74,37 @@ publishing {
 idea.module {
     downloadSources = true
     downloadJavadoc = true
+}
+
+tasks.named('test', Test).configure { useJUnitPlatform() }
+
+// Real-server regression harness, excluded from production artifacts.
+if (providers.gradleProperty('planetTests').isPresent()) {
+    sourceSets {
+        planetTests {
+            compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+            runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+        }
+    }
+    neoForge.mods.named(mod_id) { sourceSet(sourceSets.planetTests) }
+    neoForge.runs {
+        gameTestServer {
+            type = 'gameTestServer'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+    }
+}
+
+if (providers.gradleProperty('planetClientSmoke').isPresent()) {
+    sourceSets {
+        planetClientSmoke {
+            compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+            runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+        }
+    }
+    neoForge.mods.named(mod_id) { sourceSet(sourceSets.planetClientSmoke) }
+    neoForge.runs.named('client') {
+        programArguments.addAll('--quickPlaySingleplayer', 'around-ew-smoke')
+        jvmArguments.add('-Xmx3G')
+    }
 }

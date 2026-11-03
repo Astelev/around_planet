@@ -7,7 +7,7 @@ modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 description='''
-Foundation for a looping planet. Planet topology is under development.
+Experimental east/west world wrapping. Through-seam rendering and ship transfer are under development.
 '''
 
 [[dependencies.${mod_id}]]
@@ -23,3 +23,6 @@ type="required"
 versionRange="${minecraft_version_range}"
 ordering="NONE"
 side="BOTH"
+
+[[mixins]]
+config="around_planet.mixins.json"
