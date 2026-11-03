@@ -133,7 +133,7 @@ dependencies {
         transitive = false
     }
 
-    // Opt-in development runtime; dependencies are not bundled into AeroSpace.
+    // Opt-in development runtime; dependencies are not bundled into CruisingSpeed.
     if (providers.gradleProperty('integrationRuntime').isPresent()) {
         localRuntime "maven.modrinth:sable:${sable_modrinth_version}"
         localRuntime "maven.modrinth:create:${create_modrinth_version}"
@@ -188,7 +188,7 @@ if (providers.gradleProperty('dhClientSmoke').isPresent()) {
         sourceSet(sourceSets.clientSmoke)
     }
     neoForge.runs.named('client') {
-        programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('AeroSpace-DH-Smoke'))
+        programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('CruisingSpeed-DH-Smoke'))
         jvmArguments.add('-Xmx4G')
     }
 }

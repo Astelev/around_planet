@@ -3,7 +3,8 @@
 Minecraft 1.21.1 / NeoForge 21.1.256. Integration targets Sable 2.0.6,
 Create 6.0.10 and Create Aeronautics 1.3.2. SimulatedExtra 0.3-beta is included
 in the integration test run, but is not a dependency. AeroWorks and AeroUtils
-remain independent. AeroSpace must be installed on the server and clients.
+remain independent. The Sable temporary-chunk optimization requires Cruising Speed
+on the server and participating clients; other clients keep normal terrain tickets.
 
 ## Behavior
 
@@ -23,7 +24,7 @@ remain independent. AeroSpace must be installed on the server and clients.
   The same fallback extends Sable's own player-inhabited check at altitude,
   preventing a stale cached AABB from unloading a fast ship with a passenger.
   Sable's setting that protects player-inhabited ships from unloading is still
-  respected; AeroSpace does not force-enable it.
+  respected; CruisingSpeed does not force-enable it.
   Sky collision-ticket bounds also use the live pose so a rapid ascent cannot
   generate terrain using stale low-altitude coordinates.
   During raw entity movement, passenger checks use the updated position rather
@@ -43,13 +44,13 @@ remain independent. AeroSpace must be installed on the server and clients.
 
 ## Descent
 
-When the live hull reaches the threshold, AeroSpace stops intercepting Sable's
+When the live hull reaches the threshold, CruisingSpeed stops intercepting Sable's
 terrain requests and the passenger's temporary view ends. Client placeholders
 are discarded, ordinary player tickets return, and Sable's existing
 `inhabitChunk` path adds its own tickets and requests real FULL chunks. Existing
 blocks and player edits are never regenerated or replaced with air.
 
-AeroSpace does not teleport, stop, reset, save or restore physics velocities.
+CruisingSpeed does not teleport, stop, reset, save or restore physics velocities.
 There is no separate descent queue or manual collider upload. Sable's ordinary
 chunk and collision handling owns the transition, including force-loaded ships.
 The previous custom hold, early terrain prefetch and 256-column handoff limit
@@ -57,13 +58,13 @@ have been removed.
 
 Sable 2.0.6's native request waits synchronously for a FULL chunk. This can stall
 the server while missing terrain is generated; it is not an asynchronous pause
-of only one ship. Physics does not advance during that wait, and AeroSpace does
+of only one ship. Physics does not advance during that wait, and CruisingSpeed does
 not modify either linear or angular velocity. Normal gravity, drag, controllers
 and collisions may still change velocity once physics resumes.
 
 Sable's internal APIs are version-specific: the optional dependency accepts
 exactly 2.0.6. Other versions require revalidation. The server config is
-`<world>/serverconfig/aerospace-server.toml`, section `highAltitudeFlight`:
+`<world>/serverconfig/cruising-server.toml`, section `highAltitudeFlight`:
 `enabled = true`, `minAltitude = 356`. Disabling returns ordinary loading behavior.
 
 ## Current limits
@@ -139,7 +140,7 @@ where a standing player falls off while the ship continues flying.
 
 A client-only, read-only diagnostic observes native attachment loss while the
 temporary sky view is active (including its exit tick). At most once every ten
-seconds it writes `AeroSpace sky passenger contact lost` to the log, with ship
+seconds it writes `CruisingSpeed sky passenger contact lost` to the log, with ship
 presence, native last-tracking ID, temporary view/chunk availability, position
 change, on-ground state and velocity. Normal walking/jumping away can also
 produce this record; the record alone does not prove an error. If the standing

@@ -1,0 +1,222 @@
+package io.github.astelev.cruising.gametest;
+
+import com.mojang.blaze3d.pipeline.TextureTarget;
+import com.mojang.blaze3d.systems.RenderSystem;
+import io.github.astelev.cruising.client.FallbackPlaneRenderer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
+
+public final class FallbackPlaneSmoke {
+    private FallbackPlaneSmoke() {}
+    private static int lightmap, mcDepth, coverage;
+    private static int probeX=8, probeY=8;
+    private static double probeCameraX;
+    private static boolean skirtProbe;
+    private static double expectedRaisedHeight=92;
+    private static com.mojang.blaze3d.vertex.VertexBuffer raisedMesh;
+    private static int light = 255;
+
+    public static void verify() {
+        int previousFbo = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
+        int[] viewport = new int[4];
+        GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
+        int texture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        double clearDepth = GL11.glGetDouble(GL11.GL_DEPTH_CLEAR_VALUE);
+        boolean scissor = GL11.glIsEnabled(GL11.GL_SCISSOR_TEST);
+        boolean stencil = GL11.glIsEnabled(GL11.GL_STENCIL_TEST);
+        int[] stores = {GL11.GL_UNPACK_ROW_LENGTH, GL11.GL_UNPACK_SKIP_ROWS, GL11.GL_UNPACK_SKIP_PIXELS, GL11.GL_UNPACK_ALIGNMENT,
+                GL11.GL_PACK_ROW_LENGTH, GL11.GL_PACK_SKIP_ROWS, GL11.GL_PACK_SKIP_PIXELS, GL11.GL_PACK_ALIGNMENT};
+        int[] savedStores = java.util.Arrays.stream(stores).map(GL11::glGetInteger).toArray();
+        int depth = GL11.glGenTextures(), palette = GL11.glGenTextures();
+        lightmap = GL11.glGenTextures();
+        mcDepth = GL11.glGenTextures();
+        var target = new TextureTarget(16, 16, true, Minecraft.ON_OSX);
+        try {
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+            GL11.glDisable(GL11.GL_STENCIL_TEST);
+            GL11.glColorMask(true, true, true, true);
+            for (int store : stores) GL11.glPixelStorei(store, store == GL11.GL_PACK_ALIGNMENT || store == GL11.GL_UNPACK_ALIGNMENT ? 1 : 0);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, palette);
+            var color = BufferUtils.createByteBuffer(4);
+            color.put((byte) 0x71).put((byte) 0x8a).put((byte) 0x54).put((byte) 255).flip();
+            GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 1, 1, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, color);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+            setLight(255);
+            var down = new Matrix4f().perspective((float) Math.PI / 2, 1, 0.1f, 10000)
+                    .rotateX((float) Math.PI / 2).invert();
+            probe(target, depth, palette, down, 500, 1, 1, true, "empty terrain");
+            probe(target, depth, palette, down, 500, 0.5f, 1, false, "existing vanilla depth");
+            probe(target, depth, palette, down, 500, 1, 0.5f, false, "existing nearer LOD depth");
+            probe(target, depth, palette, down, 500, 1, 0.9999f, true, "nearer fallback occludes distant LOD");
+            probe(target, depth, palette, down, 40, 1, 1, false, "camera below plane");
+            var reversedDown = new Matrix4f(down).mul(new Matrix4f().scaling(1, 1, -1));
+            probe(target, depth, palette, reversedDown, 500, 1, 0, true, "reversed DH depth", 0, 1);
+            probe(target, depth, palette, reversedDown, 500, 1, 0.5f, false, "reversed existing nearer LOD", 0, 1);
+            probe(target, depth, palette, reversedDown, 500, 1, 0.0001f, true, "reversed nearer fallback", 0, 1);
+            probe(target, depth, palette, reversedDown, 500, 0, 0, true, "both depths reversed", 0, 0);
+            probe(target, depth, palette, reversedDown, 500, 0.5f, 0, false, "reversed existing vanilla", 0, 0);
+            var up = new Matrix4f().perspective((float) Math.PI / 2, 1, 0.1f, 10000)
+                    .rotateX(-(float) Math.PI / 2).invert();
+            probe(target, depth, palette, up, 500, 1, 1, false, "sky above horizon");
+            raisedMesh = new com.mojang.blaze3d.vertex.VertexBuffer(com.mojang.blaze3d.vertex.VertexBuffer.Usage.STATIC);
+            FallbackPlaneRenderer.uploadSurface(raisedMesh, new int[][]{{32,32},{32,32}}, 100000);
+            FallbackPlaneRenderer.uploadSurface(raisedMesh,new int[][]{{0,0},{32,32}},null,100000,null,2,-256,false);
+            probe(target,depth,palette,down,500,1,1,true,"disabled smoothing: high flat cell");
+            probeX=7; expectedRaisedHeight=60;
+            probe(target,depth,palette,down,500,1,1,true,"disabled smoothing: low flat cell");
+            probeX=8; expectedRaisedHeight=92;
+            FallbackPlaneRenderer.uploadSurface(raisedMesh,new int[][]{{32,32},{32,32}},100000);
+            probe(target, depth, palette, up, 80, 1, 1, false, "raised tile underside seen from ground");
+            var reversedUp = new Matrix4f(up).mul(new Matrix4f().scaling(1, 1, -1));
+            probe(target, depth, palette, reversedUp, 80, 1, 0, false, "reversed raised tile underside", 0, 1);
+            probe(target, depth, palette, down, 500, 1, 1, true, "raised biome surface");
+            probe(target, depth, palette, reversedDown, 500, 1, 0, true, "reversed raised biome", 0, 1);
+            probe(target, depth, palette, down, 500, 1, 0.5f, false, "real LOD masks raised surface");
+            coverage=GL11.glGenTextures();
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D,coverage);
+            var cells=BufferUtils.createByteBuffer(16);
+            for(int i=0;i<4;i++) { byte value=(byte)(i%2==1 ? 255 : 0); cells.put(value).put(value).put(value).put((byte)255); }
+            cells.flip();
+            GL11.glTexImage2D(GL11.GL_TEXTURE_2D,0,GL11.GL_RGBA8,2,2,0,GL11.GL_RGBA,GL11.GL_UNSIGNED_BYTE,cells);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D,GL11.GL_TEXTURE_MIN_FILTER,GL11.GL_NEAREST);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D,GL11.GL_TEXTURE_MAG_FILTER,GL11.GL_NEAREST);
+            probe(target,depth,palette,down,500,1,1,false,"ready LOD footprint masks sky above its terrain");
+            probeX=7; probeY=7;
+            probe(target,depth,palette,down,500,1,1,true,"unfinished neighboring footprint keeps fallback");
+            probeX=8; probeY=8;
+            var owned=new boolean[64];
+            for(int x=4;x<8;x++) for(int z=0;z<8;z++) owned[x*8+z]=true;
+            FallbackPlaneRenderer.uploadSurface(raisedMesh,new int[][]{{32,32},{32,32}},null,100000,owned,8,-256);
+            probeCameraX=20; skirtProbe=true;
+            var west=new Matrix4f().perspective((float)Math.PI/2,1,0.1f,10000).rotateY(-(float)Math.PI/2).invert();
+            probe(target,depth,palette,west,70,1,1,true,"skirt closes gap from ready side despite ownership mask");
+            var reversedWest=new Matrix4f(west).mul(new Matrix4f().scaling(1,1,-1));
+            probe(target,depth,palette,reversedWest,70,1,0,true,"reversed skirt closes gap",0,1);
+            probeCameraX=0; skirtProbe=false;
+            FallbackPlaneRenderer.uploadSurface(raisedMesh,new int[][]{{32,32},{32,32}},100000);
+            GL11.glDeleteTextures(coverage); coverage=0;
+            paletteAlpha(palette,0);
+            probe(target, depth, palette, down, 500, 1, 1, false, "real terrain footprint masks sky pixels");
+            paletteAlpha(palette,255);
+            setLight(32);
+            probe(target, depth, palette, down, 500, 1, 1, true, "night lightmap");
+        } finally {
+            if (raisedMesh != null) { raisedMesh.close(); raisedMesh = null; }
+            target.destroyBuffers();
+            GL11.glDeleteTextures(depth);
+            GL11.glDeleteTextures(palette);
+            GL11.glDeleteTextures(lightmap);
+            GL11.glDeleteTextures(mcDepth);
+            if(coverage!=0) { GL11.glDeleteTextures(coverage); coverage=0; }
+            RenderSystem.bindTexture(texture);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
+            RenderSystem.viewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+            RenderSystem.clearDepth(clearDepth);
+            if (scissor) GL11.glEnable(GL11.GL_SCISSOR_TEST);
+            if (stencil) GL11.glEnable(GL11.GL_STENCIL_TEST);
+            for (int i = 0; i < stores.length; i++) GL11.glPixelStorei(stores[i], savedStores[i]);
+        }
+    }
+
+    private static void paletteAlpha(int palette, int alpha) {
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D,palette);
+        var pixel = BufferUtils.createByteBuffer(4);
+        pixel.put((byte)0x71).put((byte)0x8a).put((byte)0x54).put((byte)alpha).flip();
+        GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D,0,0,0,1,1,GL11.GL_RGBA,GL11.GL_UNSIGNED_BYTE,pixel);
+    }
+
+    private static void setLight(int value) {
+        light = value;
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, lightmap);
+        // An asymmetric 16x16 vanilla-layout map catches transposed sky/block
+        // axes: emissive blocks stay bright even when the exposed sky is dark.
+        var pixel = BufferUtils.createByteBuffer(16 * 16 * 4);
+        for (int sky = 0; sky < 16; sky++) {
+            for (int block = 0; block < 16; block++) {
+                int brightness = block == 0 ? value : 255;
+                pixel.put((byte) brightness).put((byte) brightness).put((byte) brightness).put((byte) 255);
+            }
+        }
+        pixel.flip();
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 16, 16, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+    }
+
+    private static void probe(TextureTarget target, int depthTexture, int palette, Matrix4f inverse, double cameraY,
+                              float vanillaDepth, float dhDepth, boolean shouldDraw, String description) {
+        probe(target, depthTexture, palette, inverse, cameraY, vanillaDepth, dhDepth, shouldDraw, description, 1, 1);
+    }
+
+    private static void probe(TextureTarget target, int depthTexture, int palette, Matrix4f inverse, double cameraY,
+                              float vanillaDepth, float dhDepth, boolean shouldDraw, String description,
+                              float dhClearDepth, float vanillaClearDepth) {
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, depthTexture);
+        var depths = BufferUtils.createFloatBuffer(256);
+        for (int i = 0; i < 256; i++) depths.put(dhDepth);
+        depths.flip();
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH_COMPONENT32F, 16, 16, 0,
+                GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, depths);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, mcDepth);
+        depths.clear();
+        for (int i = 0; i < 256; i++) depths.put(vanillaDepth);
+        depths.flip();
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH_COMPONENT32F, 16, 16, 0,
+                GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, depths);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        target.setClearColor(0x20 / 255f, 0x30 / 255f, 0x40 / 255f, 1);
+        target.clear(Minecraft.ON_OSX);
+        target.bindWrite(true);
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, target.frameBufferId);
+        GL11.glClearDepth(dhDepth);
+        GL11.glDepthMask(true);
+        GL11.glClearColor(0x20 / 255f, 0x30 / 255f, 0x40 / 255f, 1);
+        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_COLOR_BUFFER_BIT);
+        GL11.glClearDepth(1);
+        int previousDepthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
+        int previousCullFace = GL11.glGetInteger(GL11.GL_CULL_FACE_MODE);
+        int previousFrontFace = GL11.glGetInteger(GL11.GL_FRONT_FACE);
+        boolean previousCull = GL11.glIsEnabled(GL11.GL_CULL_FACE);
+        FallbackPlaneRenderer.drawPass(new Matrix4f(inverse).invert(), new Vec3(probeCameraX, cameraY, 0), 60, 100000,
+                depthTexture, palette, raisedMesh == null ? -4096 : -io.github.astelev.cruising.compat.dh.FallbackBiomeColors.CELL_SIZE, raisedMesh == null ? -4096 : -io.github.astelev.cruising.compat.dh.FallbackBiomeColors.CELL_SIZE,
+                raisedMesh == null ? 8192 : 2 * io.github.astelev.cruising.compat.dh.FallbackBiomeColors.CELL_SIZE, 0x718a54, dhClearDepth, lightmap, mcDepth, vanillaClearDepth, 0.55f, raisedMesh, coverage);
+        if (GL11.glGetInteger(GL11.GL_DEPTH_FUNC) != previousDepthFunc) throw new AssertionError("Fallback changed depth-test state");
+        if (GL11.glGetInteger(GL11.GL_CULL_FACE_MODE) != previousCullFace
+                || GL11.glGetInteger(GL11.GL_FRONT_FACE) != previousFrontFace
+                || GL11.glIsEnabled(GL11.GL_CULL_FACE) != previousCull) throw new AssertionError("Surface changed culling state");
+        var pixel = BufferUtils.createByteBuffer(4);
+        GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, target.frameBufferId);
+        GL11.glReadPixels(probeX, probeY, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
+        int r = Byte.toUnsignedInt(pixel.get(0)), g = Byte.toUnsignedInt(pixel.get(1)), b = Byte.toUnsignedInt(pixel.get(2));
+        float luminance = 0x71 * 0.2126f + 0x8a * 0.7152f + 0x54 * 0.0722f;
+        int er = Math.round((luminance * 0.2f + 0x71 * 0.8f) * 0.55f * light / 255);
+        int eg = Math.round((luminance * 0.2f + 0x8a * 0.8f) * 0.55f * light / 255);
+        int eb = Math.round((luminance * 0.2f + 0x54 * 0.8f) * 0.55f * light / 255);
+        int expected = shouldDraw ? er << 16 | eg << 8 | eb : 0x203040;
+        if (Math.abs(r - (expected >> 16 & 255)) > 1 || Math.abs(g - (expected >> 8 & 255)) > 1 || Math.abs(b - (expected & 255)) > 1) {
+            throw new AssertionError("Fallback probe failed for " + description + ": " + r + "," + g + "," + b);
+        }
+        var preservedDepth = BufferUtils.createFloatBuffer(1);
+        GL11.glReadPixels(probeX, probeY, 1, 1, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, preservedDepth);
+        if (shouldDraw) {
+            // Unproject the written DH depth: it must hit Y=60, not far depth.
+            var hit = new org.joml.Vector4f(2*(probeX+0.5f)/16-1, 2*(probeY+0.5f)/16-1, preservedDepth.get(0) * 2 - 1, 1);
+            inverse.transform(hit);
+            double worldY = hit.y / hit.w + cameraY;
+            if(skirtProbe) {
+                double worldX=hit.x/hit.w+probeCameraX;
+                if(Math.abs(worldX)>0.1) throw new AssertionError("Skirt does not lie on the world-space boundary: "+worldX);
+            } else if (Math.abs(worldY - (raisedMesh == null ? 60 : expectedRaisedHeight)) > 0.5) throw new AssertionError("Surface height mismatch: " + worldY);
+        } else if (Math.abs(preservedDepth.get(0) - dhDepth) > 0.00001)
+            throw new AssertionError("Fallback overwrote an existing depth");
+    }
+}

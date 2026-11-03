@@ -1,9 +1,11 @@
 # Distant Horizons flight LODs
 
-Optional client integration for **DH 3.3.3 / Minecraft 1.21.1**. Flight detail and queue adaptation activate only
-while AeroSpace's server-authorized temporary sky view is active. The visual
-biome surface works independently of that mode throughout the Overworld. Sable flight
-and ordinary terrain generation do not depend on DH being installed.
+Client integration for **DH 3.3.3 / Minecraft 1.21.1**. Camera height above
+`adaptAboveY` (default 356) activates the optional flight adaptations without
+Sable, Create or Aeronautics; a server-authorized Sable sky view also qualifies.
+`modifyDistantHorizonsBehavior=false` disables those adaptations independently
+of the biome surface. The surface works throughout the Overworld, including
+normal ground-level play. Sable's server-side temporary-chunk support is optional.
 
 ## Coarse first, refine after slowing
 
@@ -25,12 +27,15 @@ protection and queue backpressure remain in force. Use `SURFACE_THEN_CHUNKS` or
 `SURFACE_ONLY` to benefit from rough surface generation; `CHUNKS_ONLY` still
 requires the chunk generator and `DISABLED` remains disabled.
 
-The client config is `config/aerospace-client.toml`, section
+The client config is `config/cruising-client.toml`, section
 `distantHorizonsFlight`:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `enabled` | `true` | Enable this optional integration |
+| `enabled` | `true` | Master switch for client integration and surface |
+| `modifyDistantHorizonsBehavior` | `true` | Allow DH detail, motion-pause and queue adaptations |
+| `adaptAboveY` | `356` | Camera height for standalone DH flight adaptation |
+| `smoothFallbackTerrain` | `true` | Smooth height transitions; disable for closed stepped tiles |
 | `coarseDetail` | `4` | Cruise cell width is `2^value` blocks |
 | `fastSpeed` | `20.0` | Speed that restarts coarse mode, blocks/second |
 | `quietSeconds` | `5` | Delay before the first refinement |
@@ -228,7 +233,7 @@ DH does have multiple independent generation gates:
 - Chunk-to-LOD builder and data-processing queue backpressure.
 - A disabled generation plan, read-only DH data, or simply no pending tasks.
 
-While flying, F3 includes `AeroSpace LOD` with the current minimum cell width and
+While flying, F3 includes `CruisingSpeed LOD` with the current minimum cell width and
 the latest DH generation-gate result:
 
 | Gate | Meaning |
@@ -258,11 +263,11 @@ quadtree, motion-pause override, native gate diagnostics and exit restoration:
 
 ```sh
 ./gradlew -PintegrationRuntime -PdhJar=/absolute/path/DistantHorizons-3.3.3-1.21.1.jar \
-  -PdhClientSmoke -PquickPlayWorld=AeroSpace-DH-Smoke runClient
+  -PdhClientSmoke -PquickPlayWorld=CruisingSpeed-DH-Smoke runClient
 ```
 
-Prepare a disposable singleplayer save named `AeroSpace-DH-Smoke` first. The
-smoke test exits the client when successful and logs `AEROSPACE_DH_SMOKE PASS`.
+Prepare a disposable singleplayer save named `CruisingSpeed-DH-Smoke` first. The
+smoke test exits the client when successful and logs `CRUISING_SPEED_DH_SMOKE PASS`.
 Its source set is not included in the published mod JAR. Tests are not a
 performance benchmark: flight speed, world generator, DH render distance, CPU
 budget and modpack load determine whether new surface can keep up in practice.
@@ -291,3 +296,22 @@ Smoothing/skirt regression checks verify shared ramp edges, preserved cell-cente
 heights, flat water, outward winding and skirt depths below terrain. GPU probes
 view an ownership boundary from the ready-terrain side and verify that its skirt
 fills the gap despite the ready-area mask, in normal and reversed depth modes.
+
+## Configuration controls and migration
+
+The new mod ID is `cruising` and the client file is
+`config/cruising-client.toml`. The template common config, example items/blocks
+and creative tab have been removed. The NeoForge config screen includes English
+and Russian labels. The separate server Sable settings remain in
+`<world>/serverconfig/cruising-server.toml`.
+
+`modifyDistantHorizonsBehavior=false` leaves the independent surface enabled but
+restores native DH detail selection, motion-pause behavior and queue ordering.
+`fallbackPlane=false` disables the surface and its independent biome sampler.
+`smoothFallbackTerrain=false` produces flat biome cells and closed internal
+steps while retaining the ownership-boundary skirts. `fallbackBiomeHeights=false`
+uses the neutral base plane instead of biome-height estimates.
+
+Replace the old AeroSpace JAR rather than loading both versions. Old
+`aerospace-client.toml` settings can be copied into the new filename manually;
+new settings default automatically. No DH config file is modified.
