@@ -5,6 +5,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class EastWestTopologyTest {
     private final EastWestTopology world = new EastWestTopology(1024);
+    @Test void configuredBoundary65536WrapsToOppositeEdgeNotZero() {
+        var planet=EastWestTopology.atBoundary(65536);
+        assertEquals(-65536,planet.west());assertEquals(65536,planet.east());
+        assertEquals(-65536,planet.canonicalX(65536));
+        assertEquals(-65535.75,planet.canonicalX(65536.25));
+        assertEquals(65535.75,planet.canonicalX(-65536.25));
+        assertFalse(planet.outside(65535.99));
+    }
     @Test void exactEastBoundaryMapsToWestButWestRemainsInside() {
         assertEquals(-512,world.canonicalX(512));
         assertFalse(world.outside(-512));

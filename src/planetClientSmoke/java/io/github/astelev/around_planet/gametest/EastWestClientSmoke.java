@@ -12,8 +12,10 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 @EventBusSubscriber(modid=AroundPlanet.MOD_ID,value=Dist.CLIENT)
 public final class EastWestClientSmoke {
     private static int ticks, phase, started;
+    private static volatile Throwable serverFailure;
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         var mc=Minecraft.getInstance(); ticks++;
+        if(serverFailure!=null) throw new AssertionError("AROUND_EW_SMOKE server packet regression",serverFailure);
         if(ticks>1800) throw new AssertionError("AROUND_EW_SMOKE timeout");
         if(mc.level==null || mc.player==null || mc.getSingleplayerServer()==null || ticks<100) return;
         mc.player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
@@ -51,7 +53,48 @@ public final class EastWestClientSmoke {
             });
         } else if(phase==3 && ticks-started>40 && mc.player.getVehicle()!=null && Math.abs(mc.player.getVehicle().getX()+255.5)<0.02) {
             AroundPlanet.LOGGER.info("AROUND_EW_SMOKE PASS: real player network transfer east/west, fractional offset, height/orientation, client border, boat + real player passenger, and no north/south wrap");
-            phase=4;mc.stop();
+            phase=4;started=ticks;
+            mc.getSingleplayerServer().execute(()->{
+                var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+                var boat=p.getVehicle();p.stopRiding();if(boat!=null) boat.discard();
+                p.connection.teleport(255.75,200,0,47,13);
+            });
+        } else if(phase==4 && ticks-started>40 && Math.abs(mc.player.getX()-255.75)<0.01) {
+            phase=5;started=ticks;
+            mc.getSingleplayerServer().execute(()->{
+                try {
+                    var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+                    p.connection.handleMovePlayer(new net.minecraft.network.protocol.game.ServerboundMovePlayerPacket.Pos(256.125,200,0,false));
+                    require(Math.abs(p.getX()+255.875)<0.01,"Movement packet did not wrap immediately at the seam: "+p.getX());
+                } catch(Throwable failure) { serverFailure=failure; }
+            });
+        } else if(phase==5 && ticks-started>40 && Math.abs(mc.player.getX()+255.875)<0.01) {
+            phase=6;started=ticks;
+            mc.getSingleplayerServer().execute(()->{
+                var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+                p.connection.teleport(-255.75,200,0,47,13);
+            });
+        } else if(phase==6 && ticks-started>40 && Math.abs(mc.player.getX()+255.75)<0.01) {
+            phase=7;started=ticks;
+            mc.getSingleplayerServer().execute(()->{
+                try {
+                    var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+                    p.connection.handleMovePlayer(new net.minecraft.network.protocol.game.ServerboundMovePlayerPacket.Pos(-256.125,200,0,false));
+                    require(Math.abs(p.getX()-255.875)<0.01,"West movement packet did not wrap immediately: "+p.getX());
+                } catch(Throwable failure) { serverFailure=failure; }
+            });
+        } else if(phase==7 && ticks-started>40 && Math.abs(mc.player.getX()-255.875)<0.01) {
+            require(io.github.astelev.around_planet.border.PlanetBorders.warningDistance(mc.level.getWorldBorder(),mc.player)>10000,
+                    "Client vignette still treats traversable seam as danger");
+            AroundPlanet.LOGGER.info("AROUND_EW_PACKET_SMOKE PASS: both native movement packets wrap in the same call; no seam vignette");
+            phase=8;started=ticks;
+            mc.getSingleplayerServer().execute(()->{
+                var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+                p.connection.teleport(0,200,0,47,13);
+            });
+        } else if(phase==8 && ticks-started>120) {
+            // Let the destination ticket leases expire normally before ending this synthetic world run.
+            phase=9;mc.stop();
         }
     }
     private static void require(boolean ok,String message) { if(!ok) throw new AssertionError(message); }

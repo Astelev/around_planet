@@ -19,5 +19,16 @@ public final class PlanetBorders {
                 || border.getCenterX()+border.getSize()/2 <= topology.west()-GUARD_MARGIN)) return null;
         return topology;
     }
+    /** No danger vignette for a traversable seam. Keep warnings for a genuinely tighter vanilla border. */
+    public static double warningDistance(WorldBorder border, net.minecraft.world.entity.Entity entity) {
+        var topology=get(border);
+        if(topology==null) return border.getDistanceToBorder(entity);
+        double distance=Math.min(entity.getZ()-border.getMinZ(),border.getMaxZ()-entity.getZ());
+        double minX=Math.max(-border.getAbsoluteMaxSize(),border.getCenterX()-border.getSize()/2);
+        double maxX=Math.min(border.getAbsoluteMaxSize(),border.getCenterX()+border.getSize()/2);
+        if(minX>topology.west()) distance=Math.min(distance,entity.getX()-minX);
+        if(maxX<topology.east()) distance=Math.min(distance,maxX-entity.getX());
+        return distance;
+    }
     private PlanetBorders() {}
 }

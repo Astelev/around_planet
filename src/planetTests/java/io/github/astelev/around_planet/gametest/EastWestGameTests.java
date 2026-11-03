@@ -51,10 +51,16 @@ public final class EastWestGameTests {
             // Synchronous loads here are test fixtures only, never the transfer implementation.
             for(int x:new int[]{-17,-16,15,16}) for(int z=0;z<=2;z++) level.getChunk(x,z);
             var east=new ItemEntity(level,256.75,200,5,new ItemStack(Items.STICK));
+            h.assertTrue(PlanetBorders.warningDistance(border,east)>10000,"Wrap seam triggers danger vignette");
             east.setNoGravity(true); east.setYRot(37); east.setDeltaMovement(4,0.25,0.5); level.addFreshEntity(east); entities.add(east);
             TransferService.tick(new EntityTickEvent.Post(east));
             h.assertTrue(east.getX()==-255.25 && east.getY()==200 && east.getZ()==5,"East overshoot/Y/Z changed");
             h.assertTrue(east.getDeltaMovement().equals(new Vec3(4,0.25,0.5)) && east.getYRot()==37,"Velocity or yaw changed");
+            var tighter=new net.minecraft.world.level.border.WorldBorder();tighter.setSize(400);
+            PlanetBorders.bind(tighter,new EastWestTopology(512));
+            var warningProbe=new ItemEntity(level,199,200,5,new ItemStack(Items.STICK));
+            h.assertTrue(PlanetBorders.warningDistance(tighter,warningProbe)==1,"Real vanilla border warning was suppressed");
+            PlanetBorders.unbind(tighter);
             var west=new ItemEntity(level,-256.125,200,8,new ItemStack(Items.STICK)); level.addFreshEntity(west); entities.add(west);
             TransferService.tick(new EntityTickEvent.Post(west));
             h.assertTrue(west.getX()==255.875,"West fractional offset lost");
@@ -68,6 +74,13 @@ public final class EastWestGameTests {
             TransferService.tick(new EntityTickEvent.Post(unloaded));
             h.assertTrue(unloaded.getX()>0 && unloaded.getX()<=256,"Entity entered unloaded destination");
             h.assertTrue(level.getChunkSource().getChunkNow(-16,62500)==null,"Transfer synchronously generated terrain");
+            PlanetBorders.bind(border,EastWestTopology.atBoundary(65536));
+            level.getChunk(-4096,0);level.getChunk(4096,0);
+            var defaultEdge=new ItemEntity(level,65536.75,200,5,new ItemStack(Items.STICK));
+            level.addFreshEntity(defaultEdge);entities.add(defaultEdge);
+            TransferService.tick(new EntityTickEvent.Post(defaultEdge));
+            h.assertTrue(defaultEdge.getX()==-65535.25,"Default 65536 boundary wrapped to zero or used a delayed threshold");
+            PlanetBorders.bind(border,new EastWestTopology(512));
             var boat=EntityType.BOAT.create(level); boat.moveTo(256.5,200,20); level.addFreshEntity(boat);entities.add(boat);
             var pig=EntityType.PIG.create(level); pig.moveTo(256.5,200,20); level.addFreshEntity(pig);entities.add(pig);
             h.assertTrue(pig.startRiding(boat,true),"Could not attach test rider");

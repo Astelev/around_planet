@@ -5,15 +5,16 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.BooleanValue ENABLED;
-    public static final ModConfigSpec.IntValue WIDTH, ACTIVATION, RADIUS;
+    public static final ModConfigSpec.IntValue BOUNDARY, ACTIVATION, RADIUS;
     static {
         var b = new ModConfigSpec.Builder();
         b.push("eastWest");
         ENABLED = b.comment("Experimental Overworld east/west transfer. Enable in a test world. Restart after changing these settings.",
                 "No through-seam rendering or physics-ship transfer yet. Does not change world generation.")
                 .define("enabled", false);
-        WIDTH = b.comment("Circumference in blocks, centered on X=0; multiple of 32. Y and Z do not wrap.")
-                .defineInRange("widthBlocks", 65536, 256, 59000000);
+        BOUNDARY = b.comment("Absolute X of each seam: +boundaryX wraps to -boundaryX, not to zero.",
+                "Multiple of 16; total circumference is twice this value. Replaces the old widthBlocks setting.")
+                .defineInRange("boundaryX", 65536, 128, 29500000);
         ACTIVATION = b.comment("Distance from either seam at which destination preloading begins; limited to one quarter of width.")
                 .defineInRange("activationDistance", 128, 16, 1024);
         RADIUS = b.comment("Destination chunk radius. Bounded transient tickets; no synchronous generation in the entity tick.")

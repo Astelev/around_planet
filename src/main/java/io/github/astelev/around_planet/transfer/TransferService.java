@@ -32,7 +32,10 @@ public final class TransferService {
         if (!(level instanceof Level world) || !world.dimension().equals(Level.OVERWORLD)
                 || !PlanetConfig.SPEC.isLoaded() || !PlanetConfig.ENABLED.getAsBoolean()) return;
         try {
-            PlanetBorders.bind(world.getWorldBorder(), new EastWestTopology(PlanetConfig.WIDTH.getAsInt()));
+            var topology=EastWestTopology.atBoundary(PlanetConfig.BOUNDARY.getAsInt());
+            PlanetBorders.bind(world.getWorldBorder(), topology);
+            if (world instanceof ServerLevel) AroundPlanet.LOGGER.info("East/west seams: X={} and X={}, circumference={} blocks",
+                    topology.west(),topology.east(),topology.width());
         } catch (IllegalArgumentException exception) {
             AroundPlanet.LOGGER.error("East/west transfer disabled: {}", exception.getMessage());
         }
@@ -50,11 +53,16 @@ public final class TransferService {
     }
     @SubscribeEvent
     public static void tick(EntityTickEvent.Post event) {
-        var entity = event.getEntity();
+        check(event.getEntity());
+    }
+    /** Also called immediately after a validated movement packet, before another server tick. */
+    public static void check(Entity entity) {
         if (!(entity.level() instanceof ServerLevel level) || entity.isRemoved() || entity.isPassenger()) return;
         var topology = PlanetBorders.get(level.getWorldBorder());
-        if (topology == null || topology.distanceToSeam(entity.getX()) > Math.min(PlanetConfig.ACTIVATION.getAsInt(), topology.width()/4.0)
-                && !topology.outside(entity.getX())) return;
+        if (topology == null) return;
+        double activation=Math.min(topology.width()/4.0, Math.max(PlanetConfig.ACTIVATION.getAsInt(),
+                Math.min(1024,Math.abs(entity.getKnownMovement().x)*40)));
+        if (topology.distanceToSeam(entity.getX()) > activation && !topology.outside(entity.getX())) return;
         var group = entity.getSelfAndPassengers().toList();
         if (group.stream().anyMatch(e -> ShipPassengerGuard.attached(e) || e instanceof Mob mob && mob.isLeashed())) return;
         double targetX = topology.destinationX(entity.getX());
@@ -69,7 +77,7 @@ public final class TransferService {
             // Stay on the crossing side of the seam so even stationary entities retry next tick.
             double x = entity.getX() >= topology.east() ? topology.east() : topology.west()-0.001;
             double holdDx=x-entity.getX();
-            if (group.stream().allMatch(e -> chunksReady(level,e.getBoundingBox().move(holdDx,0,0)))) moveGroup(entity,holdDx);
+            if (Math.abs(holdDx)>1.0e-6 && group.stream().allMatch(e -> chunksReady(level,e.getBoundingBox().move(holdDx,0,0)))) moveGroup(entity,holdDx);
             return;
         }
         moveGroup(entity, dx);
