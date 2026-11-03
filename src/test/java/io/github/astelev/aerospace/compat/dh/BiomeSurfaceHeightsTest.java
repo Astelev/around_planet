@@ -13,7 +13,8 @@ class BiomeSurfaceHeightsTest {
     @Test void oceanFollowsWorldSeaLevelEvenWhenNeutralPlaneIsHigher() {
         assertEquals(3,BiomeSurfaceHeights.seaOffset(63,60));
         FallbackBiomeColors.setView("water",0,0);
-        FallbackBiomeColors.observe("water",0,0,123,BiomeSurfaceHeights.seaOffset(63,100));
+        FallbackBiomeColors.observe("water",0,0,123,BiomeSurfaceHeights.seaOffset(63,100),true);
+        assertTrue(FallbackBiomeColors.water(0,0));
         assertEquals(63,100+FallbackBiomeColors.heightOffset(0,0));
         FallbackBiomeColors.clear();
     }

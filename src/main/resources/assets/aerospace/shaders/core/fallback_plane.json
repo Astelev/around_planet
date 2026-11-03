@@ -1,7 +1,7 @@
 {
   "vertex": "aerospace:fallback_plane",
   "fragment": "aerospace:fallback_plane",
-  "attributes": ["Position"],
+  "attributes": ["Position", "UV0"],
   "samplers": [{"name": "DhDepth"}, {"name": "BiomePalette"}, {"name": "SurfaceLightmap"}, {"name": "VanillaDepth"}, {"name": "WorldCoverage"}],
   "uniforms": [
     {"name": "SurfaceOffset", "type": "float", "count": 3, "values": [0, 0, 0]},

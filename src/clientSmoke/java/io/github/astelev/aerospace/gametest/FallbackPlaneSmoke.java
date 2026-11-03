@@ -14,6 +14,8 @@ public final class FallbackPlaneSmoke {
     private FallbackPlaneSmoke() {}
     private static int lightmap, mcDepth, coverage;
     private static int probeX=8, probeY=8;
+    private static double probeCameraX;
+    private static boolean skirtProbe;
     private static com.mojang.blaze3d.vertex.VertexBuffer raisedMesh;
     private static int light = 255;
 
@@ -80,6 +82,16 @@ public final class FallbackPlaneSmoke {
             probeX=7; probeY=7;
             probe(target,depth,palette,down,500,1,1,true,"unfinished neighboring footprint keeps fallback");
             probeX=8; probeY=8;
+            var owned=new boolean[64];
+            for(int x=4;x<8;x++) for(int z=0;z<8;z++) owned[x*8+z]=true;
+            FallbackPlaneRenderer.uploadSurface(raisedMesh,new int[][]{{32,32},{32,32}},null,100000,owned,8,-256);
+            probeCameraX=20; skirtProbe=true;
+            var west=new Matrix4f().perspective((float)Math.PI/2,1,0.1f,10000).rotateY(-(float)Math.PI/2).invert();
+            probe(target,depth,palette,west,70,1,1,true,"skirt closes gap from ready side despite ownership mask");
+            var reversedWest=new Matrix4f(west).mul(new Matrix4f().scaling(1,1,-1));
+            probe(target,depth,palette,reversedWest,70,1,0,true,"reversed skirt closes gap",0,1);
+            probeCameraX=0; skirtProbe=false;
+            FallbackPlaneRenderer.uploadSurface(raisedMesh,new int[][]{{32,32},{32,32}},100000);
             GL11.glDeleteTextures(coverage); coverage=0;
             paletteAlpha(palette,0);
             probe(target, depth, palette, down, 500, 1, 1, false, "real terrain footprint masks sky pixels");
@@ -167,7 +179,7 @@ public final class FallbackPlaneSmoke {
         int previousCullFace = GL11.glGetInteger(GL11.GL_CULL_FACE_MODE);
         int previousFrontFace = GL11.glGetInteger(GL11.GL_FRONT_FACE);
         boolean previousCull = GL11.glIsEnabled(GL11.GL_CULL_FACE);
-        FallbackPlaneRenderer.drawPass(new Matrix4f(inverse).invert(), new Vec3(0, cameraY, 0), 60, 100000,
+        FallbackPlaneRenderer.drawPass(new Matrix4f(inverse).invert(), new Vec3(probeCameraX, cameraY, 0), 60, 100000,
                 depthTexture, palette, raisedMesh == null ? -4096 : -io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.CELL_SIZE, raisedMesh == null ? -4096 : -io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.CELL_SIZE,
                 raisedMesh == null ? 8192 : 2 * io.github.astelev.aerospace.compat.dh.FallbackBiomeColors.CELL_SIZE, 0x718a54, dhClearDepth, lightmap, mcDepth, vanillaClearDepth, 0.55f, raisedMesh, coverage);
         if (GL11.glGetInteger(GL11.GL_DEPTH_FUNC) != previousDepthFunc) throw new AssertionError("Fallback changed depth-test state");
@@ -193,7 +205,10 @@ public final class FallbackPlaneSmoke {
             var hit = new org.joml.Vector4f(2*(probeX+0.5f)/16-1, 2*(probeY+0.5f)/16-1, preservedDepth.get(0) * 2 - 1, 1);
             inverse.transform(hit);
             double worldY = hit.y / hit.w + cameraY;
-            if (Math.abs(worldY - (raisedMesh == null ? 60 : 92)) > 0.5) throw new AssertionError("Surface height mismatch: " + worldY);
+            if(skirtProbe) {
+                double worldX=hit.x/hit.w+probeCameraX;
+                if(Math.abs(worldX)>0.1) throw new AssertionError("Skirt does not lie on the world-space boundary: "+worldX);
+            } else if (Math.abs(worldY - (raisedMesh == null ? 60 : 92)) > 0.5) throw new AssertionError("Surface height mismatch: " + worldY);
         } else if (Math.abs(preservedDepth.get(0) - dhDepth) > 0.00001)
             throw new AssertionError("Fallback overwrote an existing depth");
     }

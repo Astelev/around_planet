@@ -14,12 +14,13 @@ uniform float DhClearDepth;
 uniform float VanillaClearDepth;
 uniform float ColorBrightness;
 in vec3 surfacePosition;
+in vec2 surfaceSamplePosition;
 out vec4 fragColor;
 void main() {
     vec2 screenUV = gl_FragCoord.xy / vec2(textureSize(DhDepth, 0));
     if (texture(VanillaDepth, screenUV).r != VanillaClearDepth) discard;
     if (length(surfacePosition.xz) > MaxDistance) discard;
-    vec2 paletteUV = (CameraPosition.xz + surfacePosition.xz - PaletteOrigin) / PaletteSpan;
+    vec2 paletteUV = (CameraPosition.xz + surfaceSamplePosition - PaletteOrigin) / PaletteSpan;
     vec3 color = FallbackColor;
     if (all(greaterThanEqual(paletteUV, vec2(0.0))) && all(lessThan(paletteUV, vec2(1.0)))) {
         if (HasWorldCoverage != 0 && texture(WorldCoverage,paletteUV).r > 0.5) discard;

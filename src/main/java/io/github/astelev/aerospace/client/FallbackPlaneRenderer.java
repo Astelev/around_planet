@@ -53,7 +53,7 @@ public final class FallbackPlaneRenderer {
     public static void registerShader(RegisterShadersEvent event) throws IOException {
         if (ModList.get().isLoaded("distanthorizons")) {
             event.registerShader(new ShaderInstance(event.getResourceProvider(),
-                    ResourceLocation.fromNamespaceAndPath(AeroSpace.MODID, "fallback_plane"), DefaultVertexFormat.POSITION), value -> {
+                    ResourceLocation.fromNamespaceAndPath(AeroSpace.MODID, "fallback_plane"), DefaultVertexFormat.POSITION_TEX), value -> {
                 shader = value;
                 failed = false;
             });
@@ -127,6 +127,7 @@ public final class FallbackPlaneRenderer {
         int fallback = DhFlightConfig.FALLBACK_COLOR.getAsInt();
         var pixels = palette.getPixels();
         int[][] heights = new int[FallbackBiomeColors.WIDTH][FallbackBiomeColors.WIDTH];
+        boolean[][] water = new boolean[FallbackBiomeColors.WIDTH][FallbackBiomeColors.WIDTH];
         for (int x = 0; x < FallbackBiomeColors.WIDTH; x++) {
             for (int z = 0; z < FallbackBiomeColors.WIDTH; z++) {
                 int rgb = FallbackBiomeColors.color(originCellX + x, originCellZ + z, fallback);
@@ -137,8 +138,10 @@ public final class FallbackPlaneRenderer {
                 int alpha = owned ? 0 : 0xff000000;
                 int abgr = alpha | (rgb & 255) << 16 | (rgb & 0xff00) | rgb >>> 16 & 255;
                 pixels.setPixelRGBA(x, z, abgr);
-                if (!owned && DhFlightConfig.FALLBACK_HEIGHTS.getAsBoolean())
+                if (DhFlightConfig.FALLBACK_HEIGHTS.getAsBoolean()) {
                     heights[x][z] = FallbackBiomeColors.heightOffset(originCellX + x, originCellZ + z);
+                    water[x][z] = FallbackBiomeColors.water(originCellX + x, originCellZ + z);
+                }
             }
         }
         // Preserve bindings: DH/vanilla cache texture state between render passes.
@@ -155,7 +158,8 @@ public final class FallbackPlaneRenderer {
         try {
             BufferUploader.reset();
             if (surfaceMesh == null) surfaceMesh = new VertexBuffer(VertexBuffer.Usage.STATIC);
-            uploadSurface(surfaceMesh, heights, extent);
+            float floor=Math.min(-256,mc.level.getMinBuildHeight()-DhFlightConfig.FALLBACK_HEIGHT.getAsInt()-16);
+            uploadSurface(surfaceMesh,heights,water,extent,dhCovered,coverageSize,floor);
         } finally {
             BufferUploader.reset();
             GL30.glBindVertexArray(vao);
@@ -169,12 +173,14 @@ public final class FallbackPlaneRenderer {
 
     /** Cached GPU geometry refreshes with the palette, never with every frame. */
     public static void uploadSurface(VertexBuffer target, int[][] heights, float extent) {
-        var buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
-        FallbackSurfaceMesh.build(heights, FallbackBiomeColors.CELL_SIZE, extent,
-                (x0,y0,z0, x1,y1,z1, x2,y2,z2, x3,y3,z3) -> {
-                    buffer.addVertex(x0,y0,z0); buffer.addVertex(x1,y1,z1);
-                    buffer.addVertex(x2,y2,z2); buffer.addVertex(x3,y3,z3);
-                });
+        uploadSurface(target,heights,null,extent,null,heights.length,-256);
+    }
+
+    public static void uploadSurface(VertexBuffer target,int[][] heights,boolean[][] water,float extent,
+                                     boolean[] covered,int coverageWidth,float floor) {
+        var buffer=Tesselator.getInstance().begin(VertexFormat.Mode.QUADS,DefaultVertexFormat.POSITION_TEX);
+        FallbackSurfaceMesh.build(heights,water,FallbackBiomeColors.CELL_SIZE,extent,covered,coverageWidth,floor,
+                (x,y,z,u,v) -> buffer.addVertex(x,y,z).setUv(u,v));
         target.bind();
         target.upload(buffer.buildOrThrow());
     }
@@ -306,11 +312,11 @@ public final class FallbackPlaneRenderer {
                 float y = (float) (height - camera.y);
                 float radius = Math.max(128, maxDistance);
                 if (y >= 0) return;
-                var buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
-                buffer.addVertex(-radius, y, -radius);
-                buffer.addVertex(-radius, y, radius);
-                buffer.addVertex(radius, y, radius);
-                buffer.addVertex(radius, y, -radius);
+                var buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+                buffer.addVertex(-radius, y, -radius).setUv(-radius,-radius);
+                buffer.addVertex(-radius, y, radius).setUv(-radius,radius);
+                buffer.addVertex(radius, y, radius).setUv(radius,radius);
+                buffer.addVertex(radius, y, -radius).setUv(radius,-radius);
                 BufferUploader.drawWithShader(buffer.buildOrThrow());
             }
         } finally {

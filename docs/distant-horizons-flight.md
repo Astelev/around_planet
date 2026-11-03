@@ -53,7 +53,7 @@ world-space tiled surface above the configured Y=60 base, projected directly wit
 matrix and its exact camera position, just like native terrain buffers. No inverse
 screen-ray reconstruction or separately sampled Minecraft camera is involved.
 The rasterizer writes the actual depth of that surface into the DH render buffer.
-Tile tops and closed vertical risers are cached in a GPU vertex buffer, refreshed
+Smoothed tile tops and boundary skirts are cached in a GPU vertex buffer, refreshed
 with the biome palette rather than rebuilt on each frame. Outside the sampled
 area, a neutral base plane continues to the DH far distance. Native DH fog and far fading therefore see its proper distance
 and height. Surface colors are multiplied by DH's open-sky lightmap, so the plane
@@ -67,8 +67,9 @@ Inside the sampled area, a 16-block world-space ownership atlas masks the
 approximate surface wherever DH already has enabled, uploaded terrain data or
 ordinary client terrain columns are loaded. This includes empty sky pixels above
 that terrain: camera depth alone cannot tell that an estimated biome tile belongs
-to an already-ready part of the world. Fully owned biome tiles also lose their
-estimated height in the temporary mesh, preventing leftover boundary risers.
+to an already-ready part of the world. Owned tiles retain their table samples only for smoothing adjacent cells; their
+rendered surface remains masked. Closing skirts are generated from the unknown
+side of the actual ownership boundary.
 
 DH coverage is copied from the existing 64×64 column render source during mesh
 building, then attached to the **exact buffer container after its GPU upload**.
@@ -156,9 +157,23 @@ sea below a custom neutral base, without generating terrain.
 
 Exact table entries take precedence over generic mountain/hill tags. Modded
 biomes can use those tags; otherwise they stay at the neutral base. Unknown
-samples also stay at the base until the worker supplies their biome. Heights
-are stepped at the existing 64-block tile boundaries; vertical faces close the
-steps and the outer edge, so raising neighboring tiles does not expose the void.
+samples also stay at the base until the worker supplies their biome. Heights are smoothed using shared corners averaged from neighboring table
+samples, with four triangles around each cell's original center height. Adjacent
+cells meet continuously without vertical steps, and isolated peaks retain their
+biome height. Water/coast corners are pinned to the water samples, keeping water
+flat and allowing neighboring land to slope down to the same edge.
+
+A cached skirt is built at every 16-block boundary between fallback and ready
+DH/vanilla coverage. It starts at the exact interpolated top edge and extends
+below the world's minimum Y (at least 256 blocks below the neutral base). Its
+ownership/color coordinates come from the missing column's center, rather than
+the exact edge: otherwise the ownership mask would discard the closing wall.
+Triangle interpolation used for skirt endpoints matches the GPU top triangles,
+so slopes and skirt tops cannot separate. Only ownership/outer boundaries need
+skirts; internal transitions between unknown neighboring cells are smooth.
+
+This is array arithmetic over existing biome samples, not terrain generation or
+heightmap sampling. Geometry still refreshes with the palette, not each frame.
 Normal DH/vanilla depth still masks all of this approximate geometry. Set
 `fallbackBiomeHeights=false` to return to a flat surface.
 
@@ -271,3 +286,8 @@ probes verify that a ready footprint masks sky while its unknown neighbor remain
 visible, and that a closer fallback can occlude farther DH depth in both depth
 directions. Sea-height checks cover the standard sea level and a neutral base
 above the sea.
+
+Smoothing/skirt regression checks verify shared ramp edges, preserved cell-center
+heights, flat water, outward winding and skirt depths below terrain. GPU probes
+view an ownership boundary from the ready-terrain side and verify that its skirt
+fills the gap despite the ready-area mask, in normal and reversed depth modes.

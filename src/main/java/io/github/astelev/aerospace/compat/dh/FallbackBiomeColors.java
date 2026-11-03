@@ -36,11 +36,15 @@ public final class FallbackBiomeColors {
     }
 
     public static synchronized void observe(String dimension, int blockX, int blockZ, int rgb, int heightOffset) {
+        observe(dimension,blockX,blockZ,rgb,heightOffset,false);
+    }
+
+    public static synchronized void observe(String dimension, int blockX, int blockZ, int rgb, int heightOffset, boolean water) {
         var snapshot = view;
         int x = Math.floorDiv(blockX, CELL_SIZE), z = Math.floorDiv(blockZ, CELL_SIZE);
         if (snapshot != null && snapshot.dimension.equals(dimension) && snapshot.contains(x, z)
                 && COLORS.size() < WIDTH * WIDTH * 2) {
-            COLORS.put(key(x, z), new Sample(rgb & 0xffffff, Math.max(-4096, Math.min(4096, heightOffset))));
+            COLORS.put(key(x, z), new Sample(rgb & 0xffffff, Math.max(-4096, Math.min(4096, heightOffset)),water));
         }
     }
 
@@ -53,7 +57,11 @@ public final class FallbackBiomeColors {
         var sample = COLORS.get(key(cellX, cellZ));
         return sample == null ? 0 : sample.heightOffset;
     }
-    private record Sample(int rgb, int heightOffset) {}
+    public static boolean water(int cellX,int cellZ) {
+        var sample=COLORS.get(key(cellX,cellZ));
+        return sample!=null && sample.water;
+    }
+    private record Sample(int rgb, int heightOffset, boolean water) {}
 
     public static synchronized void clear() {
         if (view != null || !COLORS.isEmpty()) generation++;
@@ -91,6 +99,10 @@ public final class FallbackBiomeColors {
 
     public static synchronized void observe(long epoch, String dimension, int x, int z, int color, int height) {
         if (epoch == generation) observe(dimension, x, z, color, height);
+    }
+
+    public static synchronized void observe(long epoch,String dimension,int x,int z,int color,int height,boolean water) {
+        if(epoch==generation) observe(dimension,x,z,color,height,water);
     }
 
     public record Cell(int x, int z) {}

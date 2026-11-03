@@ -44,7 +44,7 @@ public final class DhFallbackBridge {
             if (!(value instanceof Holder<?> holder) || !(holder.value() instanceof Biome)) return;
             @SuppressWarnings("unchecked") var typed = (Holder<Biome>) holder;
             int color = biomeColor(typed, x, z);
-            FallbackBiomeColors.observe(level.dimension().location().toString(), x, z, color, biomeHeightOffset(typed, level.getSeaLevel(), DhFlightConfig.FALLBACK_HEIGHT.getAsInt()));
+            FallbackBiomeColors.observe(level.dimension().location().toString(), x, z, color, biomeHeightOffset(typed, level.getSeaLevel(), DhFlightConfig.FALLBACK_HEIGHT.getAsInt()),waterSurface(typed));
         } catch (ReflectiveOperationException | RuntimeException ignored) {
             // An unavailable color must never fail generation; neutral color remains.
         }
@@ -60,10 +60,14 @@ public final class DhFallbackBridge {
     }
 
     public static int biomeHeightOffset(Holder<Biome> biome, int seaLevel, int baseHeight) {
-        if (biome.is(BiomeTags.IS_OCEAN) || biome.is(BiomeTags.IS_RIVER) || biome.is(BiomeTags.IS_BEACH))
+        if (waterSurface(biome))
             return BiomeSurfaceHeights.seaOffset(seaLevel,baseHeight);
         return BiomeSurfaceHeights.offset(biome.unwrapKey().map(key -> key.location().toString()).orElse(null),
                 biome.is(BiomeTags.IS_MOUNTAIN), biome.is(BiomeTags.IS_HILL));
+    }
+
+    public static boolean waterSurface(Holder<Biome> biome) {
+        return biome.is(BiomeTags.IS_OCEAN) || biome.is(BiomeTags.IS_RIVER) || biome.is(BiomeTags.IS_BEACH);
     }
 
     public record Frame(int depthTexture, Matrix4f viewProjection, float farPlane, float dhClearDepth, int lightmap, float vanillaClearDepth, net.minecraft.world.phys.Vec3 cameraPosition) {}
