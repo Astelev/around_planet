@@ -1,0 +1,19 @@
+{
+  "vertex": "cruising:fallback_plane",
+  "fragment": "cruising:fallback_plane",
+  "attributes": ["Position", "UV0"],
+  "samplers": [{"name": "DhDepth"}, {"name": "BiomePalette"}, {"name": "SurfaceLightmap"}, {"name": "VanillaDepth"}, {"name": "WorldCoverage"}],
+  "uniforms": [
+    {"name": "SurfaceOffset", "type": "float", "count": 3, "values": [0, 0, 0]},
+    {"name": "CameraPosition", "type": "float", "count": 3, "values": [0, 500, 0]},
+    {"name": "MaxDistance", "type": "float", "count": 1, "values": [4096]},
+    {"name": "PaletteOrigin", "type": "float", "count": 2, "values": [0, 0]},
+    {"name": "PaletteSpan", "type": "float", "count": 1, "values": [8704]},
+    {"name": "FallbackColor", "type": "float", "count": 3, "values": [0.44, 0.54, 0.33]},
+    {"name": "DhClearDepth", "type": "float", "count": 1, "values": [1]},
+    {"name": "DhViewProjection", "type": "matrix4x4", "count": 16, "values": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]},
+    {"name": "VanillaClearDepth", "type": "float", "count": 1, "values": [1]},
+    {"name": "ColorBrightness", "type": "float", "count": 1, "values": [0.55]},
+    {"name": "HasWorldCoverage", "type": "int", "count": 1, "values": [0]}
+  ]
+}
