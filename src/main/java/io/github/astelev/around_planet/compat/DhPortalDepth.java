@@ -24,7 +24,7 @@ public final class DhPortalDepth {
     public static void capture(RenderParams params) {
         if(!PortalRendering.isRendering()) {pending=params;frame=RenderStates.frameIndex;}
     }
-    public static void clear() {pending=null;frame=-1;primed=-1;}
+    public static void clear() {pending=null;frame=-1;primed=-1;DhPortalChunks.clear();}
     public static void beforePortals() {
         if(PortalRendering.isRendering() || frame!=RenderStates.frameIndex || primed==frame)return;
         var params=pending;pending=null;

@@ -23,6 +23,8 @@ public abstract class SeamDhShaderUniformMixin {
             around_planet$near=shader.getUniformLocation("apPortalNearClip");
         }
         shader.setUniform(around_planet$near,false);
+        shader.setUniform(shader.getUniformLocation("apChunkMaskEnabled"),false);
+        shader.setUniform(shader.getUniformLocation("apChunkMask"),7);
         var level=Minecraft.getInstance().level;
         var topology=level==null?null:PlanetBorders.get(level.getWorldBorder());
         boolean enabled=topology!=null && parameters instanceof RenderParams;

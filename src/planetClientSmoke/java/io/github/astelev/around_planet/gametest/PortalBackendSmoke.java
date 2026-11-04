@@ -86,6 +86,10 @@ public final class PortalBackendSmoke {
                 if(dh==null || dh.portalPasses()==0 || dh.oppositeBuffers()==0)return;
                 if(io.github.astelev.around_planet.compat.DhPortalDepth.opaqueDraws==0)return;
                 dhOpposite=dh.opposite();dhPrimary=dh.primary();dhSwaps=dh.swaps();
+                require(io.github.astelev.around_planet.compat.DhPortalChunks.compiledSections>0,
+                        "Portal pass did not recognize any ready real chunk sections");
+                AroundPlanet.LOGGER.info("DH_CHUNK_MASK integration: compiledSections={}",
+                        io.github.astelev.around_planet.compat.DhPortalChunks.compiledSections);
                 DhClipRegression.verify();
                 DhDepthRegression.verify();
                 AroundPlanet.LOGGER.info("DH_DEPTH integration: passes={} opaqueDraws={}",

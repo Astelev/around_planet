@@ -37,20 +37,25 @@ public final class DhPortalTerrain {
             shader.tryInit();shader.bind();shader.fillUniformData(params);
             nearCoverage(shader.uClipDistance,shader.uDitherDhRendering);
             shader.setUniform(shader.getUniformLocation("apPortalNearClip"),true);
-            meta.shaderProgramForThisFrame=shader;
-            meta.bindLightmap(params.lightmap);
-            if(Texture.enableTexturedLods.get()) {
-                GlBlockTextureAtlas.INSTANCE.uploadPendingTiles();GlBlockTextureAtlas.INSTANCE.bind();
-            }
-            GL11.glEnable(GL32.GL_DEPTH_CLAMP);
-            // Depth clamp also disables the ordinary near plane. Restore a shader
-            // eye-plane cut so triangles crossing the camera cannot become curtains.
-            GL11.glEnable(GL30.GL_CLIP_DISTANCE0);
-            GL11.glEnable(GL11.GL_DEPTH_TEST);GL11.glDepthFunc(GL11.GL_LEQUAL);GL11.glDepthMask(true);
-            if(params.renderPass!=com.seibel.distanthorizons.api.enums.rendering.EDhApiRenderPass.TRANSPARENT)
-                renderer.render(params,true,params.renderBufferHandler.getColumnRenderBuffers(),profiler);
-            if(params.renderPass!=com.seibel.distanthorizons.api.enums.rendering.EDhApiRenderPass.OPAQUE)
-                renderer.render(params,false,params.renderBufferHandler.getColumnRenderBuffers(),profiler);
+            // Portal terrain has no DH temporal resolve; jitter would disagree with chunk pixels/depth.
+            shader.setUniform(shader.getUniformLocation("uFrameMod8"),-1.0F);
+            DhPortalChunks.bind(shader,params);
+            try {
+                meta.shaderProgramForThisFrame=shader;
+                meta.bindLightmap(params.lightmap);
+                if(Texture.enableTexturedLods.get()) {
+                    GlBlockTextureAtlas.INSTANCE.uploadPendingTiles();GlBlockTextureAtlas.INSTANCE.bind();
+                }
+                GL11.glEnable(GL32.GL_DEPTH_CLAMP);
+                // Depth clamp also disables the ordinary near plane. Restore a shader
+                // eye-plane cut so triangles crossing the camera cannot become curtains.
+                GL11.glEnable(GL30.GL_CLIP_DISTANCE0);
+                GL11.glEnable(GL11.GL_DEPTH_TEST);GL11.glDepthFunc(GL11.GL_LEQUAL);GL11.glDepthMask(true);
+                if(params.renderPass!=com.seibel.distanthorizons.api.enums.rendering.EDhApiRenderPass.TRANSPARENT)
+                    renderer.render(params,true,params.renderBufferHandler.getColumnRenderBuffers(),profiler);
+                if(params.renderPass!=com.seibel.distanthorizons.api.enums.rendering.EDhApiRenderPass.OPAQUE)
+                    renderer.render(params,false,params.renderBufferHandler.getColumnRenderBuffers(),profiler);
+            } finally {DhPortalChunks.unbind(shader);}
         } finally {
             meta.shaderProgramForThisFrame=previousShader;
             if(clamp)GL11.glEnable(GL32.GL_DEPTH_CLAMP);else GL11.glDisable(GL32.GL_DEPTH_CLAMP);
