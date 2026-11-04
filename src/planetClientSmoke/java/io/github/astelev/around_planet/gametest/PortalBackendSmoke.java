@@ -22,6 +22,7 @@ public final class PortalBackendSmoke {
     private static int ticks,phase,started;
     private static volatile Throwable failure;
     private static volatile int mobId;
+    private static volatile net.minecraft.world.entity.Mob fixtureMob;
     private static ChunkAccess destinationChunk;
     private static Object clientLevel,renderer;
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
@@ -40,9 +41,10 @@ public final class PortalBackendSmoke {
                     p.stopRiding();p.setGameMode(GameType.CREATIVE);p.getAbilities().flying=true;p.onUpdateAbilities();p.setNoGravity(true);
                     level.setDayTime(6000);level.setWeatherParameters(6000,0,false,false);
                     for(int x:new int[]{-16,-15,14,15})for(int z=-2;z<=2;z++)level.getChunk(x,z);
+                    SableCollisionRegression.verify(level,PlanetPortals.managed(level).stream().filter(p0->PlanetPortals.EAST.equals(p0.portalTag)).findFirst().orElseThrow());
                     for(int x=-246;x<=-244;x++)for(int y=80;y<=84;y++)for(int z=5;z<=11;z++)level.setBlockAndUpdate(new BlockPos(x,y,z),Blocks.RED_CONCRETE.defaultBlockState());
                     var mob=net.minecraft.world.entity.EntityType.SLIME.create(level);mob.setSize(4,true);mob.setNoAi(true);mob.setNoGravity(true);
-                    mob.moveTo(-248.5,80,12.5);level.addFreshEntity(mob);mobId=mob.getId();
+                    mob.moveTo(-248.5,80,12.5);level.addFreshEntity(mob);mobId=mob.getId();fixtureMob=mob;
                     p.connection.teleport(210.5,82.5,8.5,-90,0);
                 }catch(Throwable e){failure=e;}
             });
@@ -52,7 +54,7 @@ public final class PortalBackendSmoke {
                 AroundPlanet.LOGGER.info("PORTAL_BACKEND_SMOKE waiting: portals={} sourceBlock={} nativeClientMob={}",portals,mc.level.getBlockState(new BlockPos(-245,82,8)),mc.level.getEntity(mobId));
                 mc.getSingleplayerServer().execute(()->{
                     var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();var e=p.serverLevel().getEntity(mobId);
-                    AroundPlanet.LOGGER.info("PORTAL_BACKEND_SMOKE server mob={} sourceWatch={}",e,qouteall.imm_ptl.core.chunk_loading.ImmPtlChunkTracking.isPlayerWatchingChunk(p,p.level().dimension(),-16,0));
+                    AroundPlanet.LOGGER.info("PORTAL_BACKEND_SMOKE server mob={} fixture={} reason={} player={} periodicDistance={} sourceWatch={}",e,fixtureMob,fixtureMob.getRemovalReason(),p.position(),io.github.astelev.around_planet.portal.PortalMobDistance.forDespawn(p,fixtureMob,p.distanceToSqr(fixtureMob)),qouteall.imm_ptl.core.chunk_loading.ImmPtlChunkTracking.isPlayerWatchingChunk(p,p.level().dimension(),-16,0));
                 });
             }
             if(portals!=2 || !mc.level.getBlockState(new BlockPos(-245,82,8)).is(Blocks.RED_CONCRETE) || mc.level.getEntity(mobId)==null || !red(mc))return;
@@ -104,7 +106,7 @@ public final class PortalBackendSmoke {
             mc.getSingleplayerServer().execute(()->{
                 try {
                     var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
-                    require(!p.isPassenger(),"Server still holds boat passenger");p.connection.teleport(0,200,0,0,0);
+                    require(!p.isPassenger(),"Server still holds boat passenger");p.connection.teleport(254,640,8.5,-90,0);
                 }catch(Throwable e){failure=e;}
             });
             AroundPlanet.LOGGER.info("PORTAL_BACKEND_BOAT_SMOKE PASS: native paddling through global portal, continued movement and Shift dismount");

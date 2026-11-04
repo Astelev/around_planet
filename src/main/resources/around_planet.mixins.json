@@ -5,6 +5,7 @@
   "plugin": "io.github.astelev.around_planet.compat.AeronauticsMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "SablePortalCollisionMixin",
     "SeamDhGenerationMixin",
     "ManagedPortalPassengerMixin",
     "GlobalPortalStorageTickMixin",

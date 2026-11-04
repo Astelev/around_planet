@@ -44,5 +44,7 @@ public final class AeronauticsMixinPlugin implements IMixinConfigPlugin {
 
     @Override public List<String> getMixins() { return null; }
     @Override public void preApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {}
-    @Override public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {}
+    @Override public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
+        if (mixinClassName.endsWith(".SablePortalCollisionMixin")) SablePortalCollisionPatch.apply(targetClass);
+    }
 }
