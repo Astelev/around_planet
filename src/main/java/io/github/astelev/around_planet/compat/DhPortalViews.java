@@ -110,7 +110,7 @@ public final class DhPortalViews {
         var saved=RenderStates.originalPlayerPos;
         return saved!=null?saved:Minecraft.getInstance().player.position();
     }
-    public record Snapshot(Object primary,Object opposite,long swaps,long portalPasses,int oppositeBuffers,String diagnostics) {}
+    public record Snapshot(Object primary,Object opposite,long swaps,long portalPasses,int oppositeBuffers,int primaryBuffers,String diagnostics) {}
     public static Snapshot snapshot() {
         synchronized(VIEWS) {
             for(var view:VIEWS.values()) {
@@ -124,12 +124,17 @@ public final class DhPortalViews {
                         int uploaded=0;
                         for(int i=0;i<buffers.size();i++)if(buffers.get(i).buffersUploaded)uploaded++;
                         return new Snapshot(view.primary,view.opposite,view.swaps,view.portalPasses,
-                                uploaded,
+                                uploaded,uploaded(view.primary),
                                 "sections="+sections.size()+" built="+built+" enabled="+enabled);
                     }
                 }
             }
         }
         return null;
+    }
+    private static int uploaded(ClientRenderState state) {
+        var buffers=state.renderBufferHandler.getColumnRenderBuffers();int count=0;
+        for(int i=0;i<buffers.size();i++)if(buffers.get(i).buffersUploaded)count++;
+        return count;
     }
 }

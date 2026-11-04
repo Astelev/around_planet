@@ -22,11 +22,13 @@ public final class PortalBackendSmoke {
     private static int ticks,phase,started;
     private static volatile Throwable failure;
     private static volatile int mobId;
+    private static volatile boolean mobQueued;
     private static volatile net.minecraft.world.entity.Mob fixtureMob;
     private static ChunkAccess destinationChunk;
     private static Object clientLevel,renderer;
     private static Object dhOpposite,dhPrimary;
     private static long dhSwaps;
+    private static long dhObliquePasses;
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         var mc=Minecraft.getInstance();ticks++;
         if(failure!=null)throw new AssertionError("PORTAL_BACKEND_SMOKE fixture",failure);
@@ -45,12 +47,30 @@ public final class PortalBackendSmoke {
                     for(int x:new int[]{-16,-15,14,15})for(int z=-2;z<=2;z++)level.getChunk(x,z);
                     SableCollisionRegression.verify(level,PlanetPortals.managed(level).stream().filter(p0->PlanetPortals.EAST.equals(p0.portalTag)).findFirst().orElseThrow());
                     for(int x=-246;x<=-244;x++)for(int y=80;y<=84;y++)for(int z=5;z<=11;z++)level.setBlockAndUpdate(new BlockPos(x,y,z),Blocks.RED_CONCRETE.defaultBlockState());
-                    var mob=net.minecraft.world.entity.EntityType.SLIME.create(level);mob.setSize(4,true);mob.setNoAi(true);mob.setNoGravity(true);
-                    mob.moveTo(-248.5,80,12.5);level.addFreshEntity(mob);mobId=mob.getId();fixtureMob=mob;
                     p.connection.teleport(210.5,82.5,8.5,-90,0);
+                    PortalLoadingRegression.verify(p);
                 }catch(Throwable e){failure=e;}
             });
         } else if(phase==1 && ticks-started>100) {
+            // Wait for native watching/tickets before inserting an un-ticketed remote
+            // entity; otherwise vanilla can unload it before the initial watch update.
+            if(mobId==0) {
+                if(!mobQueued) {
+                    mobQueued=true;
+                    mc.getSingleplayerServer().execute(()->{
+                        try {
+                            var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+                            if(!qouteall.imm_ptl.core.chunk_loading.ImmPtlChunkTracking.isPlayerWatchingChunk(p,p.level().dimension(),-16,0)) {
+                                mobQueued=false;return;
+                            }
+                            var mob=net.minecraft.world.entity.EntityType.SLIME.create(p.serverLevel());
+                            mob.setSize(4,true);mob.setNoAi(true);mob.setNoGravity(true);mob.moveTo(-248.5,80,12.5);
+                            p.serverLevel().addFreshEntity(mob);fixtureMob=mob;mobId=mob.getId();
+                        }catch(Throwable e){failure=e;}
+                    });
+                }
+                return;
+            }
             long portals=GlobalPortalStorage.getGlobalPortals(mc.level).stream().filter(PlanetPortals::owned).count();
             if(ticks%100==0) {
                 AroundPlanet.LOGGER.info("PORTAL_BACKEND_SMOKE waiting: portals={} sourceBlock={} nativeClientMob={}",portals,mc.level.getBlockState(new BlockPos(-245,82,8)),mc.level.getEntity(mobId));
@@ -64,12 +84,31 @@ public final class PortalBackendSmoke {
                 var dh=io.github.astelev.around_planet.compat.DhPortalViews.snapshot();
                 if(ticks%100==0)AroundPlanet.LOGGER.info("DH_PORTAL_SMOKE waiting: {}",dh);
                 if(dh==null || dh.portalPasses()==0 || dh.oppositeBuffers()==0)return;
+                if(io.github.astelev.around_planet.compat.DhPortalDepth.opaqueDraws==0)return;
                 dhOpposite=dh.opposite();dhPrimary=dh.primary();dhSwaps=dh.swaps();
                 DhClipRegression.verify();
+                DhDepthRegression.verify();
+                AroundPlanet.LOGGER.info("DH_DEPTH integration: passes={} opaqueDraws={}",
+                        io.github.astelev.around_planet.compat.DhPortalDepth.passes,io.github.astelev.around_planet.compat.DhPortalDepth.opaqueDraws);
                 AroundPlanet.LOGGER.info("DH_PORTAL_SMOKE prepared: passes={} oppositeBuffers={}",dh.portalPasses(),dh.oppositeBuffers());
             }
             clientLevel=mc.level;renderer=mc.levelRenderer;
             AroundPlanet.LOGGER.info("PORTAL_BACKEND_SMOKE GPU PASS: native opposite coast, canonical chunk cache and real non-persistent remote mob");
+            if(dhOpposite!=null) {
+                dhObliquePasses=io.github.astelev.around_planet.compat.DhPortalViews.snapshot().portalPasses();
+                phase=12;started=ticks;
+                // Keep the oblique view away from the boat fixture's floating water pool.
+                mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst().connection.teleport(254,100,512,-5,40));
+                return;
+            }
+            phase=2;started=ticks;
+            mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst().connection.teleport(254,640,8.5,-90,0));
+        } else if(phase==12 && ticks-started>100) {
+            var dh=io.github.astelev.around_planet.compat.DhPortalViews.snapshot();
+            require(dh!=null && dh.portalPasses()>dhObliquePasses,"No DH portal pass at a shallow viewing angle");
+            require(Math.abs(mc.player.getYRot()+5)<0.1,"Oblique fixture camera was not positioned");
+            net.minecraft.client.Screenshot.grab(mc.gameDirectory,"dh-gap-oblique.png",mc.getMainRenderTarget(),message->{});
+            AroundPlanet.LOGGER.info("DH_OBLIQUE_SMOKE: portal terrain pass exercised at yaw=-5 pitch=40 beside seam");
             phase=2;started=ticks;
             mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst().connection.teleport(254,640,8.5,-90,0));
         } else if(phase==2 && ticks-started>60) {

@@ -8,6 +8,7 @@ public final class PlanetConfig {
     public static final ModConfigSpec.IntValue BOUNDARY, MIN_Y, MAX_Y, HALF_SPAN_Z;
     public static final ModConfigSpec.BooleanValue DH_PORTAL_RENDER;
     public static final ModConfigSpec.IntValue DH_PREVIEW_DISTANCE;
+    public static final ModConfigSpec.IntValue CHUNK_PRELOAD_DISTANCE,CHUNK_RADIUS;
     static {
         var b = new ModConfigSpec.Builder();
         b.push("eastWest");
@@ -23,6 +24,12 @@ public final class PlanetConfig {
                 .defineInRange("portalMaxY", 16384, -20000000, 20000000);
         HALF_SPAN_Z = b.comment("Each plane spans [-portalHalfSpanZ, +portalHalfSpanZ]. Creates no north/south portal.")
                 .defineInRange("portalHalfSpanZ", 29999984, 16, 29999984);
+        CHUNK_PRELOAD_DISTANCE=b.comment("Begin loading real opposite-side chunks this many blocks before the managed seam.",
+                "The radius ramps up gradually across this approach distance; restart after changing.")
+                .defineInRange("chunkPreloadDistanceBlocks",512,32,4096);
+        CHUNK_RADIUS=b.comment("Maximum opposite-side chunk radius; also capped by the player's ordinary view distance.",
+                "Larger values cost generation, server memory and network traffic.")
+                .defineInRange("chunkRadius",16,2,32);
         b.pop();
         b.push("compatibility");
         DH_PORTAL_RENDER=b.comment("Prepare a second DH 3.3.3 render tree and render terrain through the managed EW seam.",

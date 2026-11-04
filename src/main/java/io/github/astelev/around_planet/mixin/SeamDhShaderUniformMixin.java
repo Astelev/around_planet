@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Pseudo
 @Mixin(targets="com.seibel.distanthorizons.common.render.openGl.terrain.GlDhTerrainShaderProgram_neoforge",remap=false)
 public abstract class SeamDhShaderUniformMixin {
-    @Unique private int around_planet$enabled=-1,around_planet$min=-1,around_planet$max=-1;
+    @Unique private int around_planet$enabled=-1,around_planet$min=-1,around_planet$max=-1,around_planet$near=-1;
     @Inject(method="fillUniformData",at=@At("RETURN"))
     private void around_planet$clipUniforms(DhApiRenderParam parameters,CallbackInfo ci) {
         var shader=(GlShaderProgram)(Object)this;
@@ -20,7 +20,9 @@ public abstract class SeamDhShaderUniformMixin {
             around_planet$enabled=shader.getUniformLocation("apSeamEnabled");
             around_planet$min=shader.getUniformLocation("apSeamMinX");
             around_planet$max=shader.getUniformLocation("apSeamMaxX");
+            around_planet$near=shader.getUniformLocation("apPortalNearClip");
         }
+        shader.setUniform(around_planet$near,false);
         var level=Minecraft.getInstance().level;
         var topology=level==null?null:PlanetBorders.get(level.getWorldBorder());
         boolean enabled=topology!=null && parameters instanceof RenderParams;

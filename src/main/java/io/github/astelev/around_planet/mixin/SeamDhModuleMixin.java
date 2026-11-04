@@ -23,7 +23,10 @@ public abstract class SeamDhModuleMixin {
     @Inject(method={"stopRenderer","clearRenderCache","onGeneratorPlanChanged"},at=@At("HEAD"))
     private void around_planet$reset(CallbackInfo ci) {if(around_planet$views!=null)around_planet$views.reset();}
     @Inject(method="close",at=@At("HEAD"))
-    private void around_planet$close(CallbackInfo ci) {if(around_planet$views!=null)around_planet$views.close();}
+    private void around_planet$close(CallbackInfo ci) {
+        if(around_planet$views!=null)around_planet$views.close();
+        io.github.astelev.around_planet.compat.DhPortalDepth.clear();
+    }
     @Inject(method="OnDataSourceUpdated",at=@At("RETURN"))
     private void around_planet$data(FullDataSourceV2 data,CallbackInfo ci) {if(around_planet$views!=null)around_planet$views.reload(data.getPos());}
     @Inject(method="reloadPos",at=@At("RETURN"))

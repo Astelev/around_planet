@@ -10,9 +10,12 @@
     "ManagedPortalPassengerMixin",
     "GlobalPortalStorageTickMixin",
     "PortalChunkWatchMixin",
+    "SeamPortalLoadingMixin",
     "PortalMobDespawnMixin"
   ],
   "client": [
+    "SeamDhDepthCaptureMixin",
+    "SeamDhDepthPortalMixin",
     "SeamDhModuleMixin",
     "SeamDhParamsMixin",
     "SeamDhPortalEventMixin",

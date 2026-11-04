@@ -9,6 +9,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class SeamDhShaderSourceMixin {
     @Inject(method="loadFile",at=@At("RETURN"),cancellable=true)
     private static void around_planet$exactSeamClip(String path,boolean absolute,CallbackInfoReturnable<String> cir) {
+        if(path.equals("assets/distanthorizons/shaders/terrain/gl/vert.vert")) {
+            String source=cir.getReturnValue();
+            String patched=source.replaceFirst("void\\s+main\\s*\\(\\s*\\)\\s*\\{",
+                    "uniform bool apPortalNearClip;\nvoid main() {");
+            if(patched.equals(source))throw new IllegalStateException("Unsupported DH terrain vertex entry point");
+            int end=patched.lastIndexOf('}');
+            cir.setReturnValue(patched.substring(0,end)
+                    +"\ngl_ClipDistance[0] = apPortalNearClip ? gl_Position.w - 0.05 : 1.0;\n"+patched.substring(end));
+            return;
+        }
         if(!path.equals("assets/distanthorizons/shaders/terrain/gl/frag.frag"))return;
         String source=cir.getReturnValue();
         String replacement="uniform bool apSeamEnabled;\nuniform float apSeamMinX;\nuniform float apSeamMaxX;\n"
