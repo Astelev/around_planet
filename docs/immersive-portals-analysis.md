@@ -1,5 +1,10 @@
 # Что полезно из Immersive Portals для around_planet
 
+Позже предоставлен другой, исправленный форк **Immersive Aeronautics 1.1.4**.
+Его возможности и существенные отличия описаны отдельно:
+[immersive-aeronautics-analysis.md](immersive-aeronautics-analysis.md).
+Ошибки запуска ниже относятся к прежнему `immersive_portals-6.0.7-all.jar`.
+
 Проверены метаданные и декомпилированы выбранные классы двух предоставленных JAR:
 `immersive-portals-5.2.0-mc1.20.1-fabric.jar` и
 `immersive_portals-6.0.7-all.jar`. NeoForge-версия дополнительно проверена запуском
