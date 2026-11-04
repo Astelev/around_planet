@@ -21,4 +21,13 @@ class SeamGeometryTest {
         assertTrue(DhSeamBounds.inside(t,6L | (1023L<<8)));
         assertFalse(DhSeamBounds.inside(t,east));
     }
+    @Test void partialSectionsRemainAvailableForFragmentClippingAtAnUnalignedSeam() {
+        var t=EastWestTopology.atBoundary(144);
+        long east=6L | (2L<<8),west=6L | ((-3L&0xfffffff)<<8);
+        assertFalse(DhSeamBounds.inside(t,east));assertFalse(DhSeamBounds.inside(t,west));
+        assertFalse(DhSeamBounds.outside(t,east));assertFalse(DhSeamBounds.outside(t,west));
+        assertEquals(128,DhSeamBounds.minX(east));assertEquals(192,DhSeamBounds.maxX(east));
+        assertEquals(-192,DhSeamBounds.minX(west));assertEquals(-128,DhSeamBounds.maxX(west));
+        assertTrue(DhSeamBounds.outside(t,6L | (3L<<8)));
+    }
 }

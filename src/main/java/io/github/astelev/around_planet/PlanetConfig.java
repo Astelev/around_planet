@@ -6,6 +6,8 @@ public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.BooleanValue ENABLED;
     public static final ModConfigSpec.IntValue BOUNDARY, MIN_Y, MAX_Y, HALF_SPAN_Z;
+    public static final ModConfigSpec.BooleanValue DH_PORTAL_RENDER;
+    public static final ModConfigSpec.IntValue DH_PREVIEW_DISTANCE;
     static {
         var b = new ModConfigSpec.Builder();
         b.push("eastWest");
@@ -21,6 +23,13 @@ public final class PlanetConfig {
                 .defineInRange("portalMaxY", 16384, -20000000, 20000000);
         HALF_SPAN_Z = b.comment("Each plane spans [-portalHalfSpanZ, +portalHalfSpanZ]. Creates no north/south portal.")
                 .defineInRange("portalHalfSpanZ", 29999984, 16, 29999984);
+        b.pop();
+        b.push("compatibility");
+        DH_PORTAL_RENDER=b.comment("Prepare a second DH 3.3.3 render tree and render terrain through the managed EW seam.",
+                "One extra render tree near the seam costs memory and background work. Restart after changing.")
+                .define("dhPortalRendering",true);
+        DH_PREVIEW_DISTANCE=b.comment("Distance in blocks from the seam at which the opposite DH tree starts loading.")
+                .defineInRange("dhPreviewDistanceBlocks",512,32,4096);
         b.pop(); SPEC = b.build();
     }
     private PlanetConfig() {}

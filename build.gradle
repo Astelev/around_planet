@@ -43,6 +43,7 @@ def aeronauticsJar = providers.gradleProperty('immersiveAeronauticsJar')
         .orElse('libs/Immersive-Aeronautics1.1.4-1.21.1-NeoForge.jar')
 def aeronauticsFile = file(aeronauticsJar.get())
 dependencies {
+    compileOnly('maven.modrinth:distanthorizons:9w34y8ai') { transitive = false } // 3.3.3, MC 1.21.1
     compileOnly files(aeronauticsFile)
     localRuntime files(aeronauticsFile)
     localRuntime 'me.shedaniel.cloth:cloth-config-neoforge:15.0.140'
@@ -104,7 +105,7 @@ if (providers.gradleProperty('planetTests').isPresent()) {
     sourceSets {
         planetTests {
             compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-            runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+            runtimeClasspath += output + sourceSets.main.output + sourceSets.main.runtimeClasspath
         }
     }
     neoForge.mods.named(mod_id) { sourceSet(sourceSets.planetTests) }
@@ -120,7 +121,7 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     sourceSets {
         planetClientSmoke {
             compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-            runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+            runtimeClasspath += output + sourceSets.main.output + sourceSets.main.runtimeClasspath
         }
     }
     neoForge.mods.named(mod_id) { sourceSet(sourceSets.planetClientSmoke) }

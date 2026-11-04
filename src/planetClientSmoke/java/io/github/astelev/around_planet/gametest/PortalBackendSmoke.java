@@ -25,6 +25,8 @@ public final class PortalBackendSmoke {
     private static volatile net.minecraft.world.entity.Mob fixtureMob;
     private static ChunkAccess destinationChunk;
     private static Object clientLevel,renderer;
+    private static Object dhOpposite,dhPrimary;
+    private static long dhSwaps;
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         var mc=Minecraft.getInstance();ticks++;
         if(failure!=null)throw new AssertionError("PORTAL_BACKEND_SMOKE fixture",failure);
@@ -58,6 +60,14 @@ public final class PortalBackendSmoke {
                 });
             }
             if(portals!=2 || !mc.level.getBlockState(new BlockPos(-245,82,8)).is(Blocks.RED_CONCRETE) || mc.level.getEntity(mobId)==null || !red(mc))return;
+            if(net.neoforged.fml.ModList.get().isLoaded("distanthorizons")) {
+                var dh=io.github.astelev.around_planet.compat.DhPortalViews.snapshot();
+                if(ticks%100==0)AroundPlanet.LOGGER.info("DH_PORTAL_SMOKE waiting: {}",dh);
+                if(dh==null || dh.portalPasses()==0 || dh.oppositeBuffers()==0)return;
+                dhOpposite=dh.opposite();dhPrimary=dh.primary();dhSwaps=dh.swaps();
+                DhClipRegression.verify();
+                AroundPlanet.LOGGER.info("DH_PORTAL_SMOKE prepared: passes={} oppositeBuffers={}",dh.portalPasses(),dh.oppositeBuffers());
+            }
             clientLevel=mc.level;renderer=mc.levelRenderer;
             AroundPlanet.LOGGER.info("PORTAL_BACKEND_SMOKE GPU PASS: native opposite coast, canonical chunk cache and real non-persistent remote mob");
             phase=2;started=ticks;
@@ -76,6 +86,11 @@ public final class PortalBackendSmoke {
                 var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();p.connection.teleport(-254,640,8.5,90,0);
             });
         } else if(phase==4 && ticks-started>60) {
+            if(dhOpposite!=null) {
+                var dh=io.github.astelev.around_planet.compat.DhPortalViews.snapshot();
+                require(dh!=null && dh.primary()==dhOpposite && dh.swaps()>dhSwaps,"Prepared DH tree was discarded on east crossing");
+                AroundPlanet.LOGGER.info("DH_PORTAL_SMOKE east PASS: preloaded opposite tree promoted without rebuild");
+            }
             mc.options.keyUp.setDown(true);phase=5;started=ticks;
         } else if(phase==5 && mc.player.getX()>250) {
             mc.options.keyUp.setDown(false);
@@ -96,6 +111,11 @@ public final class PortalBackendSmoke {
             });
             AroundPlanet.LOGGER.info("PORTAL_BACKEND_SMOKE PASS: both native crossings, high altitude, GPU image and retained canonical cache");
         } else if(phase==6 && ticks-started>60 && mc.player.getVehicle()!=null && mc.player.getVehicle().getX()>250) {
+            if(dhPrimary!=null) {
+                var dh=io.github.astelev.around_planet.compat.DhPortalViews.snapshot();
+                require(dh!=null && dh.primary()==dhPrimary && dh.swaps()>=dhSwaps+2,"Original DH tree was discarded on reverse crossing");
+                AroundPlanet.LOGGER.info("DH_PORTAL_SMOKE west PASS: original tree retained for reverse crossing");
+            }
             phase=7;started=ticks;mc.options.keyUp.setDown(true);
         } else if(phase==7 && mc.player.getVehicle()!=null && mc.player.getVehicle().getX()<-250) {
             phase=8;started=ticks;
