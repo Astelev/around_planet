@@ -42,9 +42,14 @@ configurations { runtimeClasspath.extendsFrom localRuntime }
 def aeronauticsJar = providers.gradleProperty('immersiveAeronauticsJar')
         .orElse('libs/Immersive-Aeronautics1.1.4-1.21.1-NeoForge.jar')
 def aeronauticsFile = file(aeronauticsJar.get())
+def patchAeronautics = tasks.register('patchAeronautics', io.github.astelev.build.PatchAeronautics) {
+    inputJar = aeronauticsFile
+    outputJar = layout.buildDirectory.file('patched-dependencies/Immersive-Aeronautics1.1.4-1.21.1-NeoForge-apfix1.jar')
+}
+def patchedAeronautics = files(patchAeronautics.flatMap { it.outputJar })
 dependencies {
-    compileOnly files(aeronauticsFile)
-    localRuntime files(aeronauticsFile)
+    compileOnly patchedAeronautics
+    localRuntime patchedAeronautics
     localRuntime 'me.shedaniel.cloth:cloth-config-neoforge:15.0.140'
     // The fork's unguarded train-rider hook also runs for ordinary boats.
     localRuntime 'maven.modrinth:create:UjX6dr61' // Create 6.0.10, including its nested dependencies
@@ -99,6 +104,8 @@ tasks.named('test', Test).configure { useJUnitPlatform() }
 
 // Real-server regression harness, excluded from production artifacts.
 if (providers.gradleProperty('planetTests').isPresent()) {
+    // Reproduce public access introduced by other mods in the user's pack.
+    neoForge.accessTransformers.from('src/planetTests/accesstransformer.cfg')
     sourceSets {
         planetTests {
             compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath

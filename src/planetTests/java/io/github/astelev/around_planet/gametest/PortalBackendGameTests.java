@@ -21,7 +21,11 @@ import qouteall.imm_ptl.core.portal.global_portals.GlobalPortalStorage;
 public final class PortalBackendGameTests {
     @SubscribeEvent public static void register(RegisterGameTestsEvent event){event.register(PortalBackendGameTests.class);}
     @GameTest(template="empty",timeoutTicks=100)
-    public static void pairLifecycleAndNativeTransform(GameTestHelper h) {
+    public static void pairLifecycleAndNativeTransform(GameTestHelper h) throws NoSuchMethodException {
+        var send = net.minecraft.server.level.ChunkMap.class.getDeclaredMethod(
+                "onChunkReadyToSend", net.minecraft.world.level.chunk.LevelChunk.class);
+        h.assertTrue(java.lang.reflect.Modifier.isPublic(send.getModifiers()),
+                "Chunk sending visibility regression fixture was not applied");
         var level=h.getLevel();var storage=GlobalPortalStorage.get(level);var border=level.getWorldBorder();
         double nativeMin=border.getMinX(),nativeMax=border.getMaxX();
         var foreign=Portal.ENTITY_TYPE.create(level);foreign.portalTag="test:foreign";foreign.isGlobalPortal=true;

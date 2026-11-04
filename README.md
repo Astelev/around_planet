@@ -11,8 +11,8 @@ Minecraft 1.21.1 / NeoForge 21.1.256, Java 21. Имя и mod ID: `around_planet`
 
 На сервере и клиенте нужны одинаковые версии:
 
-- `around_planet-0.4.0.jar`;
-- предоставленный **Immersive-Aeronautics1.1.4-1.21.1-NeoForge.jar**;
+- `around_planet-0.4.1.jar`;
+- исправленный **Immersive-Aeronautics1.1.4-1.21.1-NeoForge-apfix1.jar**;
 - **Create 6.x** (проверено 6.0.10 с вложенными Flywheel/Ponder);
 - **Cloth Config 15.0.140**.
 
@@ -22,6 +22,13 @@ Minecraft 1.21.1 / NeoForge 21.1.256, Java 21. Имя и mod ID: `around_planet`
 наличие его корабельного модуля. Create требуется фактическому коду форка:
 его обработчик посадки обращается к классу поезда даже для обычной лодки.
 Зависимости не включаются внутрь around_planet JAR.
+
+В исходном Aeronautics приватный `@Overwrite onChunkReadyToSend` несовместим
+с модами, открывающими этот метод `ChunkMap`: мир падает с
+`cannot reduce visibiliy of PUBLIC target method`. Патч `apfix1` меняет только
+доступ этого overwrite на `public`, сохраняя его тело и остальные записи JAR.
+**Замените исходный Aeronautics исправленным, не оставляйте оба файла.**
+Одной замены around_planet недостаточно для устранения этого вылета.
 
 Sable нужен для физических конструкций; проверенный набор использует Sable 2.0.6,
 Sodium 0.8.13, DH 3.3.3 и Cruising Speed 1.0.0. Перенос физических кораблей
@@ -107,6 +114,11 @@ Vanilla world border не изменяется. Он должен включат
 путь явно. Maven-координаты именно этого артефакта пока не найдены; обычный IP
 с тем же внутренним номером не является заменой.
 
+Задача `patchAeronautics` автоматически создаёт исправленную копию зависимости
+в `build/patched-dependencies/` и использует её для запуска из IDE/Gradle.
+Исходный JAR не меняется. Для установленной игры скопируйте исправленную
+зависимость в `mods/` вместо исходной; задача доступна и отдельно от `build`.
+
 ```sh
 bash ./gradlew -PimmersiveAeronauticsJar=/absolute/path/to/Immersive-Aeronautics1.1.4-1.21.1-NeoForge.jar build
 bash ./gradlew -PimmersiveAeronauticsJar=/absolute/path/to/Immersive-Aeronautics1.1.4-1.21.1-NeoForge.jar -PplanetTests runGameTestServer
@@ -123,6 +135,9 @@ Create 6.0.10 и Cloth Config 15.0.140 разрешаются из публич�
 на Y=640, сохранение кэша, греблю лодки и выход по Shift. Все fixture-классы
 исключены из итогового JAR.
 
-JAR: `build/libs/around_planet-0.4.0.jar`.
+GameTest дополнительно открывает `ChunkMap.onChunkReadyToSend` тестовым access
+transformer, воспроизводя условие вылета из сборки. Этот transformer в мод не входит.
+
+JAR: `build/libs/around_planet-0.4.1.jar`.
 Подробности: [архитектура](docs/architecture.md), [рендер шва](docs/seam-rendering.md),
 [разбор Aeronautics](docs/immersive-aeronautics-analysis.md).
