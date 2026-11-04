@@ -4,30 +4,17 @@
   "package": "io.github.astelev.around_planet.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "WorldBorderMixin",
-    "PlayerMovementMixin",
-    "SeamPlayerTicketsMixin",
-    "SeamChunkSendingMixin",
     "SeamDhGenerationMixin",
-    "ChunkTrackingAccessor",
-    "EntityDataAccessor",
-    "VehicleMovementAccessor",
-    "SeamMobDespawnMixin"
+    "ManagedPortalPassengerMixin",
+    "GlobalPortalStorageTickMixin",
+    "PortalChunkWatchMixin",
+    "PortalMobDespawnMixin"
+  ],
+  "client": [
+    "SeamDhRenderMixin",
+    "SeamCruisingMaskMixin"
   ],
   "injectors": {
     "defaultRequire": 1
-  },
-  "client": [
-    "BorderVignetteMixin",
-    "SeamRenderRegionMixin",
-    "SeamRenderSectionMixin",
-    "SeamTintMixin",
-    "SeamDhRenderMixin",
-    "SeamCruisingMaskMixin",
-    "SeamBorderRenderMixin",
-    "SeamAlternativeCloneMixin",
-    "SeamAlternativeSectionMixin",
-    "SeamAlternativeSliceMixin",
-    "SeamVehiclePassengersMixin"
-  ]
+  }
 }

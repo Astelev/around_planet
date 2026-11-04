@@ -31,7 +31,7 @@ public final class ShipyardSpace {
                 CACHE.put(level,bounds);
             } catch(ReflectiveOperationException | LinkageError e) {
                 unavailable=true;
-                AroundPlanet.LOGGER.warn("Sable private coordinate bounds unavailable; seam clipping is suspended to preserve ship rendering",e);
+                AroundPlanet.LOGGER.warn("Sable private coordinate bounds unavailable; source watch clipping is suspended to preserve ship data",e);
                 return true;
             }
         }

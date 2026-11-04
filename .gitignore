@@ -37,4 +37,5 @@ run/
 !**/src/**/run/
 **/src/generated/**/.cache/
 repo/
+/libs/
 !**/src/**/repo/

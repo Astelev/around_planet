@@ -5,20 +5,22 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.BooleanValue ENABLED;
-    public static final ModConfigSpec.IntValue BOUNDARY, ACTIVATION, RADIUS;
+    public static final ModConfigSpec.IntValue BOUNDARY, MIN_Y, MAX_Y, HALF_SPAN_Z;
     static {
         var b = new ModConfigSpec.Builder();
         b.push("eastWest");
-        ENABLED = b.comment("Experimental Overworld east/west transfer. Enable in a test world. Restart after changing these settings.",
-                "Renders loaded chunks and ordinary entities across the seam. Physics-ship transfer is not implemented. Does not change world generation.")
+        ENABLED = b.comment("Create two Aeronautics global portals in the Overworld. Restart after changing settings.",
+                "Only around_planet-tagged portals are managed. Generation is not made periodic. Whole-ship global traversal is a later stage.")
                 .define("enabled", false);
         BOUNDARY = b.comment("Absolute X of each seam: +boundaryX wraps to -boundaryX, not to zero.",
                 "Multiple of 16; total circumference is twice this value. Replaces the old widthBlocks setting.")
                 .defineInRange("boundaryX", 65536, 128, 29500000);
-        ACTIVATION = b.comment("Distance from either seam at which destination preloading begins; limited to one quarter of width.")
-                .defineInRange("activationDistance", 128, 16, 1024);
-        RADIUS = b.comment("Destination chunk radius. Bounded transient tickets; no synchronous generation in the entity tick.")
-                .defineInRange("destinationRadius", 2, 1, 4);
+        MIN_Y = b.comment("Bottom of the portal plane; independent of the world's build height. Must be below portalMaxY.")
+                .defineInRange("portalMinY", -2048, -20000000, 20000000);
+        MAX_Y = b.comment("Top of the portal plane. Default includes high-altitude flight.")
+                .defineInRange("portalMaxY", 16384, -20000000, 20000000);
+        HALF_SPAN_Z = b.comment("Each plane spans [-portalHalfSpanZ, +portalHalfSpanZ]. Creates no north/south portal.")
+                .defineInRange("portalHalfSpanZ", 29999984, 16, 29999984);
         b.pop(); SPEC = b.build();
     }
     private PlanetConfig() {}

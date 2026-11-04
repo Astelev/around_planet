@@ -1,5 +1,10 @@
 # Что полезно из Immersive Portals для around_planet
 
+Исторический разбор перед миграцией. С 0.4.0 around_planet использует исправленный
+форк Immersive Aeronautics как зависимость; текущее устройство — в
+[architecture.md](architecture.md). Описанные ниже ошибки относятся к прежнему
+базовому JAR, а планы по кэшу частично реализованы переходом на нативный движок.
+
 Позже предоставлен другой, исправленный форк **Immersive Aeronautics 1.1.4**.
 Его возможности и существенные отличия описаны отдельно:
 [immersive-aeronautics-analysis.md](immersive-aeronautics-analysis.md).

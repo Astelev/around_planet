@@ -10,7 +10,11 @@ group = mod_group_id
 base { archivesName = mod_id }
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-repositories { mavenCentral() }
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.shedaniel.me/' }
+    maven { url = 'https://api.modrinth.com/maven' }
+}
 
 neoForge {
     version = project.neo_version
@@ -33,9 +37,17 @@ neoForge {
     }
 }
 
-// Local compatibility checks only; no external mods are compiled against or bundled.
+// The Aeronautics fork is supplied separately, never bundled into around_planet.
 configurations { runtimeClasspath.extendsFrom localRuntime }
+def aeronauticsJar = providers.gradleProperty('immersiveAeronauticsJar')
+        .orElse('libs/Immersive-Aeronautics1.1.4-1.21.1-NeoForge.jar')
+def aeronauticsFile = file(aeronauticsJar.get())
 dependencies {
+    compileOnly files(aeronauticsFile)
+    localRuntime files(aeronauticsFile)
+    localRuntime 'me.shedaniel.cloth:cloth-config-neoforge:15.0.140'
+    // The fork's unguarded train-rider hook also runs for ordinary boats.
+    localRuntime 'maven.modrinth:create:UjX6dr61' // Create 6.0.10, including its nested dependencies
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -63,6 +75,13 @@ sourceSets.main.resources.srcDir generateModMetadata
 neoForge.ideSyncTask generateModMetadata
 
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.named('compileJava') {
+    doFirst {
+        if (!aeronauticsFile.isFile()) {
+            throw new GradleException('Supply Immersive Aeronautics 1.1.4 with -PimmersiveAeronauticsJar=/absolute/path/to/its.jar (the base Immersive Portals JAR is not sufficient).')
+        }
+    }
+}
 
 publishing {
     publications {
@@ -106,7 +125,5 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     neoForge.runs.named('client') {
         programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('around-ew-smoke'))
         jvmArguments.add('-Xmx3G')
-        if (providers.gradleProperty('planetVisualSmoke').isPresent()) jvmArguments.add('-Daround_planet.visualSmoke=true')
-        if (providers.gradleProperty('planetEntitySmoke').isPresent()) jvmArguments.add('-Daround_planet.entitySmoke=true')
     }
 }

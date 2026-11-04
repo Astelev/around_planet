@@ -6,11 +6,11 @@ import net.neoforged.fml.ModList;
 import java.lang.reflect.Method;
 
 /** Do not detach a Sable passenger before whole-ship transfer is implemented. No mandatory Sable dependency. */
-final class ShipPassengerGuard {
+public final class ShipPassengerGuard {
     private static boolean initialized, unavailable;
     private static Object helper;
     private static Method tracking, lastTracking;
-    static boolean attached(Entity entity) {
+    public static boolean attached(Entity entity) {
         if (!ModList.get().isLoaded("sable")) return false;
         try {
             if (!initialized) {
@@ -23,7 +23,7 @@ final class ShipPassengerGuard {
             if (unavailable) return true;
             return tracking.invoke(helper, entity) != null || lastTracking.invoke(entity) != null;
         } catch (ReflectiveOperationException | LinkageError | IllegalArgumentException exception) {
-            if (!unavailable) AroundPlanet.LOGGER.warn("Sable passenger guard unavailable; entity transfers are suspended", exception);
+            if (!unavailable) AroundPlanet.LOGGER.warn("Sable passenger guard unavailable; managed portal transfers are suspended", exception);
             unavailable = true;
             return true;
         }
