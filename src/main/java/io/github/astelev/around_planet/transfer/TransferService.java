@@ -148,6 +148,13 @@ public final class TransferService {
         var members=root.getSelfAndPassengers().toList();
         var velocities=members.stream().map(Entity::getDeltaMovement).toList();
         root.teleportTo(root.getX()+dx,root.getY(),root.getZ());
+        if(root.getControllingPassenger() instanceof ServerPlayer controller) {
+            var movement=(io.github.astelev.around_planet.mixin.VehicleMovementAccessor)controller.connection;
+            movement.around_planet$vehicle(root);
+            movement.around_planet$firstX(root.getX());movement.around_planet$firstY(root.getY());movement.around_planet$firstZ(root.getZ());
+            movement.around_planet$lastX(root.getX());movement.around_planet$lastY(root.getY());movement.around_planet$lastZ(root.getZ());
+            movement.around_planet$floating(false);movement.around_planet$floatingTicks(0);
+        }
         for(var member:members) if(member instanceof ServerPlayer player) {
             // Set the destination watch view before move() updates entity trackers against it.
             // Otherwise a tracked vehicle is temporarily removed from its own passenger's client.
@@ -172,7 +179,7 @@ public final class TransferService {
                 && player.connection.hasChannel(io.github.astelev.around_planet.network.SeamVehiclePayload.TYPE)) {
             net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
                     new io.github.astelev.around_planet.network.SeamVehiclePayload(root.level().dimension().location(),root.getId(),root.getUUID(),
-                            root.getX(),root.getY(),root.getZ(),root.getYRot(),root.getXRot()));
+                            root.getX(),root.getY(),root.getZ(),root.getYRot(),root.getXRot(),player.getVehicle().getId(),player.getVehicle().getUUID()));
         }
     }
     private TransferService() {}

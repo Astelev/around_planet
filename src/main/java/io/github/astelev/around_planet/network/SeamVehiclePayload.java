@@ -10,13 +10,13 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import java.util.UUID;
 
 /** One authoritative pose, also applied if the vehicle's native spawn arrives after the player teleport. */
-public record SeamVehiclePayload(ResourceLocation dimension,int id,UUID uuid,double x,double y,double z,float yaw,float pitch) implements CustomPacketPayload {
+public record SeamVehiclePayload(ResourceLocation dimension,int id,UUID uuid,double x,double y,double z,float yaw,float pitch,int seatId,UUID seatUuid) implements CustomPacketPayload {
     public static final Type<SeamVehiclePayload> TYPE=new Type<>(ResourceLocation.fromNamespaceAndPath(AroundPlanet.MOD_ID,"seam_vehicle"));
     public static final StreamCodec<RegistryFriendlyByteBuf,SeamVehiclePayload> CODEC=StreamCodec.of(
-        (b,p)->{b.writeResourceLocation(p.dimension);b.writeVarInt(p.id);b.writeUUID(p.uuid);b.writeDouble(p.x);b.writeDouble(p.y);b.writeDouble(p.z);b.writeFloat(p.yaw);b.writeFloat(p.pitch);},
-        b->new SeamVehiclePayload(b.readResourceLocation(),b.readVarInt(),b.readUUID(),b.readDouble(),b.readDouble(),b.readDouble(),b.readFloat(),b.readFloat()));
+        (b,p)->{b.writeResourceLocation(p.dimension);b.writeVarInt(p.id);b.writeUUID(p.uuid);b.writeDouble(p.x);b.writeDouble(p.y);b.writeDouble(p.z);b.writeFloat(p.yaw);b.writeFloat(p.pitch);b.writeVarInt(p.seatId);b.writeUUID(p.seatUuid);},
+        b->new SeamVehiclePayload(b.readResourceLocation(),b.readVarInt(),b.readUUID(),b.readDouble(),b.readDouble(),b.readDouble(),b.readFloat(),b.readFloat(),b.readVarInt(),b.readUUID()));
     @Override public Type<SeamVehiclePayload> type(){return TYPE;}
     public static void register(RegisterPayloadHandlersEvent event) {
-        event.registrar("1").optional().playToClient(TYPE,CODEC,(p,c)->c.enqueueWork(()->SeamVehicleCorrection.accept(p)));
+        event.registrar("2").optional().playToClient(TYPE,CODEC,(p,c)->c.enqueueWork(()->SeamVehicleCorrection.accept(p)));
     }
 }

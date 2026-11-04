@@ -107,5 +107,6 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
         programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('around-ew-smoke'))
         jvmArguments.add('-Xmx3G')
         if (providers.gradleProperty('planetVisualSmoke').isPresent()) jvmArguments.add('-Daround_planet.visualSmoke=true')
+        if (providers.gradleProperty('planetEntitySmoke').isPresent()) jvmArguments.add('-Daround_planet.entitySmoke=true')
     }
 }

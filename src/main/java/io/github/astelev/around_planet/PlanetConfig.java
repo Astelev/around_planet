@@ -10,7 +10,7 @@ public final class PlanetConfig {
         var b = new ModConfigSpec.Builder();
         b.push("eastWest");
         ENABLED = b.comment("Experimental Overworld east/west transfer. Enable in a test world. Restart after changing these settings.",
-                "No through-seam rendering or physics-ship transfer yet. Does not change world generation.")
+                "Renders loaded chunks and ordinary entities across the seam. Physics-ship transfer is not implemented. Does not change world generation.")
                 .define("enabled", false);
         BOUNDARY = b.comment("Absolute X of each seam: +boundaryX wraps to -boundaryX, not to zero.",
                 "Multiple of 16; total circumference is twice this value. Replaces the old widthBlocks setting.")

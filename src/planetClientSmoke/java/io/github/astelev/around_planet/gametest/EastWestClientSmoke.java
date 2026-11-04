@@ -14,10 +14,10 @@ public final class EastWestClientSmoke {
     private static int ticks, phase, started;
     private static volatile Throwable serverFailure;
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
-        if(Boolean.getBoolean("around_planet.visualSmoke")) return;
+        if(Boolean.getBoolean("around_planet.visualSmoke") || Boolean.getBoolean("around_planet.entitySmoke")) return;
         var mc=Minecraft.getInstance(); ticks++;
         if(serverFailure!=null) throw new AssertionError("AROUND_EW_SMOKE server packet regression",serverFailure);
-        if(ticks>1800) throw new AssertionError("AROUND_EW_SMOKE timeout: phase="+phase+" x="+(mc.player==null?"none":mc.player.getX()));
+        if(ticks>2600) throw new AssertionError("AROUND_EW_SMOKE timeout: phase="+phase+" x="+(mc.player==null?"none":mc.player.getX()));
         if(mc.level==null || mc.player==null || mc.getSingleplayerServer()==null || ticks<100) return;
         mc.player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
         mc.player.setNoGravity(true);
@@ -71,9 +71,44 @@ public final class EastWestClientSmoke {
             });
         } else if(phase==3 && ticks-started>40 && mc.player.getVehicle()!=null && Math.abs(mc.player.getVehicle().getX()+255.5)<0.02) {
             AroundPlanet.LOGGER.info("AROUND_EW_SMOKE PASS: real player network transfer east/west, fractional offset, height/orientation, client border, boat + real player passenger, and no north/south wrap");
+            phase=35;started=ticks;
+            // Simulate vanilla dropping a passenger packet before a destination vehicle spawn.
+            mc.player.stopRiding();
+            mc.getSingleplayerServer().execute(()->{
+                var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();var boat=p.getVehicle();
+                net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,new io.github.astelev.around_planet.network.SeamVehiclePayload(
+                        p.level().dimension().location(),boat.getId(),boat.getUUID(),boat.getX(),boat.getY(),boat.getZ(),boat.getYRot(),boat.getXRot(),boat.getId(),boat.getUUID()));
+            });
+        } else if(phase==35 && ticks-started>20 && mc.player.getVehicle()!=null) {
+            AroundPlanet.LOGGER.info("AROUND_BOAT_MOUNT_SMOKE PASS: delayed authoritative correction repairs a dropped passenger pairing");
+            phase=31;started=ticks;
+            mc.getSingleplayerServer().execute(()->{
+                var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+                var old=p.getVehicle();p.stopRiding();if(old!=null)old.discard();
+                var level=p.serverLevel();
+                for(int x:new int[]{-256,-255,-254,-253,-252,-251,-250,-249,-248,-247,-246,-245,-244,244,245,246,247,248,249,250,251,252,253,254,255})
+                    for(int z=29;z<=35;z++)for(int y=198;y<=202;y++)
+                        level.setBlockAndUpdate(new net.minecraft.core.BlockPos(x,y,z),(y<200?net.minecraft.world.level.block.Blocks.WATER:net.minecraft.world.level.block.Blocks.AIR).defaultBlockState());
+                var boat=net.minecraft.world.entity.EntityType.BOAT.create(level);boat.moveTo(254,199.6,32,-90,0);level.addFreshEntity(boat);
+                p.teleportTo(254,200,32);p.setYRot(-90);p.startRiding(boat,true);
+            });
+        } else if(phase==31 && ticks-started>60 && mc.player.getVehicle()!=null && mc.player.getVehicle().getX()>250) {
+            phase=32;started=ticks;mc.options.keyUp.setDown(true);
+        } else if(phase==32 && mc.player.getVehicle()!=null && mc.player.getVehicle().getX() < -250) {
+            phase=33;started=ticks;
+        } else if(phase==33 && ticks-started>20 && mc.player.getVehicle()!=null && mc.player.getVehicle().getX()>-250) {
+            mc.player.getVehicle().setYRot(90);mc.player.setYRot(90);phase=36;started=ticks;
+        } else if(phase==36 && mc.player.getVehicle()!=null && mc.player.getVehicle().getX()>250) {
+            phase=37;started=ticks;
+        } else if(phase==37 && ticks-started>20 && mc.player.getVehicle()!=null && mc.player.getVehicle().getX()<250) {
+            mc.options.keyUp.setDown(false);mc.options.keyShift.setDown(true);phase=34;started=ticks;
+        } else if(phase==34 && ticks-started>20 && !mc.player.isPassenger()) {
+            mc.options.keyShift.setDown(false);
+            AroundPlanet.LOGGER.info("AROUND_BOAT_INPUT_SMOKE PASS: actual paddling both ways, continued movement and Shift dismount without reconnect");
             phase=4;started=ticks;
             mc.getSingleplayerServer().execute(()->{
                 var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+                try {require(!p.isPassenger(),"Client dismounted but server still holds rider");}catch(Throwable e){serverFailure=e;}
                 var boat=p.getVehicle();p.stopRiding();if(boat!=null) boat.discard();
                 p.connection.teleport(255.75,200,0,47,13);
             });

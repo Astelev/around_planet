@@ -9,7 +9,10 @@
     "SeamPlayerTicketsMixin",
     "SeamChunkSendingMixin",
     "SeamDhGenerationMixin",
-    "ChunkTrackingAccessor"
+    "ChunkTrackingAccessor",
+    "EntityDataAccessor",
+    "VehicleMovementAccessor",
+    "SeamMobDespawnMixin"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -24,6 +27,7 @@
     "SeamBorderRenderMixin",
     "SeamAlternativeCloneMixin",
     "SeamAlternativeSectionMixin",
-    "SeamAlternativeSliceMixin"
+    "SeamAlternativeSliceMixin",
+    "SeamVehiclePassengersMixin"
   ]
 }

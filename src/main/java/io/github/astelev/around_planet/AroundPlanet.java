@@ -15,6 +15,7 @@ public final class AroundPlanet {
     public AroundPlanet(net.neoforged.bus.api.IEventBus bus, ModContainer container) {
         bus.addListener(io.github.astelev.around_planet.network.SeamChunkPayload::register);
         bus.addListener(io.github.astelev.around_planet.network.SeamVehiclePayload::register);
+        bus.addListener(io.github.astelev.around_planet.network.SeamEntitiesPayload::register);
         container.registerConfig(ModConfig.Type.SERVER, PlanetConfig.SPEC);
     }
 }
