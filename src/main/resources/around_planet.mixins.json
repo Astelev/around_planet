@@ -21,6 +21,8 @@
   "client": [
     "BorderVignetteMixin",
     "SeamRenderRegionMixin",
+    "SeamRenderLightMixin",
+    "SeamAlternativeLightMixin",
     "SeamRenderSectionMixin",
     "SeamTintMixin",
     "SeamDhRenderMixin",

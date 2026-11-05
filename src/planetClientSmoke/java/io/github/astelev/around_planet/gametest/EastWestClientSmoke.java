@@ -13,13 +13,14 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 public final class EastWestClientSmoke {
     private static int ticks, phase, started;
     private static volatile Throwable serverFailure;
+    private static double flightVelocity;
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
-        if(Boolean.getBoolean("around_planet.visualSmoke") || Boolean.getBoolean("around_planet.entitySmoke")) return;
+        if(Boolean.getBoolean("around_planet.lightSmoke") || Boolean.getBoolean("around_planet.visualSmoke") || Boolean.getBoolean("around_planet.entitySmoke")) return;
         var mc=Minecraft.getInstance(); ticks++;
         if(serverFailure!=null) throw new AssertionError("AROUND_EW_SMOKE server packet regression",serverFailure);
         if(ticks>2600) throw new AssertionError("AROUND_EW_SMOKE timeout: phase="+phase+" x="+(mc.player==null?"none":mc.player.getX()));
         if(mc.level==null || mc.player==null || mc.getSingleplayerServer()==null || ticks<100) return;
-        mc.player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+        if(phase!=42 && phase!=45)mc.player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
         mc.player.setNoGravity(true);
         if(phase==3 && ticks%100==0) {
             AroundPlanet.LOGGER.info("VEHICLE regression client: playerX={}, vehicle={}",mc.player.getX(),
@@ -113,6 +114,7 @@ public final class EastWestClientSmoke {
                 p.connection.teleport(255.75,200,0,47,13);
             });
         } else if(phase==4 && ticks-started>40 && Math.abs(mc.player.getX()-255.75)<0.01) {
+            mc.player.setPos(256.125,200,0);
             phase=5;started=ticks;
             mc.getSingleplayerServer().execute(()->{
                 try {
@@ -128,6 +130,7 @@ public final class EastWestClientSmoke {
                 p.connection.teleport(-255.75,200,0,47,13);
             });
         } else if(phase==6 && ticks-started>40 && Math.abs(mc.player.getX()+255.75)<0.01) {
+            mc.player.setPos(-256.125,200,0);
             phase=7;started=ticks;
             mc.getSingleplayerServer().execute(()->{
                 try {
@@ -140,11 +143,33 @@ public final class EastWestClientSmoke {
             require(io.github.astelev.around_planet.border.PlanetBorders.warningDistance(mc.level.getWorldBorder(),mc.player)>10000,
                     "Client vignette still treats traversable seam as danger");
             AroundPlanet.LOGGER.info("AROUND_EW_PACKET_SMOKE PASS: both native movement packets wrap in the same call; no seam vignette");
-            phase=8;started=ticks;
+            phase=41;started=ticks;
             mc.getSingleplayerServer().execute(()->{
                 var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
-                p.connection.teleport(0,200,0,47,13);
+                p.getAbilities().flying=true;p.onUpdateAbilities();p.connection.teleport(246,200,0,-90,0);
             });
+        } else if(phase==41 && ticks-started>20 && Math.abs(mc.player.getX()-246)<0.01) {
+            phase=42;started=ticks;flightVelocity=0;mc.options.keyUp.setDown(true);
+        } else if(phase==42) {
+            if(mc.player.getX()>=0)flightVelocity=mc.player.getDeltaMovement().x;
+            else {
+                require(flightVelocity>0.15,"Flight control did not reach cruise speed");
+                require(mc.player.getDeltaMovement().x>flightVelocity*0.55,"East crossing reset creative flight momentum: "+mc.player.getDeltaMovement());
+                mc.options.keyUp.setDown(false);phase=44;started=ticks;
+                mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst().connection.teleport(-246,200,0,90,0));
+            }
+        } else if(phase==44 && ticks-started>20 && Math.abs(mc.player.getX()+246)<0.01) {
+            phase=45;started=ticks;flightVelocity=0;mc.options.keyUp.setDown(true);
+        } else if(phase==45) {
+            if(mc.player.getX()<=0)flightVelocity=mc.player.getDeltaMovement().x;
+            else {
+                require(flightVelocity< -0.15,"West flight control did not reach cruise speed");
+                require(mc.player.getDeltaMovement().x<flightVelocity*0.55,"West crossing reset creative flight momentum: "+mc.player.getDeltaMovement());
+                mc.options.keyUp.setDown(false);
+                AroundPlanet.LOGGER.info("AROUND_FLIGHT_MOMENTUM PASS: real creative flight preserves client velocity across both seams");
+                phase=8;started=ticks;
+                mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst().connection.teleport(0,200,0,47,13));
+            }
         } else if(phase==8 && ticks-started>120) {
             // Let the destination ticket leases expire normally before ending this synthetic world run.
             phase=9;mc.stop();

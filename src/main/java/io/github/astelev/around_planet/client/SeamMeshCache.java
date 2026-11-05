@@ -240,7 +240,7 @@ public final class SeamMeshCache {
         } finally {data.release();}
     }
     private static int signature(LevelChunk chunk,int y,int hash) {
-        var engine=chunk.getLevel().getChunkSource().getLightEngine();
+        var engine=SeamImages.renderLight((ClientLevel)chunk.getLevel());
         for(var layer:List.of(LightLayer.SKY,LightLayer.BLOCK)) {
             var light=engine.getLayerListener(layer).getDataLayerData(SectionPos.of(chunk.getPos(),y));
             hash=31*hash+(light==null?0:Arrays.hashCode(light.getData()));

@@ -35,6 +35,15 @@ public final class SeamImages {
     private static final ConcurrentHashMap<Long,LevelChunk> IMAGES = new ConcurrentHashMap<>();
     private static volatile ClientLevel world;
     private static volatile LevelChunk empty;
+    private static volatile SeamImageLight renderLight;
+    public static net.minecraft.world.level.lighting.LevelLightEngine renderLight(ClientLevel level) {
+        var light=renderLight;if(light==null || light.level!=level)renderLight=light=new SeamImageLight(level);
+        return light;
+    }
+    static DataLayer lightData(ClientLevel level,LightLayer layer,SectionPos section) {
+        var chunk=get(level,section.x(),section.z());
+        return chunk instanceof ImageChunk image?image.light(layer,section.y()):null;
+    }
     public static LevelChunk get(ClientLevel level,int x,int z) { return level==world ? IMAGES.get(ChunkPos.asLong(x,z)) : null; }
     public static int size() { return IMAGES.size(); }
     public static java.util.List<ChunkPos> positions(ClientLevel level) {
@@ -74,24 +83,23 @@ public final class SeamImages {
             var chunk=new ImageChunk(level,new ChunkPos(payload.x(),payload.z()));
             var data=packet.getChunkData();
             chunk.replaceWithPacketData(data.getReadBuffer(),data.getHeightmaps(),data.getBlockEntitiesTagsConsumer(payload.x(),payload.z()));
+            var light=packet.getLightData();
+            int count=level.getSectionsCount()+2;
+            chunk.minLightSection=level.getMinSection()-1;
+            chunk.sky=readLight(count,light.getSkyYMask(),light.getEmptySkyYMask(),light.getSkyUpdates().iterator());
+            chunk.block=readLight(count,light.getBlockYMask(),light.getEmptyBlockYMask(),light.getBlockUpdates().iterator());
             IMAGES.put(chunk.getPos().toLong(),chunk);
             AlternativeRendererBridge.changed(level);
-            var engine=level.getChunkSource().getLightEngine();
-            engine.retainData(chunk.getPos(),true);
-            for(int i=0;i<chunk.getSectionsCount();i++) engine.updateSectionStatus(SectionPos.of(chunk.getPos(),level.getSectionYFromSectionIndex(i)),chunk.getSection(i).hasOnlyAir());
-            var light=packet.getLightData();
-            light(level,payload.x(),payload.z(),LightLayer.SKY,light.getSkyYMask(),light.getEmptySkyYMask(),light.getSkyUpdates().iterator());
-            light(level,payload.x(),payload.z(),LightLayer.BLOCK,light.getBlockYMask(),light.getEmptyBlockYMask(),light.getBlockUpdates().iterator());
-            engine.setLightEnabled(chunk.getPos(),true);
             mc.levelRenderer.onChunkLoaded(chunk.getPos());
             dirty(level,chunk.getPos());
             SeamMeshCache.changed(level,chunk.getPos());
         } finally { buf.release(); }
     }
-    private static void light(ClientLevel level,int x,int z,LightLayer layer,BitSet full,BitSet empty,Iterator<byte[]> values) {
-        var engine=level.getChunkSource().getLightEngine();
-        for(int i=0;i<engine.getLightSectionCount();i++) if(full.get(i)||empty.get(i))
-            engine.queueSectionData(layer,SectionPos.of(x,engine.getMinLightSection()+i,z),full.get(i)?new DataLayer(values.next().clone()):new DataLayer());
+    private static DataLayer[] readLight(int count,BitSet full,BitSet empty,Iterator<byte[]> values) {
+        var layers=new DataLayer[count];
+        for(int i=0;i<count;i++)if(full.get(i)||empty.get(i))
+            layers[i]=full.get(i)?new DataLayer(values.next().clone()):new DataLayer();
+        return layers;
     }
     private static void dirty(ClientLevel level,ChunkPos pos) {
         for(int y=level.getMinSection();y<level.getMaxSection();y++) level.setSectionDirtyWithNeighbors(pos.x,y,pos.z);
@@ -102,23 +110,23 @@ public final class SeamImages {
         boolean removed=IMAGES.entrySet().removeIf(e -> {
             var p=e.getValue().getPos();
             if(Math.abs(p.x-mc.player.chunkPosition().x)<=range && Math.abs(p.z-mc.player.chunkPosition().z)<=PlanetConfig.RADIUS.getAsInt()+2) return false;
-            var engine=mc.level.getChunkSource().getLightEngine();
-            engine.retainData(p,false); engine.setLightEnabled(p,false);
-            for(int y=engine.getMinLightSection();y<engine.getMinLightSection()+engine.getLightSectionCount();y++) {
-                engine.queueSectionData(LightLayer.SKY,SectionPos.of(p,y),null);
-                engine.queueSectionData(LightLayer.BLOCK,SectionPos.of(p,y),null);
-                engine.updateSectionStatus(SectionPos.of(p,y),true);
-            }
             dirty(mc.level,p); return true;
         });
         if(removed)AlternativeRendererBridge.changed(mc.level);
     }
     @SubscribeEvent public static void unload(LevelEvent.Unload event) {
-        if(event.getLevel()==world) { AlternativeRendererBridge.clear(world);IMAGES.clear(); world=null; }
+        if(event.getLevel()==world) { AlternativeRendererBridge.clear(world);IMAGES.clear(); world=null;renderLight=null; }
+        if(renderLight!=null && renderLight.level==event.getLevel())renderLight=null;
         var fallback=empty;if(fallback!=null && fallback.getLevel()==event.getLevel())empty=null;
     }
     private static final class ImageChunk extends LevelChunk {
+        private DataLayer[] sky,block;
+        private int minLightSection;
         ImageChunk(ClientLevel level,ChunkPos pos) { super(level,pos); }
+        DataLayer light(LightLayer layer,int sectionY) {
+            var data=layer==LightLayer.SKY?sky:block;int i=sectionY-minLightSection;
+            return data!=null && i>=0 && i<data.length?data[i]:null;
+        }
         @Override public void setBlockEntity(BlockEntity entity) { entity.setLevel(getLevel()); getBlockEntities().put(entity.getBlockPos(),entity); }
         @Override public void setUnsaved(boolean unsaved) {}
     }

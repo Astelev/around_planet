@@ -147,7 +147,8 @@ public final class TransferService {
     private static void moveGroup(Entity root, double dx) {
         var members=root.getSelfAndPassengers().toList();
         var velocities=members.stream().map(Entity::getDeltaMovement).toList();
-        root.teleportTo(root.getX()+dx,root.getY(),root.getZ());
+        // Relative position flags also preserve the client's creative/elytra movement and previous pose.
+        root.teleportRelative(dx,0,0);
         if(root.getControllingPassenger() instanceof ServerPlayer controller) {
             var movement=(io.github.astelev.around_planet.mixin.VehicleMovementAccessor)controller.connection;
             movement.around_planet$vehicle(root);
@@ -173,7 +174,9 @@ public final class TransferService {
             if(member instanceof ServerPlayer player && member!=root)
                 player.teleportTo(player.getX(),player.getY(),player.getZ());
             member.setDeltaMovement(velocities.get(i));
-            member.hurtMarked=true;
+            // A player's server-side velocity is not its predicted flight velocity. Do not send a
+            // manufactured self motion packet (often zero) immediately after preserving client motion.
+            if(member!=root || !(member instanceof ServerPlayer))member.hurtMarked=true;
         }
         for(var member:members) if(member instanceof ServerPlayer player && member!=root
                 && player.connection.hasChannel(io.github.astelev.around_planet.network.SeamVehiclePayload.TYPE)) {
