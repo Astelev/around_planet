@@ -15,6 +15,6 @@ public abstract class SeamDhRenderMixin {
     private void around_planet$clipLods(CallbackInfoReturnable<Boolean> cir) {
         var level=Minecraft.getInstance().level;if(level==null)return;
         var topology=PlanetBorders.get(level.getWorldBorder());
-        if(topology!=null && DhSeamBounds.outside(topology,pos)) cir.setReturnValue(false);
+        if(topology!=null && !DhSeamBounds.inside(topology,pos)) cir.setReturnValue(false);
     }
 }

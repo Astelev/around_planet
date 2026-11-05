@@ -4,39 +4,24 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
-    public static final ModConfigSpec.BooleanValue ENABLED;
-    public static final ModConfigSpec.IntValue BOUNDARY, MIN_Y, MAX_Y, HALF_SPAN_Z;
-    public static final ModConfigSpec.BooleanValue DH_PORTAL_RENDER;
-    public static final ModConfigSpec.IntValue DH_PREVIEW_DISTANCE;
-    public static final ModConfigSpec.IntValue CHUNK_PRELOAD_DISTANCE,CHUNK_RADIUS;
+    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES;
+    public static final ModConfigSpec.IntValue BOUNDARY, ACTIVATION, RADIUS;
     static {
         var b = new ModConfigSpec.Builder();
         b.push("eastWest");
-        ENABLED = b.comment("Create two Aeronautics global portals in the Overworld. Restart after changing settings.",
-                "Only around_planet-tagged portals are managed. Generation is not made periodic. Whole-ship global traversal is a later stage.")
+        ENABLED = b.comment("Experimental Overworld east/west transfer. Enable in a test world. Restart after changing these settings.",
+                "Renders loaded chunks and ordinary entities across the seam. Physics-ship transfer is not implemented. Does not change world generation.")
                 .define("enabled", false);
         BOUNDARY = b.comment("Absolute X of each seam: +boundaryX wraps to -boundaryX, not to zero.",
                 "Multiple of 16; total circumference is twice this value. Replaces the old widthBlocks setting.")
                 .defineInRange("boundaryX", 65536, 128, 29500000);
-        MIN_Y = b.comment("Bottom of the portal plane; independent of the world's build height. Must be below portalMaxY.")
-                .defineInRange("portalMinY", -2048, -20000000, 20000000);
-        MAX_Y = b.comment("Top of the portal plane. Default includes high-altitude flight.")
-                .defineInRange("portalMaxY", 16384, -20000000, 20000000);
-        HALF_SPAN_Z = b.comment("Each plane spans [-portalHalfSpanZ, +portalHalfSpanZ]. Creates no north/south portal.")
-                .defineInRange("portalHalfSpanZ", 29999984, 16, 29999984);
-        CHUNK_PRELOAD_DISTANCE=b.comment("Begin loading real opposite-side chunks this many blocks before the managed seam.",
-                "The radius ramps up gradually across this approach distance; restart after changing.")
-                .defineInRange("chunkPreloadDistanceBlocks",512,32,4096);
-        CHUNK_RADIUS=b.comment("Maximum opposite-side chunk radius; also capped by the player's ordinary view distance.",
-                "Larger values cost generation, server memory and network traffic.")
-                .defineInRange("chunkRadius",16,2,32);
-        b.pop();
-        b.push("compatibility");
-        DH_PORTAL_RENDER=b.comment("Prepare a second DH 3.3.3 render tree and render terrain through the managed EW seam.",
-                "One extra render tree near the seam costs memory and background work. Restart after changing.")
-                .define("dhPortalRendering",true);
-        DH_PREVIEW_DISTANCE=b.comment("Distance in blocks from the seam at which the opposite DH tree starts loading.")
-                .defineInRange("dhPreviewDistanceBlocks",512,32,4096);
+        ACTIVATION = b.comment("Distance from either seam at which destination preloading begins; limited to one quarter of width.")
+                .defineInRange("activationDistance", 128, 16, 1024);
+        RADIUS = b.comment("Destination chunk radius. Bounded transient tickets; no synchronous generation in the entity tick.")
+                .defineInRange("destinationRadius", 2, 1, 4);
+        RETAIN_MESHES=b.comment("Retain bounded canonical GPU meshes from seam images during a crossing.",
+                "Uses the native block compiler on one worker; 64 MiB/512 sections maximum. Disable to compare the original renderer.")
+                .define("retainTransitionMeshes",true);
         b.pop(); SPEC = b.build();
     }
     private PlanetConfig() {}

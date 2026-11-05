@@ -2,30 +2,33 @@
   "required": true,
   "minVersion": "0.8",
   "package": "io.github.astelev.around_planet.mixin",
-  "plugin": "io.github.astelev.around_planet.compat.AeronauticsMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "SablePortalCollisionMixin",
+    "WorldBorderMixin",
+    "PlayerMovementMixin",
+    "SeamPlayerTicketsMixin",
+    "SeamChunkSendingMixin",
     "SeamDhGenerationMixin",
-    "ManagedPortalPassengerMixin",
-    "GlobalPortalStorageTickMixin",
-    "PortalChunkWatchMixin",
-    "SeamPortalLoadingMixin",
-    "PortalMobDespawnMixin"
-  ],
-  "client": [
-    "SeamDhDepthCaptureMixin",
-    "SeamDhDepthPortalMixin",
-    "SeamDhModuleMixin",
-    "SeamDhParamsMixin",
-    "SeamDhPortalEventMixin",
-    "SeamDhTerrainMixin",
-    "SeamDhShaderSourceMixin",
-    "SeamDhShaderUniformMixin",
-    "SeamDhRenderMixin",
-    "SeamCruisingMaskMixin"
+    "ChunkTrackingAccessor",
+    "EntityDataAccessor",
+    "VehicleMovementAccessor",
+    "SeamMobDespawnMixin",
+    "SeamUnloadBudgetMixin"
   ],
   "injectors": {
     "defaultRequire": 1
-  }
+  },
+  "client": [
+    "BorderVignetteMixin",
+    "SeamRenderRegionMixin",
+    "SeamRenderSectionMixin",
+    "SeamTintMixin",
+    "SeamDhRenderMixin",
+    "SeamCruisingMaskMixin",
+    "SeamBorderRenderMixin",
+    "SeamAlternativeCloneMixin",
+    "SeamAlternativeSectionMixin",
+    "SeamAlternativeSliceMixin",
+    "SeamVehiclePassengersMixin"
+  ]
 }
