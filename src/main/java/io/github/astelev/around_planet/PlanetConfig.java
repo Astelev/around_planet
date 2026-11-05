@@ -4,8 +4,8 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
-    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES;
-    public static final ModConfigSpec.IntValue BOUNDARY, ACTIVATION, RADIUS;
+    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM;
+    public static final ModConfigSpec.IntValue BOUNDARY, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW;
     static {
         var b = new ModConfigSpec.Builder();
         b.push("eastWest");
@@ -19,7 +19,15 @@ public final class PlanetConfig {
                 .defineInRange("activationDistance", 128, 16, 1024);
         RADIUS = b.comment("Destination chunk radius. Bounded transient tickets; no synchronous generation in the entity tick.")
                 .defineInRange("destinationRadius", 2, 1, 4);
-        RETAIN_MESHES=b.comment("Retain bounded canonical GPU meshes from seam images during a crossing.",
+        SNAPSHOT_INTERVAL=b.comment("Minimum ticks between checks of a visual chunk. Only changed snapshots are sent; queue budget can add latency.")
+                .defineInRange("snapshotRefreshTicks",10,1,200);
+        SNAPSHOT_BUDGET=b.comment("Maximum ready visual columns serialized per player per server tick. Oldest due columns take priority.")
+                .defineInRange("snapshotChunksPerTick",2,1,8);
+        DH_SEAM=b.comment("Render canonical Distant Horizons 3.3.3 terrain across the seam using an independent translated view.")
+                .define("dhSeamRendering",true);
+        DH_PREVIEW=b.comment("Approach distance for preparing the opposite DH tree. Adds one retained render tree sharing existing data.")
+                .defineInRange("dhPreviewDistanceBlocks",512,32,4096);
+        RETAIN_MESHES=b.comment("Retain bounded canonical GPU meshes from seam images and native shores during a crossing.",
                 "Uses the native block compiler on one worker; 64 MiB/512 sections maximum. Disable to compare the original renderer.")
                 .define("retainTransitionMeshes",true);
         b.pop(); SPEC = b.build();

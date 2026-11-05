@@ -29,6 +29,12 @@
     "SeamAlternativeCloneMixin",
     "SeamAlternativeSectionMixin",
     "SeamAlternativeSliceMixin",
-    "SeamVehiclePassengersMixin"
+    "SeamVehiclePassengersMixin",
+    "SeamLevelRendererAccess",
+    "SeamViewAreaAccess",
+    "SeamDhModuleMixin",
+    "SeamDhTerrainMixin",
+    "SeamDhShaderSourceMixin",
+    "SeamDhShaderUniformMixin"
   ]
 }

@@ -21,6 +21,7 @@ import java.util.*;
 @EventBusSubscriber(modid=AroundPlanet.MOD_ID)
 public final class SeamStreamer {
     private record Sent(int hash,long time) {}
+    private record Source(int imageX,int z,net.minecraft.world.level.chunk.LevelChunk chunk) {}
     private static final Map<UUID,Map<Long,Sent>> SENT = new HashMap<>();
     @SubscribeEvent public static void tick(LevelTickEvent.Post event) {
         if(!(event.getLevel() instanceof ServerLevel level)) return;
@@ -33,7 +34,9 @@ public final class SeamStreamer {
                 SENT.remove(player.getUUID()); continue;
             }
             var sent = SENT.computeIfAbsent(player.getUUID(), ignored -> new HashMap<>());
-            Set<Long> desired = new HashSet<>(); int budget = 2;
+            Set<Long> desired = new HashSet<>();
+            Map<Long,Source> sources=new HashMap<>();
+            List<SnapshotSchedule.Candidate> candidates=new ArrayList<>();
             boolean east = player.getX() >= 0;
             int visualRange=Math.max(Math.min(player.requestedViewDistance(),level.getServer().getPlayerList().getViewDistance())+2,radius+3);
             for(int d=0; d<=radius+1; d++) for(int dz=-radius-1; dz<=radius+1; dz++) {
@@ -41,23 +44,28 @@ public final class SeamStreamer {
                 int imageX = sourceX+(east ? half*2 : -half*2), z = player.chunkPosition().z+dz;
                 if(Math.abs(imageX-player.chunkPosition().x)>visualRange) continue;
                 long key = ChunkPos.asLong(imageX,z); desired.add(key);
-                var previous = sent.get(key);
-                if(budget == 0 || previous != null && level.getGameTime()-previous.time < 40) continue;
-                var chunk = level.getChunkSource().getChunkNow(sourceX,z);
-                if(chunk == null || !chunk.isLightCorrect()) continue;
-                budget--;
+                var chunk=level.getChunkSource().getChunkNow(sourceX,z);
+                if(chunk==null || !chunk.isLightCorrect())continue;
+                var previous=sent.get(key);
+                sources.put(key,new Source(imageX,z,chunk));
+                double dx=imageX-player.chunkPosition().x;
+                candidates.add(new SnapshotSchedule.Candidate(key,previous==null?Long.MIN_VALUE:previous.time,dx*dx+dz*dz));
+            }
+            for(var next:SnapshotSchedule.choose(candidates,level.getGameTime(),
+                    PlanetConfig.SNAPSHOT_INTERVAL.getAsInt(),PlanetConfig.SNAPSHOT_BUDGET.getAsInt())) {
+                long key=next.key();var source=sources.get(key);var previous=sent.get(key);
                 var buf = new RegistryFriendlyByteBuf(Unpooled.buffer(),level.registryAccess());
                 try {
-                    var packet = new ClientboundLevelChunkWithLightPacket(chunk,level.getChunkSource().getLightEngine(),null,null);
+                    var packet = new ClientboundLevelChunkWithLightPacket(source.chunk,level.getChunkSource().getLightEngine(),null,null);
                     ClientboundLevelChunkWithLightPacket.STREAM_CODEC.encode(buf,packet);
                     if(buf.readableBytes() > SeamChunkPayload.MAX_BYTES) {
-                        if(previous==null) AroundPlanet.LOGGER.warn("Visual chunk {} exceeds the bounded seam packet size",chunk.getPos());
+                        if(previous==null) AroundPlanet.LOGGER.warn("Visual chunk {} exceeds the bounded seam packet size",source.chunk.getPos());
                         sent.put(key,new Sent(0,level.getGameTime())); continue;
                     }
                     byte[] data = new byte[buf.readableBytes()]; buf.readBytes(data);
                     int hash = Arrays.hashCode(data);
                     if(previous == null || previous.hash != hash) PacketDistributor.sendToPlayer(player,
-                        new SeamChunkPayload(level.dimension().location(),imageX,z,data));
+                        new SeamChunkPayload(level.dimension().location(),source.imageX,source.z,data));
                     sent.put(key,new Sent(hash,level.getGameTime()));
                 } finally { buf.release(); }
             }

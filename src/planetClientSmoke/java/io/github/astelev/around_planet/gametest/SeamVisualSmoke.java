@@ -21,7 +21,10 @@ public final class SeamVisualSmoke {
     private static int ticks,phase,started;
     private static java.util.concurrent.CompletableFuture<Void> reload;
     private static Object beforeReload;
-    private static Object retained;
+    private static Object retained,departure;
+    private static Object dhPrimary,dhOpposite;
+    private static boolean dhFarVerified;
+    private static long departureDraws;
     private static long drawsBefore,awaySince;
     private static volatile boolean prepared;
     private static volatile Throwable failure;
@@ -29,7 +32,7 @@ public final class SeamVisualSmoke {
         if(!Boolean.getBoolean("around_planet.visualSmoke")) return;
         var mc=Minecraft.getInstance();ticks++;
         if(failure!=null) throw new AssertionError("SEAM_VISUAL_SMOKE fixture failure",failure);
-        if(ticks>2400) throw new AssertionError("SEAM_VISUAL_SMOKE timeout, phase="+phase+" images="+SeamImages.size());
+        if(ticks>4800) throw new AssertionError("SEAM_VISUAL_SMOKE timeout, phase="+phase+" images="+SeamImages.size());
         if(mc.level==null || mc.player==null || mc.getSingleplayerServer()==null || ticks<100)return;
         mc.player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);mc.player.setNoGravity(true);
         if(phase==0) {
@@ -44,6 +47,14 @@ public final class SeamVisualSmoke {
                     var level=p.serverLevel();level.setDayTime(6000);level.setWeatherParameters(6000,0,false,false);
                     for(int x:new int[]{-17,-16,-15,14,15,16})for(int z=-2;z<=2;z++)level.getChunk(x,z);
                     wall(level,-246,Blocks.RED_CONCRETE);wall(level,245,Blocks.AIR);
+                    for(int x=245;x<=246;x++)for(int y=80;y<=84;y++)for(int z=21;z<=27;z++)
+                        level.setBlockAndUpdate(new BlockPos(x,y,z),Blocks.LIME_CONCRETE.defaultBlockState());
+                    if(net.neoforged.fml.ModList.get().isLoaded("distanthorizons")) {
+                        foreground(level,Blocks.AIR);
+                        for(int x=-64;x<=-57;x++)for(int z=40;z<=71;z++)for(int y=80;y<=127;y++)
+                            level.setBlockAndUpdate(new BlockPos(x,y,z),Blocks.RED_CONCRETE.defaultBlockState());
+                        DhSeamFixture.publish(level);
+                    }
                     level.setBlockAndUpdate(new BlockPos(252,82,18),Blocks.WHITE_CONCRETE.defaultBlockState());
                     // Deliberately different real terrain beyond each seam must never be the rendered source.
                     wall(level,266,Blocks.BLUE_CONCRETE);wall(level,-267,Blocks.BLUE_CONCRETE);
@@ -52,6 +63,8 @@ public final class SeamVisualSmoke {
                 }catch(Throwable e){failure=e;}
             });
         } else if(phase==1 && prepared && ticks-started>60) {
+            if(Math.abs(mc.player.getX()-210.5)>0.05 || Math.abs(mc.player.getZ()-8.5)>0.05
+                    || Math.abs(mc.gameRenderer.getMainCamera().getPosition().z-8.5)>0.05)return;
             var image=SeamImages.get(mc.level,16,0);
             if(image==null || !image.getBlockState(new BlockPos(266,82,8)).is(Blocks.RED_CONCRETE))return;
             var region=new RenderRegionCache().createRegion(mc.level,SectionPos.of(16,5,0),false);
@@ -61,7 +74,22 @@ public final class SeamVisualSmoke {
             boolean imageReady=compiled(mc,new BlockPos(266,82,8)),edgeReady=compiled(mc,new BlockPos(252,82,18));
             if(ticks%100==0) AroundPlanet.LOGGER.info("SEAM visual compile: image={}, edge={}, view={}",imageReady,edgeReady,mc.options.getEffectiveRenderDistance());
             if(!imageReady || !edgeReady || !pixel(mc,0))return;
-            if(!io.github.astelev.around_planet.client.SeamMeshCache.settled(-16,5,0) || ticks-started<140)return;
+            if(!io.github.astelev.around_planet.client.SeamMeshCache.settled(-16,5,0)
+                    || !io.github.astelev.around_planet.client.SeamMeshCache.settled(15,5,1) || ticks-started<140)return;
+            if(net.neoforged.fml.ModList.get().isLoaded("distanthorizons")) {
+                var dh=io.github.astelev.around_planet.compat.DhSeamViews.snapshot();
+                if(ticks%100==0)AroundPlanet.LOGGER.info("DH_SEAM_SMOKE waiting: {}",dh);
+                if(dh==null || dh.uploaded()==0 || io.github.astelev.around_planet.compat.DhSeamRenderer.opaqueDraws==0)return;
+                if(!dhFarVerified) {
+                    phase=11;started=ticks;
+                    mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst()
+                            .connection.teleport(210.5,100,56,-90,0));
+                    return;
+                }
+                dhPrimary=dh.primary();dhOpposite=dh.opposite();
+            }
+            departure=io.github.astelev.around_planet.client.SeamMeshCache.identity(15,5,1);
+            departureDraws=io.github.astelev.around_planet.client.SeamMeshCache.drawCount(15,5,1);
             retained=io.github.astelev.around_planet.client.SeamMeshCache.identity(-16,5,0);
             drawsBefore=io.github.astelev.around_planet.client.SeamMeshCache.draws;
             AroundPlanet.LOGGER.info("SEAM_VISUAL_SMOKE east PASS: opposite red wall beyond border, native compiled GPU buffer, water and isolated gameplay cache");
@@ -69,8 +97,49 @@ public final class SeamVisualSmoke {
             mc.getSingleplayerServer().execute(()->{
                 var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
                 wall(p.serverLevel(),245,Blocks.LIME_CONCRETE);
+                // Delay just this outgoing column: cached geometry must fill even a compiled empty padding section.
+                p.serverLevel().getChunk(15,1).setLightCorrect(false);
                 p.connection.teleport(-252,82.5,8.5,-90,0);
             });
+        } else if(phase==11) {
+            if(ticks-started<40 || Math.abs(mc.player.getY()-100)>0.05 || Math.abs(mc.player.getZ()-56)>0.05
+                    || Math.abs(mc.gameRenderer.getMainCamera().getPosition().z-56)>0.05)return;
+            if(ticks%100==0)AroundPlanet.LOGGER.info("DH_SEAM_FAR waiting: {} passes={} opaque={}",
+                    io.github.astelev.around_planet.compat.DhSeamViews.snapshot(),
+                    io.github.astelev.around_planet.compat.DhSeamRenderer.passes,
+                    io.github.astelev.around_planet.compat.DhSeamRenderer.opaqueDraws);
+            if(!pixel(mc,0))return;
+            require(SeamImages.get(mc.level,28,3)==null,"Far LOD fixture accidentally entered the image strip");
+            require(!mc.level.getBlockState(new BlockPos(448,105,56)).is(Blocks.RED_CONCRETE),"Far preview leaked into gameplay");
+            AroundPlanet.LOGGER.info("DH_SEAM_FAR_GPU PASS: opposite red coast visible beyond real image columns and vanilla view distance");
+            io.github.astelev.around_planet.PlanetConfig.DH_SEAM.set(false);phase=111;started=ticks;
+        } else if(phase==111 && ticks-started>20) {
+            boolean hidden=!pixel(mc,0);
+            io.github.astelev.around_planet.PlanetConfig.DH_SEAM.set(true);
+            require(hidden,"Far red pixel did not depend on translated DH rendering");
+            phase=112;started=ticks;
+        } else if(phase==112) {
+            if(ticks%100==0)AroundPlanet.LOGGER.info("DH_SEAM_REENABLE waiting: enabled={} {} passes={} opaque={}",
+                    io.github.astelev.around_planet.PlanetConfig.DH_SEAM.getAsBoolean(),
+                    io.github.astelev.around_planet.compat.DhSeamViews.snapshot(),
+                    io.github.astelev.around_planet.compat.DhSeamRenderer.passes,
+                    io.github.astelev.around_planet.compat.DhSeamRenderer.opaqueDraws);
+            if(ticks-started<20 || !pixel(mc,0))return;
+            dhFarVerified=true;DhSeamGpuRegression.verify();
+            AroundPlanet.LOGGER.info("DH_SEAM_TOGGLE_GPU PASS: far image disappears when disabled and returns when enabled");
+            phase=113;started=ticks;
+            mc.getSingleplayerServer().execute(()->foreground(mc.getSingleplayerServer().overworld(),Blocks.LIME_CONCRETE));
+        } else if(phase==113) {
+            if(ticks-started<20 || !compiled(mc,new BlockPos(239,104,56)) || !pixel(mc,1))return;
+            require(mc.level.getBlockState(new BlockPos(239,104,56)).is(Blocks.LIME_CONCRETE),"Depth control did not use a real native chunk");
+            phase=114;started=ticks;
+            mc.getSingleplayerServer().execute(()->foreground(mc.getSingleplayerServer().overworld(),Blocks.AIR));
+        } else if(phase==114) {
+            if(ticks-started<20 || !pixel(mc,0))return;
+            AroundPlanet.LOGGER.info("DH_SEAM_DEPTH_GPU PASS: native foreground hides translated LOD; removing it reveals the same far coast");
+            phase=1;
+            mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst()
+                    .connection.teleport(210.5,82.5,8.5,-90,0));
         } else if(phase==15 && ticks-started>40) {
             require(io.github.astelev.around_planet.client.SeamMeshCache.identity(-16,5,0)==retained,
                     "Canonical GPU mesh was recreated at crossing");
@@ -78,9 +147,27 @@ public final class SeamVisualSmoke {
                     "Retained geometry never covered destination meshing");
             require(pixel(mc,0),"Destination red coast missing after crossing");
             AroundPlanet.LOGGER.info("SEAM_RETAINED_MESH PASS: same canonical GPU mesh survived crossing and drew during native meshing");
-            phase=2;started=ticks;
+            if(dhOpposite!=null) {
+                var dh=io.github.astelev.around_planet.compat.DhSeamViews.snapshot();
+                require(dh!=null && dh.primary()==dhOpposite && dh.opposite()==dhPrimary,"DH trees were rebuilt at crossing");
+                AroundPlanet.LOGGER.info("DH_SEAM_RETAIN PASS: opposite tree promoted and departure tree retained");
+            }
+            phase=16;started=ticks;
             mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst()
-                    .connection.teleport(-247.5,82.5,8.5,90,0));
+                    .connection.teleport(-247.5,82.5,24.5,90,0));
+        } else if(phase==16 && ticks-started>10) {
+            require(SeamImages.get(mc.level,-17,1)==null,"Delayed outgoing image arrived before cache check");
+            require(io.github.astelev.around_planet.client.SeamMeshCache.identity(15,5,1)==departure,"Departure geometry was recreated");
+            if(!pixel(mc,1))return;
+            require(io.github.astelev.around_planet.client.SeamMeshCache.drawCount(15,5,1)>departureDraws,
+                    "Departure mesh was not drawn into its periodic image");
+            AroundPlanet.LOGGER.info("SEAM_DEPARTURE_GPU PASS: same outgoing mesh fills delayed snapshot, with no native image data");
+            phase=2;started=ticks;
+            mc.getSingleplayerServer().execute(()->{
+                var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+                p.serverLevel().getChunk(15,1).setLightCorrect(true);
+                p.connection.teleport(-247.5,82.5,8.5,90,0);
+            });
         } else if(phase==2 && ticks-started>60) {
             var image=SeamImages.get(mc.level,-17,0);
             if(image==null || !image.getBlockState(new BlockPos(-267,82,8)).is(Blocks.LIME_CONCRETE))return;
@@ -114,6 +201,10 @@ public final class SeamVisualSmoke {
             // Continue with the existing real-player/vehicle transition regression in the same warmed client.
             System.setProperty("around_planet.visualSmoke","false");
         }
+    }
+    private static void foreground(net.minecraft.server.level.ServerLevel level,net.minecraft.world.level.block.Block block) {
+        for(int x=239;x<=240;x++)for(int y=96;y<=110;y++)for(int z=48;z<=64;z++)
+            level.setBlockAndUpdate(new BlockPos(x,y,z),block.defaultBlockState());
     }
     private static void wall(net.minecraft.server.level.ServerLevel level,int x,net.minecraft.world.level.block.Block block) {
         for(int dx=0;dx<3;dx++)for(int y=80;y<=84;y++)for(int z=5;z<=11;z++)

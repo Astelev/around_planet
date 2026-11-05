@@ -54,5 +54,32 @@ public final class AlternativeRendererBridge {
             return renderer!=null && (Boolean)type.getMethod("isSectionReady",int.class,int.class,int.class).invoke(renderer,x,y,z);
         }catch(ReflectiveOperationException e){return false;}
     }
+    private static java.lang.reflect.Field sectionManager;
+    private static Method sectionLookup,sectionFlags,geometryInstance;
+    private static boolean geometryUnsupported;
+    public static Boolean hasGeometry(int x,int y,int z) {
+        if(!initialize())return null;
+        if(geometryUnsupported)return genericReady(x,y,z);
+        try {
+            String name=prefix.startsWith("net.")?"SodiumWorldRenderer":"EmbeddiumWorldRenderer";
+            if(geometryInstance==null)geometryInstance=Class.forName(prefix+".render."+name).getMethod("instanceNullable");
+            var renderer=geometryInstance.invoke(null);if(renderer==null)return false;
+            if(sectionManager==null) {
+                var type=geometryInstance.getDeclaringClass();
+                sectionManager=type.getDeclaredField("renderSectionManager");sectionManager.setAccessible(true);
+                var manager=sectionManager.getType();sectionLookup=manager.getDeclaredMethod("getRenderSection",int.class,int.class,int.class);
+                sectionLookup.setAccessible(true);sectionFlags=sectionLookup.getReturnType().getMethod("getFlags");
+            }
+            var manager=sectionManager.get(renderer);if(manager==null)return false;
+            var section=sectionLookup.invoke(manager,x,y,z);
+            return section!=null && (((Integer)sectionFlags.invoke(section))&1)!=0;
+        }catch(ReflectiveOperationException | RuntimeException e) {
+            geometryUnsupported=true;AroundPlanet.LOGGER.warn("Alternative renderer geometry flags unavailable; using ordinary readiness",e);
+            return genericReady(x,y,z);
+        }
+    }
+    private static boolean genericReady(int x,int y,int z) {
+        return net.minecraft.client.Minecraft.getInstance().levelRenderer.isSectionCompiled(new net.minecraft.core.BlockPos(x*16,y*16,z*16));
+    }
     private AlternativeRendererBridge() {}
 }

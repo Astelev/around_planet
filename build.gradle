@@ -10,7 +10,10 @@ group = mod_group_id
 base { archivesName = mod_id }
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-repositories { mavenCentral() }
+repositories {
+    mavenCentral()
+    maven { url = 'https://api.modrinth.com/maven' }
+}
 
 neoForge {
     version = project.neo_version
@@ -33,9 +36,10 @@ neoForge {
     }
 }
 
-// Local compatibility checks only; no external mods are compiled against or bundled.
+// DH API is compile-only; optional mods are never bundled or installed into the normal runtime.
 configurations { runtimeClasspath.extendsFrom localRuntime }
 dependencies {
+    compileOnly('maven.modrinth:distanthorizons:9w34y8ai') { transitive = false } // DH 3.3.3 / 1.21.1
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
