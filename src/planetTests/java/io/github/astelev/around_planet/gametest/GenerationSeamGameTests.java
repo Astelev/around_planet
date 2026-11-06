@@ -21,7 +21,12 @@ public final class GenerationSeamGameTests {
         var noises=level.registryAccess().registryOrThrow(Registries.NOISE).asLookup();
         var raw=RandomState.create(settings.value(),noises,72931L);
         var state=RandomState.create(settings.value(),noises,72931L);
+        var originalSampler=state.sampler();
+        long samplerSeed=fabricSeed(originalSampler);
+        if(net.neoforged.fml.ModList.get().isLoaded("fabric_biome_api_v1"))require(samplerSeed==72931L,"Fabric sampler did not retain the world seed");
         var blend=SeamBlend.of(edge,256);((SeamGenerationState)(Object)state).around_planet$configureGeneration(blend);
+        require(state.sampler()==originalSampler,"Generation replaced the seeded sampler object");
+        require(fabricSeed(state.sampler())==samplerSeed,"Generation lost Fabric Biome API sampler seed");
         var plains=level.registryAccess().registryOrThrow(Registries.BIOME).getHolderOrThrow(Biomes.PLAINS);
         var generator=new NoiseBasedChunkGenerator(new FixedBiomeSource(plains),settings);
         double rawJump=0,smoothJump=0;int worstZ=z0,worst=0;
@@ -50,6 +55,7 @@ public final class GenerationSeamGameTests {
         for(int y=-64;y<320;y++)require(interior.getBlock(y)==original.getBlock(y),"Interior base column changed at Y="+y);
         var disabled=(SeamGenerationState)(Object)state;disabled.around_planet$configureGeneration(null);
         require(state.router().finalDensity().compute(new DensityFunction.SinglePointContext(edge,80,worstZ))==raw.router().finalDensity().compute(new DensityFunction.SinglePointContext(edge,80,worstZ)),"Disable did not restore original density");
+        require(state.sampler()==originalSampler && state.sampler().sample(edge/4,20,worstZ/4).equals(raw.sampler().sample(edge/4,20,worstZ/4)),"Disable did not restore original climate queries");
         disabled.around_planet$configureGeneration(blend);
         try {
             var csv=new StringBuilder("offset,vanilla,blended\n");
@@ -66,6 +72,11 @@ public final class GenerationSeamGameTests {
         }
         AroundPlanet.LOGGER.info("GENERATION_SEAM PASS: seeded terrain edge jump sum {} -> {}; continuous climate/density; unchanged interior/disable; no remote chunks loaded; {} ms",rawJump,smoothJump,(System.nanoTime()-began)/1_000_000);
         h.succeed();
+    }
+    private static long fabricSeed(Object sampler) {
+        if(!net.neoforged.fml.ModList.get().isLoaded("fabric_biome_api_v1"))return 0;
+        try{return (long)Class.forName("net.fabricmc.fabric.impl.biome.MultiNoiseSamplerHooks").getMethod("fabric_getSeed").invoke(sampler);}
+        catch(ReflectiveOperationException e){throw new AssertionError("Fabric sampler lost its seed",e);}
     }
     private static void require(boolean ok,String message){if(!ok)throw new AssertionError(message);}
 }

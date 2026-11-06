@@ -20,7 +20,7 @@ public final class GenerationClientSmoke {
     private static volatile boolean ready;
     private static volatile Throwable failure;
     private static volatile int base;
-    private static final int EDGE=65536,Z=192000;
+    private static final int EDGE=65536,Z=192256;
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         if(!Boolean.getBoolean("around_planet.generationSmoke"))return;
         var mc=Minecraft.getInstance();ticks++;

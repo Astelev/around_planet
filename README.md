@@ -2,7 +2,7 @@
 
 Minecraft 1.21.1 / NeoForge 21.1.256, Java 21. Имя и mod ID: `around_planet`.
 
-**0.9.0 развивает независимый движок around_planet.** Immersive Portals /
+**0.9.1 развивает независимый движок around_planet.** Immersive Portals /
 Immersive Aeronautics больше не являются зависимостями. Перед проверкой уберите
 портальный fork из `mods` / `run/mods` и обновите Gradle-проект; физический
 Aeronautics и Sable — отдельные моды. Ничего патчить в сторонних JAR не нужно.
@@ -251,6 +251,14 @@ GPU-меши. Отдельный физический двойник не соз
 обычный синхронный fallback Sable: это не гарантия отсутствия задержек генерации.
 Выше build height эта дополнительная загрузка не требуется.
 
+## Совместимость с Fabric Biome API (0.9.1)
+
+Сглаживание сохраняет исходный `Climate.Sampler` и его данные, включая seed
+Forgified Fabric Biome API. Меняются только запросы шумов климата и компонентов
+sampler'а; исходные поля record не перезаписываются. Это исправляет вылет
+`fabric_getSeed: this.seed is null` при генерации чанков после входа в мир.
+Новых настроек и изменений сохранений для исправления не требуется.
+
 ## Сглаживание генерации (0.9.0)
 
 `terrainSeamBlending=true` включает сглаживание новой шумовой генерации Overworld.
@@ -359,7 +367,7 @@ bash ./gradlew -PplanetTests runGameTestServer
 bash ./gradlew runClient
 ```
 
-JAR: `build/libs/around_planet-0.9.0.jar`.
+JAR: `build/libs/around_planet-0.9.1.jar`.
 `-PcompatModsDir=/absolute/path/to/test-mods` добавляет локальные JAR только в
 среду запуска; они не включаются в мод. Серверные и клиентские тестовые классы
 также не входят в итоговый JAR. Клиентский smoke-тест запускается с

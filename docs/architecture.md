@@ -177,8 +177,13 @@ metadata/экипировки, движение, пассажиров и уда�
 создания первых noise chunks; `LevelEvent.Load` служит запасной точкой подключения.
 Только Overworld с `NoiseBasedChunkGenerator` и включёнными `eastWest.enabled` /
 `terrainSeamBlending`. Нет глобального seed/топологии или ThreadLocal-контекста
-генерации: пара router + climate sampler публикуется одной volatile-ссылкой.
+генерации: router публикуется неизменяемым объектом, перенаправление шести
+климатических функций — неизменяемой identity-map в исходном sampler’е.
 Исходный router сохраняется, настройки/datapack-реестры не переписываются.
+С 0.9.1 `Climate.Sampler` не заменяется: его seed/расширения Fabric Biome API
+сохраняются. Mixin перенаправляет `sample` и getter’ы компонентов, не меняя
+исходные final-поля record; отключение удаляет перенаправление. Подключение
+завершается до запуска генерации, настройки меняются только после перезапуска.
 
 Visitor оборачивает координатные noise-узлы vanilla (включая shifted/weird/legacy
 noise), оставляя сплайны и внешние interpolation/cache markers на штатном месте.
