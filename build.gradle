@@ -37,8 +37,24 @@ neoForge {
 }
 
 // DH API is compile-only; optional mods are never bundled or installed into the normal runtime.
-configurations { runtimeClasspath.extendsFrom localRuntime }
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+    sableCompileBundle
+}
+// Exact optional API and its nested compile-time libraries; nothing is bundled in our JAR.
+var extractSableApi = tasks.register('extractSableApi', Sync) {
+    from({ zipTree(configurations.sableCompileBundle.singleFile) }) {
+        include 'META-INF/jarjar/*.jar'
+        eachFile { path = name }
+        includeEmptyDirs = false
+    }
+    into layout.buildDirectory.dir('sable-compile-api')
+}
+
 dependencies {
+    sableCompileBundle('maven.modrinth:sable:fg9dTRz9') { transitive = false }
+    compileOnly('maven.modrinth:sable:fg9dTRz9') { transitive = false }
+    compileOnly files(extractSableApi.map { it.destinationDir }).asFileTree.matching { include '*.jar' }
     compileOnly('maven.modrinth:distanthorizons:9w34y8ai') { transitive = false } // DH 3.3.3 / 1.21.1
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -110,6 +126,7 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     neoForge.runs.named('client') {
         programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('around-ew-smoke'))
         jvmArguments.add('-Xmx3G')
+        if (providers.gradleProperty('planetShipSmoke').isPresent()) jvmArguments.add('-Daround_planet.shipSmoke=true')
         if (providers.gradleProperty('planetCollisionSmoke').isPresent()) jvmArguments.add('-Daround_planet.collisionSmoke=true')
         if (providers.gradleProperty('planetArrivalSmoke').isPresent()) jvmArguments.add('-Daround_planet.arrivalSmoke=true')
         if (providers.gradleProperty('planetLightSmoke').isPresent()) jvmArguments.add('-Daround_planet.lightSmoke=true')
@@ -117,3 +134,5 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
         if (providers.gradleProperty('planetEntitySmoke').isPresent()) jvmArguments.add('-Daround_planet.entitySmoke=true')
     }
 }
+
+tasks.named('compileJava') { dependsOn extractSableApi }

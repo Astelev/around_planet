@@ -20,16 +20,11 @@ public final class ShipyardSpace {
         var bounds=CACHE.get(level);
         if(bounds==null) {
             try {
-                var type=Class.forName("dev.ryanhcode.sable.api.sublevel.SubLevelContainer");
-                var container=type.getMethod("getContainer",Level.class).invoke(null,level);
-                if(container==null)return false;
-                var origin=(org.joml.Vector2i)type.getMethod("getOrigin").invoke(container);
-                int plot=(Integer)type.getMethod("getLogPlotSize").invoke(container);
-                int side=(Integer)type.getMethod("getLogSideLength").invoke(container);
-                bounds=new Bounds((long)origin.x<<plot,(long)origin.y<<plot,
-                        ((long)origin.x+(1L<<side))<<plot,((long)origin.y+(1L<<side))<<plot);
+                long[] nativeBounds=SableShipyardBounds.bounds(level);
+                if(nativeBounds==null)return false;
+                bounds=new Bounds(nativeBounds[0],nativeBounds[1],nativeBounds[2],nativeBounds[3]);
                 CACHE.put(level,bounds);
-            } catch(ReflectiveOperationException | LinkageError e) {
+            } catch(RuntimeException | LinkageError e) {
                 unavailable=true;
                 AroundPlanet.LOGGER.warn("Sable private coordinate bounds unavailable; seam clipping is suspended to preserve ship rendering",e);
                 return true;

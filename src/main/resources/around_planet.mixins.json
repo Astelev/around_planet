@@ -15,7 +15,10 @@
     "SeamMobDespawnMixin",
     "SeamUnloadBudgetMixin",
     "SeamBlockCollisionsMixin",
-    "SeamBoatDismountMixin"
+    "SeamBoatDismountMixin",
+    "SeamShipTrackingMixin",
+    "SeamShipPhysicsTicketsMixin",
+    "SeamShipTerrainMixin"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -40,6 +43,8 @@
     "SeamDhTerrainMixin",
     "SeamDhShaderSourceMixin",
     "SeamDhShaderUniformMixin",
-    "SeamClientCollisionMixin"
+    "SeamClientCollisionMixin",
+    "SeamShipRenderScopeMixin",
+    "SeamShipRenderPoseMixin"
   ]
 }
