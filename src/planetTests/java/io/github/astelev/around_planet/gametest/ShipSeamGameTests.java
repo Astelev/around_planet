@@ -1,0 +1,157 @@
+package io.github.astelev.around_planet.gametest;
+
+import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
+import dev.ryanhcode.sable.api.sublevel.ticket.SubLevelLoadingTicketType;
+import dev.ryanhcode.sable.companion.math.BoundingBox3i;
+import dev.ryanhcode.sable.sublevel.ServerSubLevel;
+import dev.ryanhcode.sable.sublevel.storage.SubLevelRemovalReason;
+import io.github.astelev.around_planet.border.PlanetBorders;
+import io.github.astelev.around_planet.topology.EastWestTopology;
+import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.util.Unit;
+import net.minecraft.world.level.block.Blocks;
+import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import org.joml.Vector3d;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+/** Tests the actual rigid body and Sable's public terrain section builder, not a Java collision approximation. */
+@PrefixGameTestTemplate(false)
+public final class ShipSeamGameTests {
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=200)
+    public static void centerOfMassMovesJointAndPassengersTogether(GameTestHelper h) {
+        var level=h.getLevel();var container=SubLevelContainer.getContainer(level);var system=container.physicsSystem();var pipeline=system.getPipeline();
+        PlanetBorders.bind(level.getWorldBorder(),new EastWestTopology(512));
+        var bodies=new ArrayList<ServerSubLevel>();var entities=new ArrayList<net.minecraft.world.entity.Entity>();
+        dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle joint=null;
+        try {
+            for(int x:new int[]{-17,-16,15,16})for(int z=5;z<=7;z++)level.getChunk(x,z);
+            for(int i=0;i<2;i++) {
+                var pos=h.absolutePos(new BlockPos(1+i*4,2,1));level.setBlockAndUpdate(pos,Blocks.IRON_BLOCK.defaultBlockState());
+                var ship=SubLevelAssemblyHelper.assembleBlocks(level,pos,java.util.List.of(pos),new BoundingBox3i(pos.getX(),pos.getY(),pos.getZ(),pos.getX(),pos.getY(),pos.getZ()));
+                bodies.add(ship);pipeline.teleport(ship,new Vector3d(254.5+i*2,200,100),ship.logicalPose().orientation());ship.updateBoundingBox();ship.updateLastPose();
+            }
+            var a=bodies.get(0);var b=bodies.get(1);
+            var anchorA=a.getSelfMassTracker().getCenterOfMass();var anchorB=b.getSelfMassTracker().getCenterOfMass();
+            joint=pipeline.addConstraint(a,b,new dev.ryanhcode.sable.api.physics.constraint.RotaryConstraintConfiguration(
+                    new Vector3d(anchorA).add(1,0,0),new Vector3d(anchorB).add(-1,0,0),new Vector3d(0,1,0),new Vector3d(0,1,0)));
+            h.assertTrue(joint!=null && joint.isValid(),"Rotary fixture was not created");
+            var actor=net.minecraft.world.entity.EntityType.ZOMBIE.create(level);actor.setPos(256.7,201,100);actor.setNoGravity(true);level.addFreshEntity(actor);entities.add(actor);
+            var movement=(dev.ryanhcode.sable.mixinterface.entity.entity_sublevel_collision.EntityMovementExtension)actor;movement.sable$setTrackingSubLevel(b);
+            io.github.astelev.around_planet.transfer.TransferService.check(actor);
+            h.assertTrue(actor.getX()==256.7,"Outboard passenger wrapped independently of its carrier");
+            io.github.astelev.around_planet.compat.ShipTransferService.check(level,container);
+            h.assertTrue(a.logicalPose().position().x==254.5 && b.logicalPose().position().x==256.5,"Child center triggered a premature group transfer");
+            var boat=net.minecraft.world.entity.EntityType.BOAT.create(level);boat.setPos(256.5,201,103);level.addFreshEntity(boat);entities.add(boat);
+            ((dev.ryanhcode.sable.mixinterface.entity.entity_sublevel_collision.EntityMovementExtension)boat).sable$setTrackingSubLevel(b);
+            var pig=net.minecraft.world.entity.EntityType.PIG.create(level);pig.setPos(256.5,201,103);level.addFreshEntity(pig);entities.add(pig);pig.startRiding(boat,true);
+            actor.setDeltaMovement(0.3,0.2,0.1);boat.setDeltaMovement(0.6,0.1,0.2);
+            for(var ship:bodies) {
+                pipeline.teleport(ship,new Vector3d(ship.logicalPose().position()).add(1,0,0),ship.logicalPose().orientation());ship.updateBoundingBox();ship.updateLastPose();
+                pipeline.addLinearAndAngularVelocity(ship,new Vector3d(2,0.3,0.1),new Vector3d(0.01,0.02,0.03));
+            }
+            actor.setPos(actor.getX()+1,actor.getY(),actor.getZ());boat.setPos(boat.getX()+1,boat.getY(),boat.getZ());boat.positionRider(pig);
+            var linear=pipeline.getLinearVelocity(a,new Vector3d());var angular=pipeline.getAngularVelocity(a,new Vector3d());
+            double actorX=actor.getX(),boatX=boat.getX();
+            io.github.astelev.around_planet.compat.ShipTransferService.check(level,container);
+            h.assertTrue(Math.abs(a.logicalPose().position().x+256.5)<1e-6 && Math.abs(b.logicalPose().position().x+254.5)<1e-6,"Group did not wrap by one common circumference");
+            h.assertTrue(joint.isValid(),"Transfer broke the rotary constraint");
+            h.assertTrue(pipeline.getLinearVelocity(a,new Vector3d()).distance(linear)<1e-8 && pipeline.getAngularVelocity(a,new Vector3d()).distance(angular)<1e-8,"Transfer changed rigid body velocity");
+            h.assertTrue(Math.abs(actor.getX()-actorX+512)<1e-6 && SableTracking(actor)==b,"Standing passenger did not follow its original sublevel");
+            h.assertTrue(Math.abs(boat.getX()-boatX+512)<1e-6 && pig.getVehicle()==boat,"Riding group separated during carrier transfer");
+            h.assertTrue(actor.getDeltaMovement().equals(new net.minecraft.world.phys.Vec3(0.3,0.2,0.1)) && boat.getDeltaMovement().x==0.6,"Passenger velocity changed");
+            io.github.astelev.around_planet.compat.ShipTransferService.check(level,container);
+            h.assertTrue(Math.abs(a.logicalPose().position().x+256.5)<1e-6,"Outboard member caused an immediate reverse bounce");
+            for(var ship:bodies){pipeline.teleport(ship,new Vector3d(ship.logicalPose().position()).add(-1,0,0),ship.logicalPose().orientation());ship.updateBoundingBox();}
+            actor.setPos(actor.getX()-1,actor.getY(),actor.getZ());boat.setPos(boat.getX()-1,boat.getY(),boat.getZ());
+            io.github.astelev.around_planet.compat.ShipTransferService.check(level,container);
+            h.assertTrue(Math.abs(a.logicalPose().position().x-254.5)<1e-6 && Math.abs(b.logicalPose().position().x-256.5)<1e-6,"West group crossing did not preserve the relative layout");
+            for(int step=0;step<20;step++) {
+                pipeline.prePhysicsTicks();pipeline.physicsTick(0.01);system.updatePose(a);system.updatePose(b);
+            }
+            var worldA=a.logicalPose().transformPosition(new Vector3d(anchorA).add(1,0,0));
+            var worldB=b.logicalPose().transformPosition(new Vector3d(anchorB).add(-1,0,0));
+            h.assertTrue(joint.isValid() && worldA.distance(worldB)<0.1,"Native solver lost the rotary connection after transfer");
+            h.assertTrue(a.logicalPose().position().x>254.6,"Body did not continue moving after transfer");
+            try {Class.forName("dev.ryanhcode.sable.physics.impl.rapier.rope.RapierRopeHandle");Class.forName("dev.ryanhcode.sable.api.physics.object.rope.RopePhysicsObject");}
+            catch(ClassNotFoundException missing){throw new AssertionError(missing);}
+            joint.remove();joint=pipeline.addConstraint(a,null,new dev.ryanhcode.sable.api.physics.constraint.FixedConstraintConfiguration(
+                    new Vector3d(anchorA),new Vector3d(257,200,100),new org.joml.Quaterniond()));
+            pipeline.teleport(a,new Vector3d(257,200,100),a.logicalPose().orientation());a.updateBoundingBox();
+            pipeline.teleport(b,new Vector3d(255,200,100),b.logicalPose().orientation());b.updateBoundingBox();
+            io.github.astelev.around_planet.compat.ShipTransferService.check(level,container);
+            h.assertTrue(a.logicalPose().position().x==257 && joint.isValid(),"World-anchored body was partially transferred");
+            joint.remove();joint=null;
+            pipeline.teleport(a,new Vector3d(257,200,1234567),a.logicalPose().orientation());a.updateBoundingBox();
+            h.assertTrue(level.getChunkSource().getChunkNow(-16,1234567>>4)==null,"Cold destination fixture was already loaded");
+            io.github.astelev.around_planet.compat.ShipTransferService.check(level,container);
+            h.assertTrue(a.logicalPose().position().x==257 && level.getChunkSource().getChunkNow(-16,1234567>>4)==null,"Transfer entered or synchronously generated a missing destination");
+            h.succeed();
+        } finally {
+            entities.forEach(net.minecraft.world.entity.Entity::discard);if(joint!=null && joint.isValid())joint.remove();
+            for(var ship:bodies)if(container.getSubLevel(ship.getUniqueId())!=null)container.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);
+            PlanetBorders.unbind(level.getWorldBorder());
+        }
+    }
+    private static dev.ryanhcode.sable.sublevel.SubLevel SableTracking(net.minecraft.world.entity.Entity entity) {
+        return dev.ryanhcode.sable.Sable.HELPER.getTrackingSubLevel(entity);
+    }
+
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=400)
+    public static void nativeShipHitsOppositeWallBeforeCenterCrosses(GameTestHelper h) {
+        var level=h.getLevel();var container=SubLevelContainer.getContainer(level);var system=container.physicsSystem();var pipeline=system.getPipeline();
+        PlanetBorders.bind(level.getWorldBorder(),new EastWestTopology(512));
+        var saved=new HashMap<BlockPos,net.minecraft.world.level.block.state.BlockState>();
+        java.util.function.BiConsumer<BlockPos,net.minecraft.world.level.block.state.BlockState> put=(pos,state)->{
+            saved.putIfAbsent(pos,level.getBlockState(pos));level.setBlockAndUpdate(pos,state);
+        };
+        var ships=new ArrayList<ServerSubLevel>();
+        try {
+            for(int cx:new int[]{-17,-16,15,16})for(int cz=4;cz<=5;cz++)level.getChunk(cx,cz);
+            for(int direction:new int[]{1,-1}) {
+                int wall=direction>0?-256:255,ghost=direction>0?256:-257;
+                int z0=direction>0?70:82;
+                for(int x:new int[]{-258,-257,-256,-255,-254,253,254,255,256,257})
+                    for(int y=195;y<=205;y++)for(int z=z0-2;z<=z0+2;z++)put.accept(new BlockPos(x,y,z),Blocks.AIR.defaultBlockState());
+                for(int y=195;y<=205;y++)for(int z=z0-2;z<=z0+2;z++)put.accept(new BlockPos(wall,y,z),Blocks.STONE.defaultBlockState());
+                var anchor=h.absolutePos(new BlockPos(1,2,1));var blocks=new ArrayList<BlockPos>();
+                for(int x=0;x<3;x++){var pos=anchor.offset(x,0,0);level.setBlockAndUpdate(pos,Blocks.IRON_BLOCK.defaultBlockState());blocks.add(pos);}
+                var ship=SubLevelAssemblyHelper.assembleBlocks(level,anchor,blocks,new BoundingBox3i(anchor.getX(),anchor.getY(),anchor.getZ(),anchor.getX()+2,anchor.getY(),anchor.getZ()));
+                ships.add(ship);container.addForceLoadTicket(ship,SubLevelLoadingTicketType.COMMAND_FORCED,Unit.INSTANCE);
+                pipeline.teleport(ship,new Vector3d(direction*254,200,z0+0.5),ship.logicalPose().orientation());ship.updateBoundingBox();ship.updateLastPose();
+                system.getTicketManager().update(level,container,system,pipeline,0.05);
+                pipeline.resetVelocity(ship);pipeline.addLinearAndAngularVelocity(ship,new Vector3d(direction*2,0,0),new Vector3d());
+                for(int step=0;step<200;step++) {
+                    var velocity=pipeline.getLinearVelocity(ship,new Vector3d());
+                    pipeline.addLinearAndAngularVelocity(ship,new Vector3d(0,-velocity.y,0),new Vector3d());
+                    pipeline.prePhysicsTicks();pipeline.physicsTick(0.01);system.updatePose(ship);
+                }
+                double x=ship.logicalPose().position().x;
+                h.assertTrue(direction*x<255.1,"Rigid body passed through the opposite wall before its center crossed: "+x);
+                h.assertTrue(direction*x>253.5,"Collision teleported or rolled back the real ship: "+x);
+                h.assertTrue(Math.abs(pipeline.getLinearVelocity(ship,new Vector3d()).x)<0.3,"Native contact did not stop the rigid body");
+                // Remove the real wall; its already-uploaded image must update before the next physics step.
+                for(int y=195;y<=205;y++)for(int z=z0-2;z<=z0+2;z++)put.accept(new BlockPos(wall,y,z),Blocks.AIR.defaultBlockState());
+                // Contradictory guard terrain must never become the physics source.
+                for(int y=195;y<=205;y++)for(int z=z0-2;z<=z0+2;z++)put.accept(new BlockPos(ghost,y,z),Blocks.STONE.defaultBlockState());
+                pipeline.resetVelocity(ship);pipeline.addLinearAndAngularVelocity(ship,new Vector3d(direction*2,0,0),new Vector3d());
+                for(int step=0;step<150;step++) {
+                    var velocity=pipeline.getLinearVelocity(ship,new Vector3d());pipeline.addLinearAndAngularVelocity(ship,new Vector3d(0,-velocity.y,0),new Vector3d());
+                    pipeline.prePhysicsTicks();pipeline.physicsTick(0.01);system.updatePose(ship);
+                }
+                h.assertTrue(direction*ship.logicalPose().position().x>255.3,"Removed canonical wall or invisible guard terrain still blocks ship");
+                container.removeForceLoadTicket(ship,SubLevelLoadingTicketType.COMMAND_FORCED,Unit.INSTANCE);
+                container.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);
+            }
+            h.succeed();
+        } finally {
+            for(var ship:ships)if(container.getSubLevel(ship.getUniqueId())!=null) {
+                container.removeForceLoadTicket(ship,SubLevelLoadingTicketType.COMMAND_FORCED,Unit.INSTANCE);container.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);
+            }
+            saved.forEach(level::setBlockAndUpdate);PlanetBorders.unbind(level.getWorldBorder());
+        }
+    }
+}
