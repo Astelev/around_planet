@@ -19,12 +19,12 @@ public abstract class WorldBorderMixin {
     @Inject(method="getMinX", at=@At("RETURN"), cancellable=true)
     private void around_planet$west(CallbackInfoReturnable<Double> cir) {
         var topology = PlanetBorders.get((WorldBorder)(Object)this);
-        if (topology != null) cir.setReturnValue(Math.max(cir.getReturnValue(), topology.west()-PlanetBorders.GUARD_MARGIN));
+        if (topology != null) cir.setReturnValue(Math.max(cir.getReturnValue(), topology.west()-PlanetBorders.guardMargin()));
     }
     @Inject(method="getMaxX", at=@At("RETURN"), cancellable=true)
     private void around_planet$east(CallbackInfoReturnable<Double> cir) {
         var topology = PlanetBorders.get((WorldBorder)(Object)this);
-        if (topology != null) cir.setReturnValue(Math.min(cir.getReturnValue(), topology.east()+PlanetBorders.GUARD_MARGIN));
+        if (topology != null) cir.setReturnValue(Math.min(cir.getReturnValue(), topology.east()+PlanetBorders.guardMargin()));
     }
     @Inject(method="getCollisionShape", at=@At("HEAD"), cancellable=true)
     private void around_planet$guard(CallbackInfoReturnable<VoxelShape> cir) {

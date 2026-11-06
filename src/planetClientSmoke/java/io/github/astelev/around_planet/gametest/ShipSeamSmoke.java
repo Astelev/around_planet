@@ -43,6 +43,7 @@ public final class ShipSeamSmoke {
             mc.getSingleplayerServer().execute(()->{
                 try {
                     var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();var level=p.serverLevel();var container=SubLevelContainer.getContainer(level);
+                    io.github.astelev.around_planet.PlanetConfig.SHIP_TRANSFER.set(false);
                     p.stopRiding();p.setGameMode(net.minecraft.world.level.GameType.CREATIVE);p.getAbilities().flying=true;p.onUpdateAbilities();p.setNoGravity(true);
                     level.setDayTime(6000);level.setWeatherParameters(6000,0,false,false);
                     for(int x:new int[]{-16,-15,15,16})for(int z=-1;z<=1;z++)level.getChunk(x,z);

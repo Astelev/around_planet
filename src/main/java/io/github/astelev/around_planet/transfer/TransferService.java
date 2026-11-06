@@ -100,7 +100,9 @@ public final class TransferService {
         boolean playerOwned=group.stream().anyMatch(ServerPlayer.class::isInstance);
         if(!playerOwned && !topology.outside(entity.getX()) && topology.distanceToSeam(entity.getX())
                 >Math.min(activation,Math.max(8,Math.abs(entity.getKnownMovement().x)*40)))return;
-        if (group.stream().anyMatch(e -> ShipPassengerGuard.attached(e) || e instanceof Mob mob && mob.isLeashed())) {
+        boolean shipPassenger=group.stream().anyMatch(ShipPassengerGuard::attached);
+        if(group.stream().anyMatch(e->e instanceof Mob mob && mob.isLeashed())
+                || shipPassenger && (!topology.outside(entity.getX()) || entity.getY()>=level.getMaxBuildHeight())) {
             completed(level,entity);return;
         }
         double targetX = topology.destinationX(entity.getX());
@@ -109,6 +111,7 @@ public final class TransferService {
         if (!topology.outside(entity.getX())) preloadX = entity.getX() < 0 ? topology.east()-1 : topology.west();
         var target = new ChunkPos((int)Math.floor(preloadX/16), entity.chunkPosition().z);
         request(level,target,playerOwned);
+        if(shipPassenger){completed(level,entity);return;} // The ship group owns this passenger's coordinate change.
         if (!topology.outside(entity.getX())) return;
         double dx = targetX-entity.getX();
         var readiness=ready(level,group,dx);pending(level,entity,readiness);
@@ -197,7 +200,7 @@ public final class TransferService {
             }
         return true;
     }
-    private static void moveGroup(Entity root, double dx) {
+    public static void moveGroup(Entity root, double dx) {
         var members=root.getSelfAndPassengers().toList();
         var velocities=members.stream().map(Entity::getDeltaMovement).toList();
         // Relative position flags also preserve the client's creative/elytra movement and previous pose.

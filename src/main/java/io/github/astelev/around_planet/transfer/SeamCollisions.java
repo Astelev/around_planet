@@ -29,8 +29,8 @@ public final class SeamCollisions implements CollisionGetter {
         if (!(original instanceof Level level)) return original;
         var topology=PlanetBorders.get(level.getWorldBorder());
         if(topology==null || box.minX>=topology.west()+2 && box.maxX<=topology.east()-2
-                || box.maxX<topology.west()-PlanetBorders.GUARD_MARGIN-4
-                || box.minX>topology.east()+PlanetBorders.GUARD_MARGIN+4
+                || box.maxX<topology.west()-PlanetBorders.guardMargin()-4
+                || box.minX>topology.east()+PlanetBorders.guardMargin()+4
                 || entity!=null && ShipyardSpace.reserved(level,entity.chunkPosition().x,entity.chunkPosition().z)) return original;
         return new SeamCollisions(level,topology);
     }

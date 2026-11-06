@@ -34,7 +34,7 @@ public final class ShipTerrainPreload {
                 boolean needed=east?half+depth<=(int)Math.floor((box.maxX()+approach)/16)
                         :-half-1-depth>=(int)Math.floor((box.minX()-approach)/16);
                 if(!needed)break;
-                int x=east?-half+depth:half-1-depth;
+                int x=ShipSeams.source(level,east?half+depth:-half-1-depth);
                 for(int z=minZ;z<=maxZ && wanted.size()<LIMIT;z++)wanted.add(new ChunkPos(x,z));
             }
         }

@@ -7,7 +7,7 @@ modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 description='''
-Experimental east/west world wrapping. Through-seam rendering and ship transfer are under development.
+Experimental east/west world wrapping with through-seam rendering, block interactions and optional Sable assembly transport.
 '''
 
 [[dependencies.${mod_id}]]

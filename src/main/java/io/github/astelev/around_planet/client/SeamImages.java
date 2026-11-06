@@ -95,6 +95,16 @@ public final class SeamImages {
             SeamMeshCache.changed(level,chunk.getPos());
         } finally { buf.release(); }
     }
+    public static void authoritativeBlock(net.minecraft.core.BlockPos source,net.minecraft.world.level.block.state.BlockState state) {
+        var mc=Minecraft.getInstance();var level=mc.level;if(level==null || mc.player==null || level!=world)return;
+        var topology=PlanetBorders.get(level.getWorldBorder());if(topology==null || topology.outside(source.getX()))return;
+        int dx=(int)(Math.floor((mc.player.getX()-source.getX())/topology.width()+0.5)*topology.width());
+        if(dx==0)return;var pos=source.offset(dx,0,0);var image=get(level,pos.getX()>>4,pos.getZ()>>4);if(image==null)return;
+        // Only the detached section palette is changed; no gameplay/light-engine notifications or saved data.
+        int index=image.getSectionIndex(pos.getY());if(index<0 || index>=image.getSectionsCount())return;
+        image.getSection(index).setBlockState(pos.getX()&15,pos.getY()&15,pos.getZ()&15,state);
+        dirty(level,image.getPos());AlternativeRendererBridge.changed(level);SeamMeshCache.changed(level,image.getPos());
+    }
     private static DataLayer[] readLight(int count,BitSet full,BitSet empty,Iterator<byte[]> values) {
         var layers=new DataLayer[count];
         for(int i=0;i<count;i++)if(full.get(i)||empty.get(i))
@@ -115,6 +125,7 @@ public final class SeamImages {
         if(removed)AlternativeRendererBridge.changed(mc.level);
     }
     @SubscribeEvent public static void unload(LevelEvent.Unload event) {
+        if(net.neoforged.fml.ModList.get().isLoaded("sable"))ShipTransferClient.clear(event.getLevel());
         if(event.getLevel()==world) { AlternativeRendererBridge.clear(world);IMAGES.clear(); world=null;renderLight=null; }
         if(renderLight!=null && renderLight.level==event.getLevel())renderLight=null;
         var fallback=empty;if(fallback!=null && fallback.getLevel()==event.getLevel())empty=null;

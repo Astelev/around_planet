@@ -30,7 +30,7 @@ public final class SeamStreamer {
         int half = topology.width()/32, radius = PlanetConfig.RADIUS.getAsInt();
         for(var player : level.players()) {
             if(!player.connection.hasChannel(SeamChunkPayload.TYPE)) continue;
-            if(topology.distanceToSeam(player.getX()) > io.github.astelev.around_planet.transfer.TransferService.approachDistance(player,topology)) {
+            if(!topology.outside(player.getX()) && topology.distanceToSeam(player.getX()) > io.github.astelev.around_planet.transfer.TransferService.approachDistance(player,topology)) {
                 SENT.remove(player.getUUID()); continue;
             }
             var sent = SENT.computeIfAbsent(player.getUUID(), ignored -> new HashMap<>());
@@ -39,9 +39,10 @@ public final class SeamStreamer {
             List<SnapshotSchedule.Candidate> candidates=new ArrayList<>();
             boolean east = player.getX() >= 0;
             int visualRange=Math.max(Math.min(player.requestedViewDistance(),level.getServer().getPlayerList().getViewDistance())+2,radius+3);
-            for(int d=0; d<=radius+1; d++) for(int dz=-radius-1; dz<=radius+1; dz++) {
-                int sourceX = east ? -half+d : half-1-d;
-                int imageX = sourceX+(east ? half*2 : -half*2), z = player.chunkPosition().z+dz;
+            int depth=east?player.chunkPosition().x-half:-half-1-player.chunkPosition().x;
+            int first=Math.max(0,depth-radius-1),last=Math.max(radius+1,depth+radius+1);
+            for(int d=first; d<=last; d++) for(int dz=-radius-1; dz<=radius+1; dz++) {
+                int imageX=east?half+d:-half-1-d,sourceX=SeamGeometry.sourceX(topology,imageX),z=player.chunkPosition().z+dz;
                 if(Math.abs(imageX-player.chunkPosition().x)>visualRange) continue;
                 long key = ChunkPos.asLong(imageX,z); desired.add(key);
                 var chunk=level.getChunkSource().getChunkNow(sourceX,z);

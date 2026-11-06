@@ -15,7 +15,10 @@ import org.spongepowered.asm.mixin.injection.At;
 
 @Pseudo
 @Mixin(targets="dev.ryanhcode.sable.sublevel.ClientSubLevel",remap=false)
-public abstract class SeamShipRenderPoseMixin {
+public abstract class SeamShipRenderPoseMixin implements io.github.astelev.around_planet.compat.ShipClientHistory {
+    @org.spongepowered.asm.mixin.Shadow @org.spongepowered.asm.mixin.Final private Pose3d renderPose;
+    @org.spongepowered.asm.mixin.Shadow private float lastRenderPosePartialTick;
+    @Override public void around_planet$shiftRenderCache(double dx){renderPose.position().add(dx,0,0);lastRenderPosePartialTick=-1;}
     private double around_planet$shift(double x) {
         var ship=(ClientSubLevel)(Object)this;var topology=ShipSeams.topology(ship.getLevel());
         return !ShipRenderScope.active() || topology==null?0:ShipSeams.nearestShift(x,

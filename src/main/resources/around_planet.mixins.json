@@ -18,7 +18,22 @@
     "SeamBoatDismountMixin",
     "SeamShipTrackingMixin",
     "SeamShipPhysicsTicketsMixin",
-    "SeamShipTerrainMixin"
+    "SeamShipTerrainMixin",
+    "SeamInteractionReachMixin",
+    "SeamInteractionPacketMixin",
+    "SeamShipJointsMixin",
+    "SeamShipJointRemoveMixin",
+    "SeamShipHistoryMixin",
+    "SeamShipTransferMixin",
+    "SeamPlacementCollisionMixin",
+    "SeamServerItemUseMixin",
+    "SeamServerItemReadsMixin",
+    "SeamItemRayResultMixin",
+    "SeamShipRopeGuardMixin",
+    "SeamPlacementPositionMixin",
+    "SeamPlacementLocationMixin",
+    "SeamBucketPositionMixin",
+    "SeamMiningFeedbackMixin"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -45,6 +60,11 @@
     "SeamDhShaderUniformMixin",
     "SeamClientCollisionMixin",
     "SeamShipRenderScopeMixin",
-    "SeamShipRenderPoseMixin"
+    "SeamShipRenderPoseMixin",
+    "SeamClientInteractionScopeMixin",
+    "SeamPickScopeMixin",
+    "SeamClientBlockReadsMixin",
+    "SeamImageBlockUpdateMixin",
+    "SeamShipInterpolationMixin"
   ]
 }

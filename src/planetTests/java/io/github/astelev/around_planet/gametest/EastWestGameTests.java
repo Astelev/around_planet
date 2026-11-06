@@ -28,7 +28,7 @@ import java.util.ArrayList;
 @PrefixGameTestTemplate(false)
 @EventBusSubscriber(modid=AroundPlanet.MOD_ID,bus=EventBusSubscriber.Bus.MOD)
 public final class EastWestGameTests {
-    @SubscribeEvent public static void register(RegisterGameTestsEvent event) { event.register(EastWestGameTests.class);if(net.neoforged.fml.ModList.get().isLoaded("sable"))event.register(ShipSeamGameTests.class); }
+    @SubscribeEvent public static void register(RegisterGameTestsEvent event) { event.register(EastWestGameTests.class);event.register(SeamInteractionGameTests.class);if(net.neoforged.fml.ModList.get().isLoaded("sable"))event.register(ShipSeamGameTests.class); }
 
     private static void playerPreloadCannotBeStarved(GameTestHelper h) {
         var level=h.getLevel();var stop=new net.neoforged.neoforge.event.server.ServerStoppingEvent(level.getServer());
@@ -131,10 +131,10 @@ public final class EastWestGameTests {
         PlanetBorders.bind(border,new EastWestTopology(512));
         try {
             playerPreloadCannotBeStarved(h);
-            h.assertTrue(border.getMinX()==-264 && border.getMaxX()==264,"E/W guard missing");
+            h.assertTrue(border.getMinX()==-256-PlanetBorders.guardMargin() && border.getMaxX()==256+PlanetBorders.guardMargin(),"E/W guard missing");
             h.assertTrue(border.getMinZ()==zMin && border.getMaxZ()==zMax,"North/south border was changed");
             h.assertTrue(border.getSize()==savedSize,"Saved vanilla border size was overwritten");
-            h.assertTrue(Shapes.joinIsNotEmpty(border.getCollisionShape(),Shapes.box(265,190,0,266,191,1),BooleanOp.AND),"Guard has no collision");
+            h.assertTrue(Shapes.joinIsNotEmpty(border.getCollisionShape(),Shapes.box(border.getMaxX()+1,190,0,border.getMaxX()+2,191,1),BooleanOp.AND),"Guard has no collision");
             h.assertTrue(!Shapes.joinIsNotEmpty(border.getCollisionShape(),Shapes.box(0,190,1000,1,191,1001),BooleanOp.AND),"Unexpected north/south wall");
             var displaced=new net.minecraft.world.level.border.WorldBorder();
             displaced.setCenter(1000,0);displaced.setSize(20);PlanetBorders.bind(displaced,new EastWestTopology(512));
