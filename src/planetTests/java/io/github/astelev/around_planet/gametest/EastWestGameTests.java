@@ -30,6 +30,25 @@ import java.util.ArrayList;
 public final class EastWestGameTests {
     @SubscribeEvent public static void register(RegisterGameTestsEvent event) { event.register(EastWestGameTests.class); }
 
+    private static void playerPreloadCannotBeStarved(GameTestHelper h) {
+        var level=h.getLevel();var stop=new net.neoforged.neoforge.event.server.ServerStoppingEvent(level.getServer());
+        TransferService.stopping(stop);
+        try {
+            for(int z=0;z<16;z++) {
+                var item=new ItemEntity(level,255,200,z*16+8,new ItemStack(Items.STICK));
+                TransferService.check(item);
+            }
+            var player=net.neoforged.neoforge.common.util.FakePlayerFactory.getMinecraft(level);
+            player.setPos(255,200,4001*16+8);TransferService.check(player);
+            String ticket;
+            try {
+                var debug=net.minecraft.server.level.DistanceManager.class.getDeclaredMethod("getTicketDebugString",long.class);debug.setAccessible(true);
+                ticket=(String)debug.invoke(level.getChunkSource().chunkMap.getDistanceManager(),new net.minecraft.world.level.ChunkPos(-16,4001).toLong());
+            } catch(ReflectiveOperationException error){throw new AssertionError(error);}
+            h.assertTrue(ticket.contains("around_planet_destination"),"Player destination was starved by 16 stationary entity preloads: "+ticket);
+        } finally {TransferService.stopping(stop);}
+    }
+
     @GameTest(template="empty",timeoutTicks=400)
     public static void realChunksEntitiesVehiclesAndDirectionalBorder(GameTestHelper h) {
         var level=h.getLevel(); var border=level.getWorldBorder();
@@ -39,6 +58,7 @@ public final class EastWestGameTests {
         var oldBlock=level.getBlockState(obstacle);
         PlanetBorders.bind(border,new EastWestTopology(512));
         try {
+            playerPreloadCannotBeStarved(h);
             h.assertTrue(border.getMinX()==-264 && border.getMaxX()==264,"E/W guard missing");
             h.assertTrue(border.getMinZ()==zMin && border.getMaxZ()==zMax,"North/south border was changed");
             h.assertTrue(border.getSize()==savedSize,"Saved vanilla border size was overwritten");
@@ -94,8 +114,15 @@ public final class EastWestGameTests {
             TransferService.tick(new EntityTickEvent.Post(boat));
             h.assertTrue(boat.getX()==-255.5 && pig.getX()<0 && pig.getVehicle()==boat,"Vehicle/rider group separated");
             h.assertTrue(boat.getDeltaMovement().x==2 && pig.getDeltaMovement().x==0.1,"Vehicle/rider velocities changed");
-            h.succeedWhen(() -> h.assertTrue(level.getChunkSource().getChunkNow(-16,62500)!=null,
-                    "Transient ticket did not asynchronously load the destination"));
+            var approachingPlayer=net.neoforged.neoforge.common.util.FakePlayerFactory.getMinecraft(level);
+            approachingPlayer.setPos(255,200,1000000.5);
+            TransferService.check(approachingPlayer);
+            h.succeedWhen(() -> {
+                for(int d=0;d<=3;d++)for(int dz=-3;dz<=3;dz++) {
+                    var chunk=level.getChunkSource().getChunkNow(-16+d,62500+dz);
+                    h.assertTrue(chunk!=null && chunk.isLightCorrect(),"Preload did not finish the outer preview strip: "+(-16+d)+","+(62500+dz));
+                }
+            });
         } finally {
             entities.forEach(Entity::discard); level.setBlockAndUpdate(obstacle,oldBlock);
             PlanetBorders.unbind(border);

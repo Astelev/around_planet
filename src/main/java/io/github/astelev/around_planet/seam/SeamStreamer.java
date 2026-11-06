@@ -30,7 +30,7 @@ public final class SeamStreamer {
         int half = topology.width()/32, radius = PlanetConfig.RADIUS.getAsInt();
         for(var player : level.players()) {
             if(!player.connection.hasChannel(SeamChunkPayload.TYPE)) continue;
-            if(topology.distanceToSeam(player.getX()) > Math.max(PlanetConfig.ACTIVATION.getAsInt(), (radius+3)*16)) {
+            if(topology.distanceToSeam(player.getX()) > io.github.astelev.around_planet.transfer.TransferService.approachDistance(player,topology)) {
                 SENT.remove(player.getUUID()); continue;
             }
             var sent = SENT.computeIfAbsent(player.getUUID(), ignored -> new HashMap<>());

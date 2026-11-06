@@ -26,12 +26,14 @@ import java.util.Map;
 @EventBusSubscriber(modid=AroundPlanet.MOD_ID)
 public final class TransferService {
     private static final TicketType<ChunkPos> PRELOAD = TicketType.create("around_planet_destination", Comparator.comparingLong(ChunkPos::toLong), 100);
-    private static final Map<ServerLevel, Map<ChunkPos, Long>> REQUESTS = new IdentityHashMap<>();
-    private static final Map<ServerLevel, java.util.Set<Entity>> PENDING = new IdentityHashMap<>();
+    private record Lease(long refreshed,long playerUntil,int radius) {}
+    private enum Readiness { JOINED, MISSING_CHUNKS, COLLISION, READY }
+    private static final Map<ServerLevel, Map<ChunkPos, Lease>> REQUESTS = new IdentityHashMap<>();
+    private static final Map<ServerLevel, Map<Entity,Readiness>> PENDING = new IdentityHashMap<>();
 
-    private static void pending(ServerLevel level,Entity entity) {
-        var set=PENDING.computeIfAbsent(level,ignored->java.util.Collections.newSetFromMap(new IdentityHashMap<>()));
-        if(set.size()<4096) set.add(entity);
+    private static void pending(ServerLevel level,Entity entity,Readiness reason) {
+        var set=PENDING.computeIfAbsent(level,ignored->new IdentityHashMap<>());
+        if(set.size()<4096 || set.containsKey(entity))set.put(entity,reason);
     }
     private static void completed(ServerLevel level,Entity entity) {
         var set=PENDING.get(level);if(set!=null)set.remove(entity);
@@ -40,13 +42,13 @@ public final class TransferService {
         if(event.getLevel() instanceof ServerLevel level) {
             var topology=PlanetBorders.get(level.getWorldBorder());
             if(topology!=null && topology.outside(event.getEntity().getX())
-                    && !io.github.astelev.around_planet.compat.ShipyardSpace.reserved(level,event.getEntity().chunkPosition().x,event.getEntity().chunkPosition().z)) pending(level,event.getEntity());
+                    && !io.github.astelev.around_planet.compat.ShipyardSpace.reserved(level,event.getEntity().chunkPosition().x,event.getEntity().chunkPosition().z)) pending(level,event.getEntity(),Readiness.JOINED);
         }
     }
     @SubscribeEvent public static void retry(LevelTickEvent.Post event) {
         if(!(event.getLevel() instanceof ServerLevel level))return;
         var set=PENDING.get(level);if(set==null || set.isEmpty())return;
-        for(var entity:set.toArray(Entity[]::new)) {
+        for(var entity:set.keySet().toArray(Entity[]::new)) {
             if(entity.isRemoved() || entity.level()!=level || entity.isPassenger()) {set.remove(entity);continue;}
             check(entity);
         }
@@ -68,8 +70,8 @@ public final class TransferService {
     }
     @SubscribeEvent
     public static void stopping(ServerStoppingEvent event) {
-        REQUESTS.forEach((level, requests) -> requests.keySet().forEach(pos ->
-                level.getChunkSource().removeRegionTicket(PRELOAD,pos,PlanetConfig.RADIUS.getAsInt(),pos)));
+        REQUESTS.forEach((level, requests) -> requests.forEach((pos,lease) ->
+                level.getChunkSource().removeRegionTicket(PRELOAD,pos,lease.radius,pos)));
         REQUESTS.clear();
         PENDING.clear();
     }
@@ -92,10 +94,12 @@ public final class TransferService {
             completed(level,entity);return;
         }
         if(!topology.outside(entity.getX())) completed(level,entity);
-        double activation=Math.min(topology.width()/4.0, Math.max(PlanetConfig.ACTIVATION.getAsInt(),
-                Math.min(1024,Math.abs(entity.getKnownMovement().x)*40)));
+        double activation=approachDistance(entity,topology);
         if (topology.distanceToSeam(entity.getX()) > activation && !topology.outside(entity.getX())) return;
         var group = entity.getSelfAndPassengers().toList();
+        boolean playerOwned=group.stream().anyMatch(ServerPlayer.class::isInstance);
+        if(!playerOwned && !topology.outside(entity.getX()) && topology.distanceToSeam(entity.getX())
+                >Math.min(activation,Math.max(8,Math.abs(entity.getKnownMovement().x)*40)))return;
         if (group.stream().anyMatch(e -> ShipPassengerGuard.attached(e) || e instanceof Mob mob && mob.isLeashed())) {
             completed(level,entity);return;
         }
@@ -104,11 +108,11 @@ public final class TransferService {
         double preloadX = topology.canonicalX(targetX);
         if (!topology.outside(entity.getX())) preloadX = entity.getX() < 0 ? topology.east()-1 : topology.west();
         var target = new ChunkPos((int)Math.floor(preloadX/16), entity.chunkPosition().z);
-        request(level, target);
+        request(level,target,playerOwned);
         if (!topology.outside(entity.getX())) return;
-        pending(level,entity);
         double dx = targetX-entity.getX();
-        if (!ready(level, group, dx)) {
+        var readiness=ready(level,group,dx);pending(level,entity,readiness);
+        if (readiness!=Readiness.READY) {
             // Stay on the crossing side of the seam so even stationary entities retry next tick.
             double x = entity.getX() >= topology.east() ? topology.east() : topology.west()-0.001;
             double holdDx=x-entity.getX();
@@ -118,25 +122,61 @@ public final class TransferService {
         moveGroup(entity, dx);
         completed(level,entity);
     }
-    private static void request(ServerLevel level, ChunkPos pos) {
-        var requests = REQUESTS.computeIfAbsent(level, ignored -> new HashMap<>());
-        long now = level.getGameTime();
-        requests.entrySet().removeIf(e -> now-e.getValue() >= 100);
-        Long previous = requests.get(pos);
-        if (previous != null && now-previous < 20 || previous == null && requests.size() >= 16) return;
-        int radius=PlanetConfig.RADIUS.getAsInt();
-        level.getChunkSource().addRegionTicket(PRELOAD, pos, radius, pos);
-        // The vanilla ticket manager schedules loading on following ticks.
-        // Even getChunkFuture blocks on the server thread in 1.21.1; never call it here.
-        requests.put(pos,now);
+    public static double approachDistance(Entity entity,EastWestTopology topology) {
+        return Math.min(topology.width()/4.0,Math.max(Math.max(PlanetConfig.ACTIVATION.getAsInt(),
+                (PlanetConfig.RADIUS.getAsInt()+3)*16),Math.min(1024,Math.abs(entity.getKnownMovement().x)*40)));
     }
-    private static boolean ready(ServerLevel level, java.util.List<Entity> group, double dx) {
-        for (var member : group) {
-            var box=member.getBoundingBox().move(dx,0,0);
-            if (!chunksReady(level,box)) return false;
-            if (!level.noCollision(member,box)) return false;
+    private static void request(ServerLevel level,ChunkPos pos,boolean player) {
+        var requests=REQUESTS.computeIfAbsent(level,ignored->new HashMap<>());
+        long now=level.getGameTime();requests.entrySet().removeIf(e->now-e.getValue().refreshed>=100);
+        var previous=requests.get(pos);
+        int radius=PlanetConfig.RADIUS.getAsInt()+((player || previous!=null && previous.playerUntil>=now)?1:0);
+        long playerUntil=player?now+40:previous==null?Long.MIN_VALUE:previous.playerUntil;
+        if(previous!=null && now-previous.refreshed<20 && previous.radius==radius) {
+            if(player)requests.put(pos,new Lease(previous.refreshed,playerUntil,radius));
+            return;
         }
-        return true;
+        if(previous==null && requests.size()>=16) {
+            if(!player)return;
+            // Stationary mobs must never occupy every slot while a player waits indefinitely.
+            var victim=requests.entrySet().stream().min(Comparator
+                    .<Map.Entry<ChunkPos,Lease>>comparingInt(e->e.getValue().playerUntil>=now?1:0)
+                    .thenComparingLong(e->e.getValue().playerUntil).thenComparingLong(e->e.getValue().refreshed)
+                    .thenComparingLong(e->e.getKey().toLong())).orElseThrow();
+            level.getChunkSource().removeRegionTicket(PRELOAD,victim.getKey(),victim.getValue().radius,victim.getKey());
+            requests.remove(victim.getKey());
+        }
+        if(previous!=null && previous.radius!=radius)level.getChunkSource().removeRegionTicket(PRELOAD,pos,previous.radius,pos);
+        // Player images need the extra outer ring; ordinary entities retain the smaller crossing square.
+        level.getChunkSource().addRegionTicket(PRELOAD,pos,radius,pos);
+        requests.put(pos,new Lease(now,playerUntil,radius));
+    }
+    private static Readiness ready(ServerLevel level,java.util.List<Entity> group,double dx) {
+        for(var member:group) {
+            var box=member.getBoundingBox().move(dx,0,0);
+            if(!chunksReady(level,box))return Readiness.MISSING_CHUNKS;
+            if(!level.noCollision(member,box))return Readiness.COLLISION;
+        }
+        return Readiness.READY;
+    }
+    public static String diagnostics(ServerPlayer player) {
+        var level=player.serverLevel();var topology=PlanetBorders.get(level.getWorldBorder());
+        if(topology==null)return "East/west seam is disabled in this dimension.";
+        int half=topology.width()/32,radius=PlanetConfig.RADIUS.getAsInt(),full=0,lit=0;
+        boolean east=player.getX()>=0;int z0=player.chunkPosition().z;
+        for(int d=0;d<=radius+1;d++)for(int dz=-radius-1;dz<=radius+1;dz++) {
+            var chunk=level.getChunkSource().getChunkNow(east?-half+d:half-1-d,z0+dz);
+            if(chunk!=null){full++;if(chunk.isLightCorrect())lit++;}
+        }
+        var pos=new ChunkPos(east?-half:half-1,z0);var requests=REQUESTS.get(level);
+        long now=level.getGameTime();var lease=requests==null?null:requests.get(pos);
+        if(lease!=null && now-lease.refreshed>=100)lease=null;
+        long active=requests==null?0:requests.values().stream().filter(l->now-l.refreshed<100).count();
+        var pending=PENDING.get(level);
+        var reason=pending==null?null:pending.get(player.getRootVehicle());
+        return "Destination "+pos+"; preview FULL="+full+"/"+((radius+2)*(radius*2+3))+", lit="+lit
+                +"; preload="+(lease==null?"NONE":(lease.playerUntil>=level.getGameTime()?"PLAYER":"ENTITY")+", radius="+lease.radius)
+                +"; leases="+active+"/16; gate="+(reason==null?"NO_PENDING_CROSSING":reason);
     }
     private static boolean chunksReady(ServerLevel level, net.minecraft.world.phys.AABB box) {
         for(int x=(int)Math.floor(box.minX/16);x<=(int)Math.floor(box.maxX/16);x++)

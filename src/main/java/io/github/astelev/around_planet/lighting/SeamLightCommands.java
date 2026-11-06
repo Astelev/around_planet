@@ -28,6 +28,11 @@ public final class SeamLightCommands {
                 .then(Commands.argument("chunkX",IntegerArgumentType.integer(-1875000,1874999))
                 .then(Commands.argument("chunkZ",IntegerArgumentType.integer(-1875000,1874999)).executes(c->run(c.getSource(),
                         IntegerArgumentType.getInteger(c,"chunkX"),IntegerArgumentType.getInteger(c,"chunkZ"),action.equals("relight"))))));
+        root.then(Commands.literal("seamstatus").executes(c->{
+            var player=c.getSource().getPlayerOrException();
+            c.getSource().sendSuccess(()->Component.literal(io.github.astelev.around_planet.transfer.TransferService.diagnostics(player)),false);
+            return 1;
+        }));
         event.getDispatcher().register(root);
     }
     @SubscribeEvent public static void unload(net.neoforged.neoforge.event.level.LevelEvent.Unload event) {
