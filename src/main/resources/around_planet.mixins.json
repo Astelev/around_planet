@@ -33,7 +33,9 @@
     "SeamPlacementPositionMixin",
     "SeamPlacementLocationMixin",
     "SeamBucketPositionMixin",
-    "SeamMiningFeedbackMixin"
+    "SeamMiningFeedbackMixin",
+    "SeamNoiseStateMixin",
+    "SeamGenerationBindMixin"
   ],
   "injectors": {
     "defaultRequire": 1

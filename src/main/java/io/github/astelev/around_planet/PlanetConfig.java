@@ -4,13 +4,13 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
-    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER;
-    public static final ModConfigSpec.IntValue BOUNDARY, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN;
+    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND;
+    public static final ModConfigSpec.IntValue BOUNDARY, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND;
     static {
         var b = new ModConfigSpec.Builder();
         b.push("eastWest");
         ENABLED = b.comment("Experimental Overworld east/west transfer. Enable in a test world. Restart after changing these settings.",
-                "Renders loaded chunks, ordinary entities and optional Sable ships across the seam. Optional Sable assemblies transfer by their combined center of mass. Does not change world generation.")
+                "Renders loaded chunks, ordinary entities and optional Sable ships across the seam. Optional Sable assemblies transfer by their combined center of mass. Optional terrainSeamBlending smooths noise-based generation near the seam.")
                 .define("enabled", false);
         BOUNDARY = b.comment("Absolute X of each seam: +boundaryX wraps to -boundaryX, not to zero.",
                 "Multiple of 16; total circumference is twice this value. Replaces the old widthBlocks setting.")
@@ -38,6 +38,10 @@ public final class PlanetConfig {
                 .define("shipSeamTransfers",true);
         GUARD_MARGIN=b.comment("Safety border distance beyond each seam. Keep larger than the maximum ship overhang plus passenger reach.")
                 .defineInRange("guardMarginBlocks",1024,16,16384);
+        TERRAIN_BLEND=b.comment("Blend Overworld noise-based terrain and climate at both seams. Only newly generated terrain changes; restart required.")
+                .define("terrainSeamBlending",true);
+        TERRAIN_BAND=b.comment("Blend width in blocks on each shore, capped at one quarter of circumference. Existing saved chunks are never rewritten.")
+                .defineInRange("terrainBlendWidthBlocks",256,32,2048);
         b.pop(); SPEC = b.build();
     }
     private PlanetConfig() {}
