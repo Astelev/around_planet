@@ -146,7 +146,9 @@ public final class EastWestClientSmoke {
             phase=41;started=ticks;
             mc.getSingleplayerServer().execute(()->{
                 var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
-                p.getAbilities().flying=true;p.onUpdateAbilities();p.connection.teleport(246,200,0,-90,0);
+                // Keep the momentum fixture clear of earlier wall tests and preload both shores.
+                for(int x:new int[]{-17,-16,15,16})for(int z=7;z<=9;z++)p.serverLevel().getChunk(x,z);
+                p.getAbilities().flying=true;p.onUpdateAbilities();p.connection.teleport(246,300,128,-90,0);
             });
         } else if(phase==41 && ticks-started>20 && Math.abs(mc.player.getX()-246)<0.01) {
             phase=42;started=ticks;flightVelocity=0;mc.options.keyUp.setDown(true);
@@ -156,7 +158,7 @@ public final class EastWestClientSmoke {
                 require(flightVelocity>0.15,"Flight control did not reach cruise speed");
                 require(mc.player.getDeltaMovement().x>flightVelocity*0.55,"East crossing reset creative flight momentum: "+mc.player.getDeltaMovement());
                 mc.options.keyUp.setDown(false);phase=44;started=ticks;
-                mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst().connection.teleport(-246,200,0,90,0));
+                mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst().connection.teleport(-246,300,128,90,0));
             }
         } else if(phase==44 && ticks-started>20 && Math.abs(mc.player.getX()+246)<0.01) {
             phase=45;started=ticks;flightVelocity=0;mc.options.keyUp.setDown(true);
