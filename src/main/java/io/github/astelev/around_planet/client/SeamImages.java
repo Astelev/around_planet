@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.BitSet;
 import java.util.Iterator;
 
-/** Read only by render-region snapshots. Not inserted into the gameplay chunk cache. */
+/** Read-only render snapshots and seam collision prediction. Never inserted into the gameplay chunk cache. */
 @EventBusSubscriber(modid=AroundPlanet.MOD_ID,value=Dist.CLIENT)
 public final class SeamImages {
     private static final ConcurrentHashMap<Long,LevelChunk> IMAGES = new ConcurrentHashMap<>();

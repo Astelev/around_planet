@@ -112,11 +112,12 @@ public final class TransferService {
         if (!topology.outside(entity.getX())) return;
         double dx = targetX-entity.getX();
         var readiness=ready(level,group,dx);pending(level,entity,readiness);
+        if (readiness==Readiness.COLLISION) return; // Ordinary stitched collisions allow backing/sliding out; never repeatedly teleport a blocked vehicle.
         if (readiness!=Readiness.READY) {
             // Stay on the crossing side of the seam so even stationary entities retry next tick.
             double x = entity.getX() >= topology.east() ? topology.east() : topology.west()-0.001;
             double holdDx=x-entity.getX();
-            if (Math.abs(holdDx)>1.0e-6 && group.stream().allMatch(e -> chunksReady(level,e.getBoundingBox().move(holdDx,0,0)))) moveGroup(entity,holdDx);
+            if (Math.abs(holdDx)>1.0e-6 && group.stream().allMatch(e -> chunksReady(level,e.getBoundingBox().move(holdDx,0,0),false))) moveGroup(entity,holdDx);
             return;
         }
         moveGroup(entity, dx);
@@ -155,7 +156,12 @@ public final class TransferService {
         for(var member:group) {
             var box=member.getBoundingBox().move(dx,0,0);
             if(!chunksReady(level,box))return Readiness.MISSING_CHUNKS;
-            if(!level.noCollision(member,box))return Readiness.COLLISION;
+            if(!level.getWorldBorder().isWithinBounds(box) || !level.getEntityCollisions(member,box).isEmpty()) return Readiness.COLLISION;
+            // Rebase an existing overlap as well: a periodic coordinate change must not strand
+            // a boat/rider in an untracked guard column. Movement already resolves the stitched
+            // shapes. Reject only a NEW block overlap, not the same contact in another coordinate.
+            if(!level.noBlockCollision(member,box) && level.noBlockCollision(member,member.getBoundingBox()))
+                return Readiness.COLLISION;
         }
         return Readiness.READY;
     }
@@ -179,9 +185,16 @@ public final class TransferService {
                 +"; leases="+active+"/16; gate="+(reason==null?"NO_PENDING_CROSSING":reason);
     }
     private static boolean chunksReady(ServerLevel level, net.minecraft.world.phys.AABB box) {
-        for(int x=(int)Math.floor(box.minX/16);x<=(int)Math.floor(box.maxX/16);x++)
-            for(int z=(int)Math.floor(box.minZ/16);z<=(int)Math.floor(box.maxZ/16);z++)
-                if(level.getChunkSource().getChunkNow(x,z)==null) return false;
+        return chunksReady(level,box,true);
+    }
+    private static boolean chunksReady(ServerLevel level,net.minecraft.world.phys.AABB box,boolean periodic) {
+        var topology=periodic?PlanetBorders.get(level.getWorldBorder()):null;
+        for(int x=(int)Math.floor(box.minX/16);x<=(int)Math.floor((box.maxX-1.0e-7)/16);x++)
+            for(int z=(int)Math.floor(box.minZ/16);z<=(int)Math.floor((box.maxZ-1.0e-7)/16);z++) {
+                int source=topology!=null && !io.github.astelev.around_planet.compat.ShipyardSpace.reserved(level,x,z)
+                        ? io.github.astelev.around_planet.seam.SeamGeometry.sourceX(topology,x):x;
+                if(level.getChunkSource().getChunkNow(source,z)==null) return false;
+            }
         return true;
     }
     private static void moveGroup(Entity root, double dx) {

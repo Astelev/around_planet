@@ -13,7 +13,9 @@
     "EntityDataAccessor",
     "VehicleMovementAccessor",
     "SeamMobDespawnMixin",
-    "SeamUnloadBudgetMixin"
+    "SeamUnloadBudgetMixin",
+    "SeamBlockCollisionsMixin",
+    "SeamBoatDismountMixin"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -37,6 +39,7 @@
     "SeamDhModuleMixin",
     "SeamDhTerrainMixin",
     "SeamDhShaderSourceMixin",
-    "SeamDhShaderUniformMixin"
+    "SeamDhShaderUniformMixin",
+    "SeamClientCollisionMixin"
   ]
 }

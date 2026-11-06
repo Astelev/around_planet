@@ -49,6 +49,78 @@ public final class EastWestGameTests {
         } finally {TransferService.stopping(stop);}
     }
 
+    private static void stitchedCollisionsAndEscape(GameTestHelper h) {
+        var level=h.getLevel();
+        var saved=new java.util.HashMap<BlockPos,net.minecraft.world.level.block.state.BlockState>();
+        java.util.function.BiConsumer<BlockPos,net.minecraft.world.level.block.state.BlockState> put=(pos,state)->{
+            saved.putIfAbsent(pos,level.getBlockState(pos));level.setBlockAndUpdate(pos,state);
+        };
+        var air=Blocks.AIR.defaultBlockState();var stone=Blocks.STONE.defaultBlockState();
+        try {
+            level.getChunk(15,77);level.getChunk(-16,77);
+            h.assertTrue(level.getChunkSource().getChunkNow(-17,77)==null,"Unused guard column must start absent");
+            var straddling=EntityType.BOAT.create(level);straddling.setPos(256.1,250,77*16+8);
+            TransferService.check(straddling);
+            h.assertTrue(straddling.getX()<0,"Straddling hull waited for a nonexistent guard chunk instead of its canonical source");
+            h.assertTrue(level.getChunkSource().getChunkNow(-17,77)==null,"Collision test generated the raw guard column");
+            straddling.discard();
+            for(int x:new int[]{-258,-257,-256,-255,-254,-253,253,254,255,256,257,258})
+                for(int z=30;z<=34;z++)for(int y=218;y<=223;y++)put.accept(new BlockPos(x,y,z),air);
+            for(int direction:new int[]{1,-1}) {
+                double start=direction>0?255.5:-255.5;
+                int ghost=direction>0?256:-257, oppositeGhost=direction>0?-257:256;
+                // Both raw guard columns disagree with their visible periodic images.
+                for(int y=220;y<=221;y++) {
+                    put.accept(new BlockPos(ghost,y,30),stone);
+                    put.accept(new BlockPos(oppositeGhost,y,30),stone);
+                }
+                var walker=EntityType.ZOMBIE.create(level);walker.setPos(start,220,30.5);
+                walker.move(net.minecraft.world.entity.MoverType.SELF,new Vec3(direction*0.7,0,0));
+                double before=walker.getX();
+                h.assertTrue(direction>0?before>256:before<-256,"Invisible guard terrain blocked the open seam passage");
+                TransferService.check(walker);
+                h.assertTrue(Math.abs(walker.getX()-(before-direction*512))<1e-6,
+                        "A straddling destination hull tested the wrong side of the seam");
+                walker.discard();
+                int realWall=direction>0?-256:255;
+                for(int y=220;y<=221;y++)put.accept(new BlockPos(realWall,y,31),stone);
+                var wallWalker=EntityType.ZOMBIE.create(level);wallWalker.setPos(start,220,31.5);
+                wallWalker.move(net.minecraft.world.entity.MoverType.SELF,new Vec3(direction*1.0,0,0.2));
+                double stopped=wallWalker.getX();
+                h.assertTrue(direction>0?stopped<=255.71:stopped>=-255.71,"Opposite-side wall did not stop ordinary movement before crossing");
+                h.assertTrue(Math.abs(wallWalker.getZ()-31.7)<1e-6,"Wall prevented tangential sliding");
+                for(int i=0;i<3;i++)TransferService.check(wallWalker);
+                h.assertTrue(wallWalker.getX()==stopped,"Stationary wall contact caused a teleport correction");
+                wallWalker.move(net.minecraft.world.entity.MoverType.SELF,new Vec3(-direction*0.4,0,0));
+                h.assertTrue(Math.abs(wallWalker.getX()-stopped+direction*0.4)<1e-6,"Could not back away from the seam wall");
+                wallWalker.discard();
+                for(int y=220;y<=221;y++) {
+                    put.accept(new BlockPos(ghost,y,30),air);put.accept(new BlockPos(oppositeGhost,y,30),air);
+                    put.accept(new BlockPos(realWall,y,31),air);
+                }
+            }
+            // Exact floor and two-block ceiling in a narrow seam tunnel.
+            for(int x:new int[]{254,255,-256,-255}) {
+                put.accept(new BlockPos(x,219,32),stone);put.accept(new BlockPos(x,222,32),stone);
+                for(int y=220;y<=221;y++) {put.accept(new BlockPos(x,y,31),stone);put.accept(new BlockPos(x,y,33),stone);}
+            }
+            var tunnel=EntityType.ZOMBIE.create(level);tunnel.setPos(255.5,220,32.5);
+            tunnel.move(net.minecraft.world.entity.MoverType.SELF,new Vec3(0.7,0,0));TransferService.check(tunnel);
+            h.assertTrue(tunnel.getX()<0,"Could not cross an open two-block-high seam tunnel");
+            tunnel.discard();
+            // Even an already embedded vehicle must be able to move away, without repeated repositioning.
+            var boat=EntityType.BOAT.create(level);boat.setPos(256.1,220,34.8);
+            var rider=EntityType.ZOMBIE.create(level);rider.setPos(256.1,220,34.8);rider.startRiding(boat,true);
+            put.accept(new BlockPos(-256,220,34),stone);
+            for(int i=0;i<3;i++)TransferService.check(boat);
+            h.assertTrue(Math.abs(boat.getX()+255.9)<1e-6 && rider.getVehicle()==boat,"An existing overlap stranded the vehicle in an untracked guard column");
+            rider.stopRiding();h.assertTrue(!rider.isPassenger(),"Could not dismount a pending seam vehicle");
+            boat.move(net.minecraft.world.entity.MoverType.SELF,new Vec3(-1,0,0));
+            h.assertTrue(boat.getX()<-256.8,"Embedded seam vehicle could not reverse out");
+            boat.discard();rider.discard();
+        } finally {saved.forEach(level::setBlockAndUpdate);}
+    }
+
     @GameTest(template="empty",timeoutTicks=400)
     public static void realChunksEntitiesVehiclesAndDirectionalBorder(GameTestHelper h) {
         var level=h.getLevel(); var border=level.getWorldBorder();
@@ -70,6 +142,7 @@ public final class EastWestGameTests {
             displaced.getCollisionShape();PlanetBorders.unbind(displaced);
             // Synchronous loads here are test fixtures only, never the transfer implementation.
             for(int x:new int[]{-17,-16,15,16}) for(int z=0;z<=2;z++) level.getChunk(x,z);
+            stitchedCollisionsAndEscape(h);
             var east=new ItemEntity(level,256.75,200,5,new ItemStack(Items.STICK));
             h.assertTrue(PlanetBorders.warningDistance(border,east)>10000,"Wrap seam triggers danger vignette");
             east.setNoGravity(true); east.setYRot(37); east.setDeltaMovement(4,0.25,0.5); level.addFreshEntity(east); entities.add(east);
@@ -93,7 +166,7 @@ public final class EastWestGameTests {
             var blocked=new ItemEntity(level,256.5,200,10.5,new ItemStack(Items.STICK)); level.addFreshEntity(blocked); entities.add(blocked);
             level.setBlockAndUpdate(obstacle,Blocks.STONE.defaultBlockState());
             TransferService.tick(new EntityTickEvent.Post(blocked));
-            h.assertTrue(blocked.getX()>0 && blocked.getX()<=256,"Entity transferred into solid terrain");
+            h.assertTrue(blocked.getX()==-255.5,"Rebasing an existing overlap stranded the entity outside the canonical world");
             level.getChunk(15,62500); level.getChunk(16,62500);
             var unloaded=new ItemEntity(level,257,200,1000000.5,new ItemStack(Items.STICK)); level.addFreshEntity(unloaded); entities.add(unloaded);
             h.assertTrue(level.getChunkSource().getChunkNow(-16,62500)==null,"Unloaded probe must start absent");
