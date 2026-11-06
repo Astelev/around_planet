@@ -65,6 +65,8 @@
     "SeamPickScopeMixin",
     "SeamClientBlockReadsMixin",
     "SeamImageBlockUpdateMixin",
-    "SeamShipInterpolationMixin"
+    "SeamShipInterpolationMixin",
+    "SeamAttackInputMixin",
+    "SeamEntityLightMixin"
   ]
 }

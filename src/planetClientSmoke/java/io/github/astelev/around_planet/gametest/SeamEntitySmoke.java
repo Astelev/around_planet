@@ -23,6 +23,7 @@ public final class SeamEntitySmoke {
     private static int ticks,phase,started;
     private static volatile UUID slime,item,stand,boat,pig,west;
     private static volatile Throwable failure;
+    private static volatile java.util.Map<UUID,Integer> sourceLight=java.util.Map.of();
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         if(!Boolean.getBoolean("around_planet.entitySmoke"))return;
         var mc=Minecraft.getInstance();ticks++;
@@ -30,6 +31,15 @@ public final class SeamEntitySmoke {
         if(ticks>2200)throw new AssertionError("SEAM_ENTITY_SMOKE timeout phase="+phase+" images="+SeamEntityImages.size());
         if(mc.player==null || mc.level==null || mc.getSingleplayerServer()==null || ticks<100)return;
         mc.player.setNoGravity(true);mc.player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+        if(ticks%5==0 && slime!=null)mc.getSingleplayerServer().execute(()->{
+            var level=mc.getSingleplayerServer().overworld();var values=new java.util.HashMap<UUID,Integer>();
+            for(var id:new UUID[]{slime,item,stand,boat,pig,west})if(id!=null) {
+                var entity=level.getEntity(id);if(entity==null)continue;
+                var pos=net.minecraft.core.BlockPos.containing(entity.getLightProbePosition(1));
+                values.put(id,net.minecraft.client.renderer.LightTexture.pack(level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK,pos),level.getBrightness(net.minecraft.world.level.LightLayer.SKY,pos)));
+            }
+            sourceLight=java.util.Map.copyOf(values);
+        });
         if(phase==0) {
             phase=1;started=ticks;mc.options.renderDistance().set(12);mc.options.setServerRenderDistance(12);
             mc.getSingleplayerServer().execute(()->{
@@ -54,6 +64,12 @@ public final class SeamEntitySmoke {
             var s=SeamEntityImages.get(slime);var i=SeamEntityImages.get(item);var a=SeamEntityImages.get(stand);var p=SeamEntityImages.get(pig);
             if(ticks%100==0)AroundPlanet.LOGGER.info("SEAM entity models: slime={} item={} stand={} pig={} boat={} mount={}",s!=null,i!=null,a!=null,p!=null,SeamEntityImages.get(boat)!=null,p==null?null:p.getVehicle());
             if(s==null || i==null || a==null || p==null || p.getVehicle()!=SeamEntityImages.get(boat) || !green(mc))return;
+            if(!lightsReady(mc,slime,item,stand,boat,pig))return;
+            require(net.minecraft.client.renderer.LightTexture.sky(sourceLight.get(slime))==15,"Daylight fixture is not exposed to the sky");
+            s.setSharedFlagOnFire(true);
+            require(net.minecraft.client.renderer.LightTexture.block(mc.getEntityRenderDispatcher().getPackedLightCoords(s,1))==15,"Image light suppressed burning emission");
+            s.setSharedFlagOnFire(false);
+            AroundPlanet.LOGGER.info("SEAM_ENTITY_LIGHT daylight PASS: source sky/block light, burning emission and isolated gameplay light");
             require(s.getX()>256 && s.getX()<270,"Wrong image translation");
             for(var id:new UUID[]{slime,item,stand,boat,pig}) {var e=SeamEntityImages.get(id);require(mc.level.getEntity(e.getId())!=e,"Visual entity entered gameplay cache");}
             require(((ItemEntity)i).getItem().is(Items.DIAMOND),"Item metadata missing");
@@ -63,10 +79,15 @@ public final class SeamEntitySmoke {
                 var l=mc.getSingleplayerServer().overworld();l.getEntity(slime).setInvisible(true);
                 ((ItemEntity)l.getEntity(item)).setItem(new ItemStack(Items.EMERALD));
                 ((ArmorStand)l.getEntity(stand)).setItemSlot(EquipmentSlot.HEAD,ItemStack.EMPTY);
+                for(int x=-249;x<=-243;x++)for(int z=1;z<=7;z++)l.setBlockAndUpdate(new net.minecraft.core.BlockPos(x,84,z),net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+                l.setBlockAndUpdate(new net.minecraft.core.BlockPos(-246,82,4),net.minecraft.world.level.block.Blocks.GLOWSTONE.defaultBlockState());
             });
         } else if(phase==2 && ticks-started>20) {
             var s=SeamEntityImages.get(slime);var i=(ItemEntity)SeamEntityImages.get(item);var a=(ArmorStand)SeamEntityImages.get(stand);
             if(s==null || !s.isInvisible() || i==null || !i.getItem().is(Items.EMERALD) || a==null || !a.getItemBySlot(EquipmentSlot.HEAD).isEmpty())return;
+            if(!sourceLight.containsKey(stand) || net.minecraft.client.renderer.LightTexture.block(sourceLight.get(stand))==0
+                    || net.minecraft.client.renderer.LightTexture.sky(sourceLight.get(stand))==15 || !lightsReady(mc,stand))return;
+            AroundPlanet.LOGGER.info("SEAM_ENTITY_LIGHT roof/lamp PASS: updated source light reaches image renderer without changing real-world light engine");
             phase=3;started=ticks;mc.getSingleplayerServer().execute(()->{
                 var s1=mc.getSingleplayerServer().overworld().getEntity(slime);s1.setInvisible(false);s1.setPos(-248.5,80,12.5);
             });
@@ -80,6 +101,7 @@ public final class SeamEntitySmoke {
             });
         } else if(phase==4 && ticks-started>80) {
             var w=SeamEntityImages.get(west);if(w==null || w.getX()>-256 || !green(mc))return;
+            if(!lightsReady(mc,west))return;
             require(SeamEntityImages.get(slime)==null,"Previous seam models survived transition");
             phase=5;started=ticks;mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().overworld().getEntity(west).discard());
         } else if(phase==5 && ticks-started>20) {
@@ -88,8 +110,23 @@ public final class SeamEntitySmoke {
         } else if(phase==6 && ticks-started>120) {
             require(SeamEntityImages.size()==0,"Images retained outside seam band");
             AroundPlanet.LOGGER.info("SEAM_ENTITY_SMOKE PASS: both GPU views including Y=640, metadata/equipment/motion, mounts, despawn, side change, cleanup");
-            phase=7;System.setProperty("around_planet.entitySmoke","false");
+            phase=7;mc.stop();
         }
+    }
+    private static boolean lightsReady(Minecraft mc,UUID... ids) {
+        for(var id:ids) {
+            var image=SeamEntityImages.get(id);var expected=sourceLight.get(id);if(image==null || expected==null)return false;
+            var pos=net.minecraft.core.BlockPos.containing(image.getLightProbePosition(1));
+            var light=io.github.astelev.around_planet.client.SeamImages.renderLight(mc.level);
+            int snapshot=net.minecraft.client.renderer.LightTexture.pack(light.getLayerListener(net.minecraft.world.level.LightLayer.BLOCK).getLightValue(pos),light.getLayerListener(net.minecraft.world.level.LightLayer.SKY).getLightValue(pos));
+            if(snapshot!=expected)return false;
+            require(mc.getEntityRenderDispatcher().getPackedLightCoords(image,1)==expected,"Entity renderer used gameplay light instead of source snapshot: "+id);
+            var control=EntityType.PIG.create(mc.level);control.setPos(image.position());
+            var probe=net.minecraft.core.BlockPos.containing(control.getLightProbePosition(1));
+            int ordinary=net.minecraft.client.renderer.LightTexture.pack(mc.level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK,probe),mc.level.getBrightness(net.minecraft.world.level.LightLayer.SKY,probe));
+            require(mc.getEntityRenderDispatcher().getPackedLightCoords(control,1)==ordinary,"Image lighting changed an ordinary entity");
+        }
+        return true;
     }
     private static boolean green(Minecraft mc) {
         mc.getMainRenderTarget().bindWrite(false);var bytes=BufferUtils.createByteBuffer(4);

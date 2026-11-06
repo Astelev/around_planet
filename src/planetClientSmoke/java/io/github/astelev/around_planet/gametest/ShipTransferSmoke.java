@@ -30,13 +30,13 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import org.joml.Vector3d;
 import java.util.*;
 
-/** Real player, native ray picking/packets, a driven physical deck, and both directions of carrier transfer. */
+/** Real input and carrier transfer at Y=260, clear of persistent fixtures from other smoke scenarios. */
 @EventBusSubscriber(modid=AroundPlanet.MOD_ID,value=Dist.CLIENT)
 public final class ShipTransferSmoke {
     private static int ticks,phase,started,crossTicks;private static volatile Throwable failure;
     private static volatile ServerSubLevel ship;private static volatile UUID id;private static Object mesh,clientIdentity;
     private static volatile int drive;private static volatile boolean sourcePowered,sourceAir,sourcePlaced,serverMoved;
-    private static final BlockPos SOURCE=new BlockPos(-177,202,0),IMAGE=SOURCE.offset(512,0,0),CHEST=SOURCE.offset(0,0,2);
+    private static final BlockPos SOURCE=new BlockPos(-177,262,0),IMAGE=SOURCE.offset(512,0,0),CHEST=SOURCE.offset(0,0,2);
     private static double localX;
     @SubscribeEvent public static void drive(LevelTickEvent.Pre event) {
         if(!Boolean.getBoolean("around_planet.shipTransferSmoke") || drive==0 || ship==null || event.getLevel()!=ship.getLevel())return;
@@ -73,25 +73,25 @@ public final class ShipTransferSmoke {
                     for(var old:new ArrayList<>(container.getAllSubLevels()))if(old.getName()!=null && old.getName().startsWith("around_planet_transfer_test"))container.removeSubLevel(old,SubLevelRemovalReason.REMOVED);
                     p.stopRiding();p.setGameMode(net.minecraft.world.level.GameType.CREATIVE);p.getAbilities().flying=true;p.onUpdateAbilities();p.setNoGravity(true);
                     for(int x:new int[]{-17,-16,-15,15,16,17})for(int z=-1;z<=1;z++)level.getChunk(x,z);
-                    var anchor=new BlockPos(20,200,20);var blocks=new ArrayList<BlockPos>();
+                    var anchor=new BlockPos(20,260,20);var blocks=new ArrayList<BlockPos>();
                     for(int x=0;x<177;x++)for(int z=0;z<5;z++){var pos=anchor.offset(x,0,z);level.setBlockAndUpdate(pos,Blocks.IRON_BLOCK.defaultBlockState());blocks.add(pos);}
-                    ship=SubLevelAssemblyHelper.assembleBlocks(level,anchor,blocks,new BoundingBox3i(20,200,20,196,200,24));id=ship.getUniqueId();ship.setName("around_planet_transfer_test");
+                    ship=SubLevelAssemblyHelper.assembleBlocks(level,anchor,blocks,new BoundingBox3i(20,260,20,196,260,24));id=ship.getUniqueId();ship.setName("around_planet_transfer_test");
                     container.addForceLoadTicket(ship,SubLevelLoadingTicketType.COMMAND_FORCED,Unit.INSTANCE);
                     var center=ship.logicalPose().transformPosition(new Vector3d(ship.getSelfMassTracker().getCenterOfMass()));
-                    var delta=new Vector3d(254,200,0.5).sub(center);
+                    var delta=new Vector3d(254,260,0.5).sub(center);
                     container.physicsSystem().getPipeline().teleport(ship,new Vector3d(ship.logicalPose().position()).add(delta),ship.logicalPose().orientation());
                     AroundPlanet.LOGGER.info("SHIP_FIXTURE pose={} center={} rp={}",ship.logicalPose().position(),ship.logicalPose().transformPosition(new Vector3d(ship.getSelfMassTracker().getCenterOfMass())),ship.logicalPose().rotationPoint());ship.updateBoundingBox();ship.updateLastPose();container.physicsSystem().setPaused(true);
-                    for(int x:new int[]{SOURCE.getX(),IMAGE.getX()})for(int z:new int[]{0,2})for(int y=195;y<=205;y++)level.setBlockAndUpdate(new BlockPos(x,y,z),Blocks.AIR.defaultBlockState());
+                    for(int x:new int[]{SOURCE.getX(),IMAGE.getX()})for(int z:new int[]{0,2})for(int y=255;y<=265;y++)level.setBlockAndUpdate(new BlockPos(x,y,z),Blocks.AIR.defaultBlockState());
                     level.setBlockAndUpdate(SOURCE.below(),Blocks.STONE.defaultBlockState());
                     level.setBlockAndUpdate(SOURCE,Blocks.LEVER.defaultBlockState().setValue(net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock.FACE,net.minecraft.world.level.block.state.properties.AttachFace.FLOOR));
                     level.setBlockAndUpdate(IMAGE,Blocks.BLUE_CONCRETE.defaultBlockState());
                     level.setBlockAndUpdate(CHEST,Blocks.CHEST.defaultBlockState());
-                    p.setItemInHand(InteractionHand.MAIN_HAND,ItemStack.EMPTY);p.connection.teleport(250,205,0.5,-90,0);
+                    p.setItemInHand(InteractionHand.MAIN_HAND,ItemStack.EMPTY);p.connection.teleport(250,265,0.5,-90,0);
 
                 }catch(Throwable e){failure=e;}
             });
         } else if(phase==10 && ticks-started>40 && client(mc)!=null) {
-            var local=client(mc).logicalPose().transformPositionInverse(new Vector3d(332,200.49,0.5));
+            var local=client(mc).logicalPose().transformPositionInverse(new Vector3d(332,260.49,0.5));
             if(!mc.level.getBlockState(BlockPos.containing(local.x,local.y,local.z)).is(Blocks.IRON_BLOCK))return;
             phase=1;started=ticks;
             mc.getSingleplayerServer().execute(()->{
@@ -109,11 +109,26 @@ public final class ShipTransferSmoke {
             probe(mc);
             if(!sourcePowered || image(mc,IMAGE)==null || !image(mc,IMAGE).getValue(LeverBlock.POWERED))return;
             AroundPlanet.LOGGER.info("SHIP_INTERACTION_USE PASS: native ray picked and used a real opposite lever while passenger remained outboard");
-            mc.gameMode.startDestroyBlock(IMAGE,Direction.WEST);phase=3;started=ticks;
+            attackInput(mc,false);phase=3;started=ticks;
         } else if(phase==3) {
             probe(mc);if(!sourceAir || image(mc,IMAGE)==null || !image(mc,IMAGE).isAir())return;
-            AroundPlanet.LOGGER.info("SHIP_INTERACTION_MINE PASS: actual client mining changed canonical block and refreshed its read-only image");
+            AroundPlanet.LOGGER.info("SHIP_INTERACTION_MINE PASS: native Minecraft attack input changed canonical block and refreshed its read-only image");
+            phase=30;started=ticks;
+            mc.getSingleplayerServer().execute(()->{
+                ship.getLevel().setBlockAndUpdate(SOURCE,Blocks.STONE.defaultBlockState());
+                var p=ship.getLevel().players().getFirst();p.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+                p.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(Items.IRON_PICKAXE));p.inventoryMenu.broadcastChanges();
+            });
+        } else if(phase==30 && ticks-started>20 && !mc.gameMode.hasInfiniteItems() && image(mc,IMAGE)!=null && image(mc,IMAGE).is(Blocks.STONE)) {
+            probe(mc);if(sourceAir)return;
+            attackInput(mc,false);phase=31;started=ticks;
+        } else if(phase==31) {
+            probe(mc);
+            if(!sourceAir || image(mc,IMAGE)==null || !image(mc,IMAGE).isAir()) {attackInput(mc,true);return;}
+            attackInput(mc,false,true);
+            AroundPlanet.LOGGER.info("SHIP_INTERACTION_SURVIVAL_MINE PASS: held native attack mines a non-instant opposite stone block");
             phase=4;started=ticks;
+            mc.getSingleplayerServer().execute(()->ship.getLevel().players().getFirst().setGameMode(net.minecraft.world.level.GameType.CREATIVE));
             mc.getSingleplayerServer().execute(()->{var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();p.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(Items.DIRT,8));p.inventoryMenu.broadcastChanges();});
         } else if(phase==4 && ticks-started>10 && mc.player.getMainHandItem().is(Items.DIRT)) {
             mc.gameMode.useItemOn(mc.player,InteractionHand.MAIN_HAND,new BlockHitResult(new Vec3(IMAGE.getX()+0.5,SOURCE.getY(),0.5),Direction.UP,IMAGE.below(),false));phase=5;started=ticks;
@@ -125,7 +140,7 @@ public final class ShipTransferSmoke {
             require(mc.player.getX()>256,"Opening a menu independently wrapped the passenger");
             AroundPlanet.LOGGER.info("SHIP_INTERACTION_MENU PASS: opposite chest stays valid while player is on the outboard deck");
             mc.player.closeContainer();phase=7;started=ticks;
-            mc.getSingleplayerServer().execute(()->{for(int x:new int[]{SOURCE.getX(),IMAGE.getX()})for(int z:new int[]{0,2})for(int y=195;y<=205;y++)ship.getLevel().setBlockAndUpdate(new BlockPos(x,y,z),Blocks.AIR.defaultBlockState());
+            mc.getSingleplayerServer().execute(()->{for(int x:new int[]{SOURCE.getX(),IMAGE.getX()})for(int z:new int[]{0,2})for(int y=255;y<=265;y++)ship.getLevel().setBlockAndUpdate(new BlockPos(x,y,z),Blocks.AIR.defaultBlockState());
                 serverMoved=false;crossTicks=0;drive=1;SubLevelContainer.getContainer(ship.getLevel()).physicsSystem().setPaused(false);});
         } else if(phase==7 && serverMoved && ticks-started>40 && mc.player.getX()<0 && client(mc)!=null) {
             AroundPlanet.LOGGER.info("SHIP_TRANSFER_OFFSET client shipX={} playerX={} beforeLocal={} afterLocal={} delta={}",client(mc).logicalPose().position().x,mc.player.getX(),localX,client(mc).logicalPose().transformPositionInverse(new Vector3d(mc.player.getX(),mc.player.getY(),mc.player.getZ())).x,client(mc).logicalPose().transformPositionInverse(new Vector3d(mc.player.getX(),mc.player.getY(),mc.player.getZ())).x-localX);
@@ -144,14 +159,22 @@ public final class ShipTransferSmoke {
             mc.getSingleplayerServer().execute(()->{
                 try {
                     var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();var container=SubLevelContainer.getContainer(ship.getLevel());
-                    p.connection.teleport(0,205,0,0,0);p.getAbilities().flying=true;p.onUpdateAbilities();
+                    p.connection.teleport(0,265,0,0,0);p.getAbilities().flying=true;p.onUpdateAbilities();
                     container.removeForceLoadTicket(ship,SubLevelLoadingTicketType.COMMAND_FORCED,Unit.INSTANCE);container.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);container.physicsSystem().setPaused(false);
                 }catch(Throwable e){failure=e;}
             });
         } else if(phase==9 && ticks-started>40)mc.stop();
     }
+    private static void attackInput(Minecraft mc,boolean held) {attackInput(mc,held,false);}
+    private static void attackInput(Minecraft mc,boolean held,boolean stop) {
+        try {
+            var method=Minecraft.class.getDeclaredMethod(held || stop?"continueAttack":"startAttack",held || stop?new Class<?>[]{boolean.class}:new Class<?>[0]);
+            method.setAccessible(true);
+            if(held || stop)method.invoke(mc,!stop);else method.invoke(mc);
+        }catch(ReflectiveOperationException e){throw new AssertionError("Native attack input fixture",e);}
+    }
     private static void testLateSnapshot() {
-        var pose=new dev.ryanhcode.sable.companion.math.Pose3d();pose.position().set(256.2,200,0);
+        var pose=new dev.ryanhcode.sable.companion.math.Pose3d();pose.position().set(256.2,260,0);
         var interpolator=new dev.ryanhcode.sable.network.client.SubLevelSnapshotInterpolator(pose);
         ((io.github.astelev.around_planet.compat.ShipInterpolation)interpolator).around_planet$rebase(256.2,-512,512);
         interpolator.setFirstPoses(pose,pose);
