@@ -155,13 +155,13 @@ public final class SeamVisualSmoke {
             phase=16;started=ticks;
             mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst()
                     .connection.teleport(-247.5,82.5,24.5,90,0));
-        } else if(phase==16 && ticks-started>10) {
+        } else if(phase==16 && ticks-started>240) {
             require(SeamImages.get(mc.level,-17,1)==null,"Delayed outgoing image arrived before cache check");
             require(io.github.astelev.around_planet.client.SeamMeshCache.identity(15,5,1)==departure,"Departure geometry was recreated");
             if(!pixel(mc,1))return;
             require(io.github.astelev.around_planet.client.SeamMeshCache.drawCount(15,5,1)>departureDraws,
                     "Departure mesh was not drawn into its periodic image");
-            AroundPlanet.LOGGER.info("SEAM_DEPARTURE_GPU PASS: same outgoing mesh fills delayed snapshot, with no native image data");
+            AroundPlanet.LOGGER.info("SEAM_DEPARTURE_GPU PASS: same outgoing mesh remains visible beyond the old 10-second expiry, with no native image data");
             phase=2;started=ticks;
             mc.getSingleplayerServer().execute(()->{
                 var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
@@ -178,7 +178,7 @@ public final class SeamVisualSmoke {
         } else if(phase==3 && ticks-started>60) {
             var image=SeamImages.get(mc.level,-17,0);
             if(image==null || !image.getBlockState(new BlockPos(-267,82,8)).is(Blocks.GOLD_BLOCK) || !pixel(mc,2))return;
-            verifyOptionalDh(mc);
+            verifyEmptyMeshCoverage();verifyOptionalDh(mc);
             verifyOptionalSable(mc);
             AroundPlanet.LOGGER.info("SEAM_VISUAL_SMOKE PASS: both directions, real GPU pixels, block updates, water, lighting, cache eviction and no gameplay aliases");
             if(!io.github.astelev.around_planet.client.SeamMeshCache.settled(15,5,0))return;
@@ -227,6 +227,19 @@ public final class SeamVisualSmoke {
         int r=bytes.get(0)&255,g=bytes.get(1)&255,b=bytes.get(2)&255;
         if(ticks%100==0) AroundPlanet.LOGGER.info("SEAM visual pixel: phase={}, rgb={},{},{}",phase,r,g,b);
         return color==0 ? r>40 && r>g*1.4 && r>b*1.4 : color==1 ? g>40 && g>r*1.3 && g>b*1.2 : r>60 && g>60 && r>b*1.5 && g>b*1.5;
+    }
+    @SuppressWarnings("unchecked")
+    private static void verifyEmptyMeshCoverage() {
+        try {
+            var type=io.github.astelev.around_planet.client.SeamMeshCache.class;
+            var sf=type.getDeclaredField("state");sf.setAccessible(true);var state=sf.get(null);require(state!=null,"Missing mesh state");
+            var mf=state.getClass().getDeclaredField("meshes");mf.setAccessible(true);var meshes=(java.util.Map<Long,Object>)mf.get(state);
+            var meshClass=Class.forName(type.getName()+"$Mesh");var constructor=meshClass.getDeclaredConstructor();constructor.setAccessible(true);
+            long key=SectionPos.asLong(15,5,0);var previous=meshes.put(key,constructor.newInstance());
+            try{require(!io.github.astelev.around_planet.client.SeamMeshCache.hasMesh(15,5,0),"Empty retained mesh masked the LOD");}
+            finally{if(previous==null)meshes.remove(key);else meshes.put(key,previous);}
+            AroundPlanet.LOGGER.info("SEAM_EMPTY_MESH PASS: empty cache entry cannot claim DH coverage");
+        }catch(ReflectiveOperationException e){throw new AssertionError(e);}
     }
     private static void verifyOptionalDh(Minecraft mc) {
         if(!net.neoforged.fml.ModList.get().isLoaded("distanthorizons")) return;

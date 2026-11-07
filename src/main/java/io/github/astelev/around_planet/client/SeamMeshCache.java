@@ -38,22 +38,22 @@ import java.util.concurrent.*;
 /** Independent, bounded canonical GPU cache. Image placement never becomes its identity. */
 @EventBusSubscriber(modid=AroundPlanet.MOD_ID,value=Dist.CLIENT)
 public final class SeamMeshCache {
-    private static final long MAX_BYTES=64L*1024*1024;
-    private static final int MAX_SECTIONS=512;
+    private static long maxBytes(){return (PlanetConfig.SPEC.isLoaded()?PlanetConfig.MESH_MIB.getAsInt():128)*1024L*1024;}
+    private static int maxSections(){return PlanetConfig.SPEC.isLoaded()?PlanetConfig.MESH_SECTIONS.getAsInt():1536;}
     private static State state;
     public static long builds,draws;
     private record Request(long key,SectionPos image,long revision,boolean local,int signature,int dataSignature) {}
     private record Completed(Request request,SectionCompiler.Results result) {}
     private static final class Mesh implements AutoCloseable {
         final Map<RenderType,VertexBuffer> layers=new HashMap<>();
-        long bytes,lastUse,draws;
+        long bytes,lastUse,draws,lastDraw=-1;
         int signature,dataSignature;
         boolean localBaseline;
         @Override public void close(){layers.values().forEach(VertexBuffer::close);}
     }
     private static final class State {
         final ClientLevel level;
-        final LinkedHashMap<Long,Mesh> meshes=new LinkedHashMap<>(16,.75F,true);
+        final LinkedHashMap<Long,Mesh> meshes=new LinkedHashMap<>(16,.75F,false);
         final LinkedHashMap<Long,Request> pending=new LinkedHashMap<>();
         final Map<Long,Long> revisions=new HashMap<>();
         final ConcurrentLinkedQueue<Completed> completed=new ConcurrentLinkedQueue<>();
@@ -89,7 +89,7 @@ public final class SeamMeshCache {
                 state.pending.put(key,new Request(key,SectionPos.of(chunk.getPos(),y),revision,false,0,dataSignature(chunk,y)));
             }
         }
-        while(state.pending.size()>MAX_SECTIONS) {SeamDiagnostics.count("client","mesh.drop_pending_capacity");
+        while(state.pending.size()>maxSections()) {SeamDiagnostics.count("client","mesh.drop_pending_capacity");
             long key=state.pending.keySet().iterator().next();state.pending.remove(key);state.revisions.remove(key);
         }
     }
@@ -100,7 +100,7 @@ public final class SeamMeshCache {
         if(bound!=null && PlanetConfig.RETAIN_MESHES.getAsBoolean() &&
                 bound.distanceToSeam(mc.player.getX())<=Math.max(PlanetConfig.ACTIVATION.getAsInt(),mc.options.getEffectiveRenderDistance()*16)) {
             if(state==null || state.level!=mc.level){clear();state=new State(mc.level);}
-            long diagnosticStart=SeamDiagnostics.start();captureLocal(state);SeamDiagnostics.time("client","mesh.capture_local",diagnosticStart);
+            long diagnosticStart=SeamDiagnostics.start();for(int column=0;column<3;column++)captureLocal(state);SeamDiagnostics.time("client","mesh.capture_local",diagnosticStart);
         }
         var s=state;if(s==null)return;
         if(mc.level!=s.level || !PlanetConfig.RETAIN_MESHES.getAsBoolean()){clear();return;}
@@ -125,6 +125,12 @@ public final class SeamMeshCache {
                 }
                 mesh.lastUse=mc.level.getGameTime();mesh.signature=done.request.signature;
                 mesh.dataSignature=done.request.dataSignature;mesh.localBaseline=done.request.local;
+                if(mesh.layers.isEmpty() || mesh.bytes==0) {
+                    // A compiler result without faces cannot cover a LOD or replace known good geometry.
+                    SeamDiagnostics.count("client","mesh.empty_result");var previous=s.meshes.get(done.request.key);
+                    if(previous!=null && previous.dataSignature!=mesh.dataSignature){s.meshes.remove(done.request.key);s.bytes-=previous.bytes;previous.close();}
+                    mesh.close();continue;
+                }
                 SeamDiagnostics.count("client","mesh.upload");var old=s.meshes.put(done.request.key,mesh);s.bytes+=mesh.bytes;
                 if(old!=null){SeamDiagnostics.count("client","mesh.replace");s.bytes-=old.bytes;old.close();}
                 builds++;
@@ -142,15 +148,23 @@ public final class SeamMeshCache {
         while(retained.hasNext()) {
             var entry=retained.next();var section=SectionPos.of(entry.getKey());var mesh=entry.getValue();
             int width=topology==null?0:topology.width()/16;
-            if(width!=0 && (SeamImages.get(s.level,section.x()+width,section.z())!=null
+            boolean visible=width!=0 && topology.distanceToSeam(mc.player.getX())<=Math.max(PlanetConfig.ACTIVATION.getAsInt(),mc.options.getEffectiveRenderDistance()*16)
+                    && io.github.astelev.around_planet.seam.SeamRetention.inView(section.x(),section.z(),mc.player.chunkPosition().x,mc.player.chunkPosition().z,width,mc.options.getEffectiveRenderDistance());
+            if(visible || width!=0 && (SeamImages.get(s.level,section.x()+width,section.z())!=null
                     || SeamImages.get(s.level,section.x()-width,section.z())!=null
                     || (topology.distanceToSeam(mc.player.getX())<=Math.max(PlanetConfig.ACTIVATION.getAsInt(),mc.options.getEffectiveRenderDistance()*16)
                         && s.level.getChunkSource().getChunk(section.x(),section.z(),ChunkStatus.FULL,false)!=null)))mesh.lastUse=now;
             if(now-mesh.lastUse>200) {SeamDiagnostics.count("client","mesh.evict_age");s.bytes-=mesh.bytes;mesh.close();retained.remove();}
         }
         s.revisions.keySet().removeIf(key->!s.meshes.containsKey(key) && !s.pending.containsKey(key) && s.runningKey!=key);
-        while(s.meshes.size()>MAX_SECTIONS || s.bytes>MAX_BYTES) {SeamDiagnostics.count("client","mesh.evict_capacity");
-            var it=s.meshes.entrySet().iterator();var mesh=it.next().getValue();s.bytes-=mesh.bytes;mesh.close();it.remove();
+        while(s.meshes.size()>maxSections() || s.bytes>maxBytes()) {SeamDiagnostics.count("client","mesh.evict_capacity");
+            Long victim=null;long oldestDraw=Long.MAX_VALUE;
+            if(topology!=null)for(var entry:s.meshes.entrySet()) {
+                var pos=SectionPos.of(entry.getKey());
+                if(!io.github.astelev.around_planet.seam.SeamRetention.inView(pos.x(),pos.z(),mc.player.chunkPosition().x,mc.player.chunkPosition().z,topology.width()/16,mc.options.getEffectiveRenderDistance())){victim=entry.getKey();break;}
+                if(entry.getValue().lastDraw<oldestDraw){victim=entry.getKey();oldestDraw=entry.getValue().lastDraw;}
+            }
+            if(victim==null)victim=s.meshes.keySet().iterator().next();var mesh=s.meshes.remove(victim);s.bytes-=mesh.bytes;mesh.close();
             s.revisions.keySet().removeIf(key->!s.meshes.containsKey(key) && !s.pending.containsKey(key) && s.runningKey!=key);
         }
         // One snapshot per tick, one outstanding compile/upload job owns the builder pack.
@@ -200,14 +214,14 @@ public final class SeamMeshCache {
                     var matrix=new Matrix4f(event.getModelViewMatrix()).translate((float)(origin.getX()-camera.x),
                             (float)(origin.getY()-camera.y),(float)(origin.getZ()-camera.z));
                     vbo.bind();vbo.drawWithShader(matrix,event.getProjectionMatrix(),shader);
-                    draws++;mesh.draws++;SeamDiagnostics.count("client","mesh.draw");
+                    mesh.lastUse=s.level.getGameTime();mesh.lastDraw=mesh.lastUse;draws++;mesh.draws++;SeamDiagnostics.count("client","mesh.draw");
                 }
             } finally {VertexBuffer.unbind();type.clearRenderState();}
         }
     }
     private static void captureLocal(State s) {
         var mc=Minecraft.getInstance();var topology=PlanetBorders.get(s.level.getWorldBorder());
-        int radius=PlanetConfig.RADIUS.getAsInt()+1,span=radius*2+1;
+        int radius=Math.min(32,Math.min(topology.width()/16-1,Math.max(PlanetConfig.RADIUS.getAsInt()+1,mc.options.getEffectiveRenderDistance()+1))),span=radius*2+1;
         int column=Math.floorMod(s.localCursor++,(radius+1)*span),d=column/span,n=column%span;
         int dz=n==0?0:((n+1)/2)*(n%2==1?-1:1);
         int half=topology.width()/32,x=mc.player.getX()>=0?half-1-d:-half+d,z=mc.player.chunkPosition().z+dz;
@@ -218,7 +232,7 @@ public final class SeamMeshCache {
         for(int y:ys) {
             long key=SectionPos.asLong(x,y,z);
             if(chunk.getSection(s.level.getSectionIndexFromSectionY(y)).hasOnlyAir())continue;
-            var origin=SectionPos.of(x,y,z).origin();if(!mc.levelRenderer.isSectionCompiled(origin))continue;
+            var origin=SectionPos.of(x,y,z).origin();if(!SeamSectionCoverage.ready(s.level,x,y,z,null))continue;
             int dataSignature=dataSignature(chunk,y),signature=signature(chunk,y,dataSignature);
             var mesh=s.meshes.get(key);var pending=s.pending.get(key);
             if(mesh!=null && !mesh.localBaseline && mesh.dataSignature==dataSignature) {
@@ -230,7 +244,7 @@ public final class SeamMeshCache {
             long revision=++s.revision;s.revisions.put(key,revision);
             s.pending.put(key,new Request(key,SectionPos.of(x,y,z),revision,true,signature,dataSignature));
         }
-        while(s.pending.size()>MAX_SECTIONS) {SeamDiagnostics.count("client","mesh.drop_pending_capacity");
+        while(s.pending.size()>maxSections()) {SeamDiagnostics.count("client","mesh.drop_pending_capacity");
             long key=s.pending.keySet().iterator().next();s.pending.remove(key);s.revisions.remove(key);
         }
     }
@@ -249,14 +263,14 @@ public final class SeamMeshCache {
         }
         return hash;
     }
-    public static boolean hasMesh(int x,int y,int z){return state!=null && state.meshes.containsKey(SectionPos.asLong(x,y,z));}
+    public static boolean hasMesh(int x,int y,int z){var mesh=state==null?null:state.meshes.get(SectionPos.asLong(x,y,z));return mesh!=null && !mesh.layers.isEmpty() && mesh.bytes>0;}
     public static long drawCount(int x,int y,int z){var mesh=state==null?null:state.meshes.get(SectionPos.asLong(x,y,z));return mesh==null?0:mesh.draws;}
     public static Object identity(int x,int y,int z){return state==null?null:state.meshes.get(SectionPos.asLong(x,y,z));}
     public static boolean settled(int x,int y,int z) {
         long key=SectionPos.asLong(x,y,z);
         return state!=null && state.meshes.containsKey(key) && !state.pending.containsKey(key) && state.runningKey!=key;
     }
-    public static String diagnostic(){var s=state;if(s==null)return "mesh{none}";int empty=0,local=0;for(var mesh:s.meshes.values()){if(mesh.layers.isEmpty())empty++;if(mesh.localBaseline)local++;}return "mesh{count="+s.meshes.size()+",empty="+empty+",local="+local+",bytes="+s.bytes+",pending="+s.pending.size()+",inFlight="+s.inFlight+",completed="+s.completed.size()+",builds="+builds+",draws="+draws+"}";}
+    public static String diagnostic(){var s=state;if(s==null)return "mesh{none}";int empty=0,local=0;for(var mesh:s.meshes.values()){if(mesh.layers.isEmpty())empty++;if(mesh.localBaseline)local++;}return "mesh{limitSections="+maxSections()+",limitBytes="+maxBytes()+",count="+s.meshes.size()+",empty="+empty+",local="+local+",bytes="+s.bytes+",pending="+s.pending.size()+",inFlight="+s.inFlight+",completed="+s.completed.size()+",builds="+builds+",draws="+draws+"}";}
     public static int size(){return state==null?0:state.meshes.size();}
     public static void clear(){if(state!=null)SeamDiagnostics.event("client","mesh.clear",()->diagnostic());var s=state;state=null;if(s!=null)synchronized(s){s.close();}}
     @SubscribeEvent public static void unload(LevelEvent.Unload event){if(state!=null && event.getLevel()==state.level)clear();}

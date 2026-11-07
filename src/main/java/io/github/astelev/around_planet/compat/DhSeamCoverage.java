@@ -14,6 +14,9 @@ public final class DhSeamCoverage {
     private static final int UNIT=7;
     private static int texture,textureSize,textureHeight;
     private static java.nio.ByteBuffer pixels;
+    private static Object maskLevel;
+    private static long maskFrame=Long.MIN_VALUE;
+    private static int maskX,maskZ,maskSize,maskHeight,maskShift,maskMinSection;
 
     public static void bind(GlShaderProgram shader,RenderParams params,int shiftChunks) {
         long diagnosticStart=SeamDiagnostics.start();var mc=Minecraft.getInstance();
@@ -23,19 +26,26 @@ public final class DhSeamCoverage {
         int cz=Math.floorDiv((int)Math.floor(params.exactCameraPosition.z),16);
         int height=mc.level.getSectionsCount();
         if(pixels==null || pixels.capacity()!=size*size*height)pixels=BufferUtils.createByteBuffer(size*size*height);
-        pixels.clear();int diagnosticReady=0;
-        // Texture layout: X contiguous, then Y, then Z; coverage is bounded by the native view.
-        for(int z=cz-radius;z<=cz+radius;z++)for(int x=cx-radius;x<=cx+radius;x++) {
-            for(int section=0;section<height;section++) {
-                int y=mc.level.getMinSection()+section;
-                boolean ready=(io.github.astelev.around_planet.client.SeamSectionCoverage.ready(mc.level,x+shiftChunks,y,z,null)
-                        || io.github.astelev.around_planet.client.SeamMeshCache.hasMesh(x,y,z));
-                int index=((z-cz+radius)*height+section)*size+x-cx+radius;
-                if(ready)diagnosticReady++;pixels.put(index,(byte)(ready?255:0));
+        long frame=io.github.astelev.around_planet.client.SeamFrameClock.frame();
+        boolean rebuild=texture==0 || maskFrame!=frame || maskLevel!=mc.level || maskX!=cx || maskZ!=cz || maskSize!=size || maskHeight!=height || maskShift!=shiftChunks || maskMinSection!=mc.level.getMinSection();
+        if(rebuild) {
+            pixels.clear();int diagnosticReady=0;
+            // Texture layout: X contiguous, then Y, then Z; coverage is bounded by the native view.
+            for(int z=cz-radius;z<=cz+radius;z++)for(int x=cx-radius;x<=cx+radius;x++) {
+                var column=io.github.astelev.around_planet.client.SeamSectionCoverage.data(mc.level,x+shiftChunks,z);
+                for(int section=0;section<height;section++) {
+                    int y=mc.level.getMinSection()+section;
+                    boolean ready=(column!=null && (column.getSection(section).hasOnlyAir() || io.github.astelev.around_planet.client.SeamSectionCoverage.ready(mc.level,x+shiftChunks,y,z,null))
+                            || io.github.astelev.around_planet.client.SeamMeshCache.hasMesh(x,y,z));
+                    int index=((z-cz+radius)*height+section)*size+x-cx+radius;
+                    if(ready)diagnosticReady++;pixels.put(index,(byte)(ready?255:0));
+                }
             }
-        }
-        SeamDiagnostics.add("client","dh.coverage_ready_cells",diagnosticReady);SeamDiagnostics.add("client","dh.coverage_cells",(long)size*size*height);
-        pixels.position(pixels.capacity());pixels.flip();
+            SeamDiagnostics.add("client","dh.coverage_ready_cells",diagnosticReady);SeamDiagnostics.add("client","dh.coverage_cells",(long)size*size*height);
+            pixels.position(pixels.capacity());pixels.flip();
+            maskFrame=frame;maskLevel=mc.level;maskX=cx;maskZ=cz;maskSize=size;maskHeight=height;maskShift=shiftChunks;maskMinSection=mc.level.getMinSection();
+            SeamDiagnostics.count("client","dh.coverage_rebuild");
+        } else SeamDiagnostics.count("client","dh.coverage_reuse");
         int active=GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
         active(GL13.GL_TEXTURE0+UNIT);
         int bound=GL11.glGetInteger(GL12.GL_TEXTURE_BINDING_3D);
@@ -48,7 +58,7 @@ public final class DhSeamCoverage {
             GL11.glTexParameteri(GL12.GL_TEXTURE_3D,GL11.GL_TEXTURE_MIN_FILTER,GL11.GL_NEAREST);
             GL11.glTexParameteri(GL12.GL_TEXTURE_3D,GL11.GL_TEXTURE_MAG_FILTER,GL11.GL_NEAREST);
             GL11.glTexParameteri(GL12.GL_TEXTURE_3D,GL12.GL_TEXTURE_MAX_LEVEL,0);
-            tightlyPacked(()->{
+            if(rebuild)tightlyPacked(()->{
                 if(textureSize!=size || textureHeight!=height) {
                     GL12.glTexImage3D(GL12.GL_TEXTURE_3D,0,GL30.GL_R8,size,height,size,0,GL11.GL_RED,GL11.GL_UNSIGNED_BYTE,pixels);
                     textureSize=size;textureHeight=height;
@@ -88,7 +98,7 @@ public final class DhSeamCoverage {
             for(int i=0;i<names.length;i++)GL11.glPixelStorei(names[i],old[i]);
         }
     }
-    public static void clear() {
+    public static void clear() {maskLevel=null;maskFrame=Long.MIN_VALUE;
         Runnable release=()->{if(texture!=0)GlStateManager._deleteTexture(texture);texture=0;textureSize=0;textureHeight=0;pixels=null;};
         if(RenderSystem.isOnRenderThread())release.run();else RenderSystem.recordRenderCall(release::run);
     }

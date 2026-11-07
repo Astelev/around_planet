@@ -50,7 +50,7 @@ public final class SeamDiagnostics {
     public static boolean observed(String side,String key){return bucket(side).counts.containsKey(key) || bucket(side).timings.containsKey(key);}
     public static void event(String side,String key,Supplier<String> detail) {
         if(!enabled)return;count(side,key);var b=bucket(side);long now=System.nanoTime();
-        synchronized(b){if(now>=b.eventsUntil){b.eventsUntil=now+WINDOW;b.events=0;b.importantEvents=0;}boolean important=key.equals("crossing") || key.equals("session.start") || key.equals("level.unload") || key.startsWith("transfer.") || key.equals("diagnostic.mark") || key.contains("renderer_reset") || key.startsWith("dh.reset") || key.equals("mesh.clear");if(important?b.importantEvents++>=4:b.events++>=12){count(side,"events.suppressed");return;}}
+        synchronized(b){if(now>=b.eventsUntil){b.eventsUntil=now+WINDOW;b.events=0;b.importantEvents=0;}boolean important=key.equals("crossing") || key.equals("session.start") || key.equals("level.unload") || key.startsWith("transfer.") || key.equals("diagnostic.mark") || key.equals("server.slow_tick") || key.contains("renderer_reset") || key.startsWith("dh.reset") || key.equals("mesh.clear");if(important?b.importantEvents++>=4:b.events++>=12){count(side,"events.suppressed");return;}}
         AroundPlanet.LOGGER.info("[AP-DIAG] session={} side={} event={} {}",SESSION,side,key,detail.get());
     }
     public static boolean due(String side) {
@@ -67,7 +67,7 @@ public final class SeamDiagnostics {
     }
     public static String config() {
         return "config{enabled="+PlanetConfig.ENABLED.getAsBoolean()+",boundary="+PlanetConfig.BOUNDARY.getAsInt()+",radius="+PlanetConfig.RADIUS.getAsInt()+",activation="+PlanetConfig.ACTIVATION.getAsInt()
-                +",snapTicks="+PlanetConfig.SNAPSHOT_INTERVAL.getAsInt()+",snapBudget="+PlanetConfig.SNAPSHOT_BUDGET.getAsInt()+",retain="+PlanetConfig.RETAIN_MESHES.getAsBoolean()
+                +",snapTicks="+PlanetConfig.SNAPSHOT_INTERVAL.getAsInt()+",snapBudget="+PlanetConfig.SNAPSHOT_BUDGET.getAsInt()+",retain="+PlanetConfig.RETAIN_MESHES.getAsBoolean()+",meshMiB="+PlanetConfig.MESH_MIB.getAsInt()+",meshSections="+PlanetConfig.MESH_SECTIONS.getAsInt()
                 +",dhSeam="+PlanetConfig.DH_SEAM.getAsBoolean()+",dhPreview="+PlanetConfig.DH_PREVIEW.getAsInt()+",terrainBlend="+PlanetConfig.TERRAIN_BLEND.getAsBoolean()+"}";
     }
     public static String id(Object object){return object==null?"none":Integer.toHexString(System.identityHashCode(object));}

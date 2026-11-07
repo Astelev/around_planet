@@ -13,9 +13,9 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 @EventBusSubscriber(modid=AroundPlanet.MOD_ID)
 public final class SeamServerDiagnostics {
     private static long tickStart;
-    @SubscribeEvent public static void pre(ServerTickEvent.Pre e){tickStart=SeamDiagnostics.start();}
+    @SubscribeEvent public static void pre(ServerTickEvent.Pre e){tickStart=SeamDiagnostics.start();SeamServerStallWatch.begin(tickStart);}
     @SubscribeEvent public static void post(ServerTickEvent.Post e) {
-        SeamDiagnostics.time("server","tick",tickStart);if(!SeamDiagnostics.due("server"))return;
+        SeamServerStallWatch.end();SeamDiagnostics.time("server","tick",tickStart);if(!SeamDiagnostics.due("server"))return;
         var text=new StringBuilder(SeamDiagnostics.config());int n=0;
         for(var p:e.getServer().getPlayerList().getPlayers()) {
             if(n++>=4)break;var t=PlanetBorders.get(p.level().getWorldBorder());if(t==null)continue;
@@ -38,5 +38,5 @@ public final class SeamServerDiagnostics {
         if(topology!=null && topology.distanceToSeam(pos.getMiddleBlockX())<512)
             SeamDiagnostics.event("server",load?"chunk.near_load":"chunk.near_unload",()->"dim="+level.dimension().location()+" pos="+pos+" status="+e.getChunk().getPersistedStatus());
     }
-    @SubscribeEvent public static void stop(ServerStoppedEvent e){if(SeamDiagnostics.enabled())SeamDiagnostics.report("server","server_stopped");}
+    @SubscribeEvent public static void stop(ServerStoppedEvent e){SeamServerStallWatch.close();if(SeamDiagnostics.enabled())SeamDiagnostics.report("server","server_stopped");}
 }

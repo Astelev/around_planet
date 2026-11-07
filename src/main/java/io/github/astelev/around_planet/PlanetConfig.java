@@ -5,7 +5,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS;
-    public static final ModConfigSpec.IntValue BOUNDARY, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND;
+    public static final ModConfigSpec.IntValue BOUNDARY, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS;
     static {
         var b = new ModConfigSpec.Builder();
         b.push("eastWest");
@@ -28,8 +28,10 @@ public final class PlanetConfig {
         DH_PREVIEW=b.comment("Approach distance for preparing the opposite DH tree. Adds one retained render tree sharing existing data.")
                 .defineInRange("dhPreviewDistanceBlocks",512,32,4096);
         RETAIN_MESHES=b.comment("Retain bounded canonical GPU meshes from seam images and native shores during a crossing.",
-                "Uses the native block compiler on one worker; 64 MiB/512 sections maximum. Disable to compare the original renderer.")
+                "Uses the native block compiler on one worker; Configurable bounded GPU cache. Disable to compare the original renderer.")
                 .define("retainTransitionMeshes",true);
+        MESH_MIB=b.comment("Maximum GPU bytes for retained transition meshes, in MiB. Existing cache is trimmed to this bound.").defineInRange("transitionMeshMaxMiB",128,16,512);
+        MESH_SECTIONS=b.comment("Maximum retained sections. Visible seam geometry is preferred over off-screen cached geometry.").defineInRange("transitionMeshMaxSections",1536,128,8192);
         SHIP_SEAM=b.comment("Optional Sable 2.0.6: render ships across the seam and mirror terrain collision sections. The separate shipSeamTransfers switch controls transport.")
                 .define("shipSeamSupport",true);
         SHIP_BAND=b.comment("Width in chunks of the physics collision strip beyond each seam. Only sections requested by Sable are mirrored.")
@@ -42,7 +44,7 @@ public final class PlanetConfig {
                 .define("terrainSeamBlending",true);
         TERRAIN_BAND=b.comment("Blend width in blocks on each shore, capped at one quarter of circumference. Existing saved chunks are never rewritten.")
                 .defineInRange("terrainBlendWidthBlocks",256,32,2048);
-        DIAGNOSTICS=b.comment("Diagnostic build: bounded AP-DIAG summaries every 5 seconds, chunk/cache/DH counters and timings. No generation or render behavior changes.").define("seamDiagnostics",true);
+        DIAGNOSTICS=b.comment("Bounded AP-DIAG summaries every 5 seconds, chunk/cache/DH counters and timings. Toggling telemetry does not change generation or render policy.").define("seamDiagnostics",true);
         b.pop(); SPEC = b.build();
     }
     private PlanetConfig() {}
