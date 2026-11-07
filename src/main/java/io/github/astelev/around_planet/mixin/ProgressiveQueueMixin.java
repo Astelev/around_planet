@@ -26,7 +26,7 @@ public abstract class ProgressiveQueueMixin implements ProgressiveQueueAccess {
     @Shadow @Final private IDhApiWorldGenerator generator;
     @Shadow @Final private IDhServerLevel level;
     @Shadow private DhBlockPos2D generationTargetPos;
-    @Override public boolean around_planet$previewSupported(){return generator instanceof DhWorldGenerator builtin && builtin.roughGenerator!=null && Config.Common.WorldGenerator.generatorPlan.get().surfaceGenEnabled;}
+    @Override public boolean around_planet$previewSupported(){return !io.github.astelev.around_planet.progressive.ProgressiveOwnership.cruisingOwnsGeneration() && generator instanceof DhWorldGenerator builtin && builtin.roughGenerator!=null && Config.Common.WorldGenerator.generatorPlan.get().surfaceGenEnabled;}
     @Unique private int around_planet$width(){var mc=level.getServerLevelWrapper().getWrappedMcObject();if(mc instanceof Level world){var t=PlanetBorders.get(world.getWorldBorder());if(t!=null)return t.width();}return 0;}
     @Override public boolean around_planet$previewAllowed(long pos) {
         var mc=level.getServerLevelWrapper().getWrappedMcObject();

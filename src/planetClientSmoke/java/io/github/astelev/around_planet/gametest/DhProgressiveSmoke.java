@@ -31,6 +31,9 @@ public final class DhProgressiveSmoke {
         run(mc);System.setProperty("around_planet.progressiveSmoke","false");mc.stop();
     }
     static void run(Minecraft mc) {
+        if(io.github.astelev.around_planet.progressive.ProgressiveOwnership.cruisingOwnsGeneration()) {
+            AroundPlanet.LOGGER.info("DH_PROGRESSIVE_DELEGATE PASS: Cruising owns the progressive scheduler");return;
+        }
         var plan=Config.Common.WorldGenerator.generatorPlan.get();
         try {
             Config.Common.WorldGenerator.generatorPlan.set(EDhApiGeneratorPlan.SURFACE_THEN_CHUNKS);

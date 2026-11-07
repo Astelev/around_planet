@@ -87,3 +87,11 @@ noise-based test world (`-PquickPlayWorld=around-ew-generation`): all 4096 colum
 were populated at each of data details 3, 2 and 1. A cold local run took 6195, 822
 and 532 ms respectively. These successive timings include JVM/cache warmup and
 cover different areas; they are **not** a baseline-versus-experiment speedup.
+
+## Cruising 1.1.0 ownership
+
+With Cruising 1.1.0+ installed, around_planet delegates progressive scheduling
+to Cruising, including when its new setting is disabled. Its legacy configuration
+cannot start a second scheduler. With older/no Cruising the existing experiment
+remains available. Cruising reads the optional topology for periodic distance and
+canonical ancestor bounds; seam generation filtering remains in around_planet.
