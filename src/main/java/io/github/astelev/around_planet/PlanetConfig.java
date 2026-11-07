@@ -4,8 +4,8 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
-    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS;
-    public static final ModConfigSpec.IntValue BOUNDARY, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS;
+    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS,PROGRESSIVE;
+    public static final ModConfigSpec.IntValue BOUNDARY, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
     static {
         var b = new ModConfigSpec.Builder();
         b.push("eastWest");
@@ -45,6 +45,11 @@ public final class PlanetConfig {
         TERRAIN_BAND=b.comment("Blend width in blocks on each shore, capped at one quarter of circumference. Existing saved chunks are never rewritten.")
                 .defineInRange("terrainBlendWidthBlocks",256,32,2048);
         DIAGNOSTICS=b.comment("Bounded AP-DIAG summaries every 5 seconds, chunk/cache/DH counters and timings. Toggling telemetry does not change generation or render policy.").define("seamDiagnostics",true);
+        b.pop();b.push("dhProgressive");
+        PROGRESSIVE=b.comment("Experimental DH 3.3.3 coarse surface first, then incremental detail. Independent of seam activation; restart to change.").define("enabled",true);
+        PROGRESSIVE_DETAIL=b.comment("Initial surface cell exponent: 3 means 8-block cells, refined through 4/2/1 blocks.").defineInRange("initialDataDetail",3,1,4);
+        PROGRESSIVE_RADIUS=b.comment("Radius around generation target where preview stages get priority, in blocks.").defineInRange("previewRadiusBlocks",1024,128,4096);
+        PROGRESSIVE_PENDING=b.comment("Bound on deferred logical requests per DH provider; shared preview stages are bounded separately.").defineInRange("maxDeferredRequests",128,16,512);
         b.pop(); SPEC = b.build();
     }
     private PlanetConfig() {}

@@ -15,7 +15,7 @@ public final class EastWestClientSmoke {
     private static volatile Throwable serverFailure;
     private static double flightVelocity;
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
-        if(Boolean.getBoolean("around_planet.generationSmoke") || Boolean.getBoolean("around_planet.shipTransferSmoke") || Boolean.getBoolean("around_planet.shipSmoke") || Boolean.getBoolean("around_planet.collisionSmoke") || Boolean.getBoolean("around_planet.arrivalSmoke") || Boolean.getBoolean("around_planet.lightSmoke") || Boolean.getBoolean("around_planet.visualSmoke") || Boolean.getBoolean("around_planet.entitySmoke")) return;
+        if(Boolean.getBoolean("around_planet.progressiveSmoke") || Boolean.getBoolean("around_planet.generationSmoke") || Boolean.getBoolean("around_planet.shipTransferSmoke") || Boolean.getBoolean("around_planet.shipSmoke") || Boolean.getBoolean("around_planet.collisionSmoke") || Boolean.getBoolean("around_planet.arrivalSmoke") || Boolean.getBoolean("around_planet.lightSmoke") || Boolean.getBoolean("around_planet.visualSmoke") || Boolean.getBoolean("around_planet.entitySmoke")) return;
         var mc=Minecraft.getInstance(); ticks++;
         if(serverFailure!=null) throw new AssertionError("AROUND_EW_SMOKE server packet regression",serverFailure);
         if(ticks>2600) throw new AssertionError("AROUND_EW_SMOKE timeout: phase="+phase+" x="+(mc.player==null?"none":mc.player.getX()));

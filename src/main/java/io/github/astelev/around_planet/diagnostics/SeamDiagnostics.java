@@ -68,7 +68,7 @@ public final class SeamDiagnostics {
     public static String config() {
         return "config{enabled="+PlanetConfig.ENABLED.getAsBoolean()+",boundary="+PlanetConfig.BOUNDARY.getAsInt()+",radius="+PlanetConfig.RADIUS.getAsInt()+",activation="+PlanetConfig.ACTIVATION.getAsInt()
                 +",snapTicks="+PlanetConfig.SNAPSHOT_INTERVAL.getAsInt()+",snapBudget="+PlanetConfig.SNAPSHOT_BUDGET.getAsInt()+",retain="+PlanetConfig.RETAIN_MESHES.getAsBoolean()+",meshMiB="+PlanetConfig.MESH_MIB.getAsInt()+",meshSections="+PlanetConfig.MESH_SECTIONS.getAsInt()
-                +",dhSeam="+PlanetConfig.DH_SEAM.getAsBoolean()+",dhPreview="+PlanetConfig.DH_PREVIEW.getAsInt()+",terrainBlend="+PlanetConfig.TERRAIN_BLEND.getAsBoolean()+"}";
+                +",dhSeam="+PlanetConfig.DH_SEAM.getAsBoolean()+",dhPreview="+PlanetConfig.DH_PREVIEW.getAsInt()+",terrainBlend="+PlanetConfig.TERRAIN_BLEND.getAsBoolean()+",progressive="+PlanetConfig.PROGRESSIVE.getAsBoolean()+",progressiveDetail="+PlanetConfig.PROGRESSIVE_DETAIL.getAsInt()+",progressiveRadius="+PlanetConfig.PROGRESSIVE_RADIUS.getAsInt()+",progressivePending="+PlanetConfig.PROGRESSIVE_PENDING.getAsInt()+"}";
     }
     public static String id(Object object){return object==null?"none":Integer.toHexString(System.identityHashCode(object));}
     private SeamDiagnostics(){}

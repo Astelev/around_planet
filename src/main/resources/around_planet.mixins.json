@@ -38,7 +38,10 @@
     "SeamGenerationBindMixin",
     "SeamClimateSamplerMixin",
     "SeamDhQueueDiagnosticsMixin",
-    "SeamServerChunkDiagnosticsMixin"
+    "SeamServerChunkDiagnosticsMixin",
+    "ProgressiveTaskRankMixin",
+    "ProgressiveQueueMixin",
+    "ProgressiveProviderMixin"
   ],
   "injectors": {
     "defaultRequire": 1

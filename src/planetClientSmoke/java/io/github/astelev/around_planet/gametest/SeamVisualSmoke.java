@@ -178,7 +178,7 @@ public final class SeamVisualSmoke {
         } else if(phase==3 && ticks-started>60) {
             var image=SeamImages.get(mc.level,-17,0);
             if(image==null || !image.getBlockState(new BlockPos(-267,82,8)).is(Blocks.GOLD_BLOCK) || !pixel(mc,2))return;
-            verifyEmptyMeshCoverage();verifyOptionalDh(mc);
+            verifyEmptyMeshCoverage();verifyOptionalDh(mc);DhProgressiveSmoke.run(mc);
             verifyOptionalSable(mc);
             AroundPlanet.LOGGER.info("SEAM_VISUAL_SMOKE PASS: both directions, real GPU pixels, block updates, water, lighting, cache eviction and no gameplay aliases");
             if(!io.github.astelev.around_planet.client.SeamMeshCache.settled(15,5,0))return;

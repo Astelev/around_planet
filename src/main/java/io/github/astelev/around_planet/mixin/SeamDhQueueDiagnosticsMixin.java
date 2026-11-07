@@ -16,7 +16,7 @@ public abstract class SeamDhQueueDiagnosticsMixin implements io.github.astelev.a
     @Shadow public abstract long getRetrievalEstimatedRemainingChunkCount();
     @org.spongepowered.asm.mixin.injection.Inject(method="<init>",at=@org.spongepowered.asm.mixin.injection.At("RETURN"))
     private void around_planet$register(org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci){SeamDiagnostics.registerQueue(this);}
-    @Override public String around_planet$queueDiagnostic(){return "id="+SeamDiagnostics.id(this)+" level="+SeamDiagnostics.id(level)+" waiting="+getWaitingTaskCount()+" inProgress="+getInProgressTaskCount()+" queuedChunks="+getQueuedChunkCount()+" remaining="+getRetrievalEstimatedRemainingChunkCount();}
+    @Override public String around_planet$queueDiagnostic(){return "id="+SeamDiagnostics.id(this)+" level="+SeamDiagnostics.id(level)+" waiting="+getWaitingTaskCount()+" inProgress="+getInProgressTaskCount()+" queuedChunks="+getQueuedChunkCount()+" remaining="+getRetrievalEstimatedRemainingChunkCount()+" progressive[pending/stages]="+(level.getFullDataProvider() instanceof io.github.astelev.around_planet.progressive.ProgressiveProviderAccess p?p.around_planet$progressiveDiagnostic():"unavailable");}
     @WrapMethod(method="submitRetrievalTask")
     private CompletableFuture<?> around_planet$request(long pos,byte detail,Operation<CompletableFuture<?>> original) {
         if(!SeamDiagnostics.enabled())return original.call(pos,detail);
