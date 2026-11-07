@@ -22,6 +22,8 @@ public final class EastWestClientSmoke {
         if(mc.level==null || mc.player==null || mc.getSingleplayerServer()==null || ticks<100) return;
         if(phase!=42 && phase!=45)mc.player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
         mc.player.setNoGravity(true);
+        // Isolate position-packet assertions from the preceding boat's residual client motion.
+        if(phase<=2 || phase>=4 && phase<=7)mc.player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
         if(phase==3 && ticks%100==0) {
             AroundPlanet.LOGGER.info("VEHICLE regression client: playerX={}, vehicle={}",mc.player.getX(),
                     mc.player.getVehicle()==null?"none":mc.player.getVehicle().getId()+"@"+mc.player.getVehicle().getX());
@@ -173,6 +175,14 @@ public final class EastWestClientSmoke {
                 mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst().connection.teleport(0,200,0,47,13));
             }
         } else if(phase==8 && ticks-started>120) {
+            if(Boolean.getBoolean("around_planet.diagnosticSmoke")) {
+                require(io.github.astelev.around_planet.diagnostics.SeamDiagnostics.observed("client","crossing"),"Diagnostic crossing markers missing");
+                require(io.github.astelev.around_planet.diagnostics.SeamDiagnostics.observed("client","native.chunk_packet"),"Native chunk packet telemetry missing");
+                require(io.github.astelev.around_planet.diagnostics.SeamDiagnostics.observed("client","dh.coverage_upload_cpu"),"DH coverage timings missing");
+                require(io.github.astelev.around_planet.diagnostics.CruisingDiagnostics.snapshot().contains("cameraSpeed="),"Cruising read-only probe unavailable");
+                AroundPlanet.LOGGER.info("SEAM_DIAGNOSTIC_SMOKE PASS: crossing/native chunk/DH timings/Cruising probes observed while native transfer controls pass");
+                mc.getSingleplayerServer().execute(()->{var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();mc.getSingleplayerServer().getCommands().performPrefixedCommand(p.createCommandSourceStack(),"around_planet diagmark");});
+            }
             // Let the destination ticket leases expire normally before ending this synthetic world run.
             phase=9;mc.stop();
         }

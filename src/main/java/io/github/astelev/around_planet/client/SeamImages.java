@@ -1,5 +1,6 @@
 package io.github.astelev.around_planet.client;
 
+import io.github.astelev.around_planet.diagnostics.SeamDiagnostics;
 import io.github.astelev.around_planet.AroundPlanet;
 import io.github.astelev.around_planet.PlanetConfig;
 import io.github.astelev.around_planet.border.PlanetBorders;
@@ -68,18 +69,18 @@ public final class SeamImages {
     }
     public static void accept(SeamChunkPayload payload) {
         var mc=Minecraft.getInstance(); var level=mc.level;
-        if(level==null || mc.player==null || !level.dimension().location().equals(payload.dimension())) return;
+        if(level==null || mc.player==null || !level.dimension().location().equals(payload.dimension())) {SeamDiagnostics.count("client","image.reject_world");return;}
         var topology=PlanetBorders.get(level.getWorldBorder());
         int range=Math.max(mc.options.getEffectiveRenderDistance()+2,PlanetConfig.RADIUS.getAsInt()+3);
         if(topology==null || SeamGeometry.canonical(topology,payload.x())
                 || Math.abs((long)payload.x()-mc.player.chunkPosition().x)>range
-                || Math.abs((long)payload.z()-mc.player.chunkPosition().z)>PlanetConfig.RADIUS.getAsInt()+2) return;
+                || Math.abs((long)payload.z()-mc.player.chunkPosition().z)>PlanetConfig.RADIUS.getAsInt()+2) {SeamDiagnostics.count("client","image.reject_range_or_canonical");return;}
         var buf=new RegistryFriendlyByteBuf(Unpooled.wrappedBuffer(payload.data()),level.registryAccess());
         try {
             var packet=ClientboundLevelChunkWithLightPacket.STREAM_CODEC.decode(buf);
-            if(packet.getX()!=SeamGeometry.sourceX(topology,payload.x()) || packet.getZ()!=payload.z()) return;
-            if(world!=level) { IMAGES.clear(); world=level; }
-            if(IMAGES.size()>=192 && !IMAGES.containsKey(ChunkPos.asLong(payload.x(),payload.z()))) return;
+            if(packet.getX()!=SeamGeometry.sourceX(topology,payload.x()) || packet.getZ()!=payload.z()) {SeamDiagnostics.count("client","image.reject_source");return;}
+            if(world!=level) {SeamDiagnostics.event("client","image.world_reset",()->"old="+SeamDiagnostics.id(world)+" new="+SeamDiagnostics.id(level)+" count="+IMAGES.size()); IMAGES.clear(); world=level; }
+            if(IMAGES.size()>=192 && !IMAGES.containsKey(ChunkPos.asLong(payload.x(),payload.z()))) {SeamDiagnostics.count("client","image.reject_capacity");return;}
             var chunk=new ImageChunk(level,new ChunkPos(payload.x(),payload.z()));
             var data=packet.getChunkData();
             chunk.replaceWithPacketData(data.getReadBuffer(),data.getHeightmaps(),data.getBlockEntitiesTagsConsumer(payload.x(),payload.z()));
@@ -88,7 +89,8 @@ public final class SeamImages {
             chunk.minLightSection=level.getMinSection()-1;
             chunk.sky=readLight(count,light.getSkyYMask(),light.getEmptySkyYMask(),light.getSkyUpdates().iterator());
             chunk.block=readLight(count,light.getBlockYMask(),light.getEmptyBlockYMask(),light.getBlockUpdates().iterator());
-            IMAGES.put(chunk.getPos().toLong(),chunk);
+            SeamDiagnostics.count("client",IMAGES.put(chunk.getPos().toLong(),chunk)==null?"image.created":"image.replaced");
+            SeamDiagnostics.add("client","image.received_bytes",payload.data().length);
             AlternativeRendererBridge.changed(level);
             mc.levelRenderer.onChunkLoaded(chunk.getPos());
             dirty(level,chunk.getPos());
@@ -120,19 +122,20 @@ public final class SeamImages {
         boolean removed=IMAGES.entrySet().removeIf(e -> {
             var p=e.getValue().getPos();
             if(Math.abs(p.x-mc.player.chunkPosition().x)<=range && Math.abs(p.z-mc.player.chunkPosition().z)<=PlanetConfig.RADIUS.getAsInt()+2) return false;
-            dirty(mc.level,p); return true;
+            SeamDiagnostics.count("client","image.prune_range");dirty(mc.level,p); return true;
         });
         if(removed)AlternativeRendererBridge.changed(mc.level);
     }
     @SubscribeEvent public static void unload(LevelEvent.Unload event) {
         if(net.neoforged.fml.ModList.get().isLoaded("sable"))ShipTransferClient.clear(event.getLevel());
-        if(event.getLevel()==world) { AlternativeRendererBridge.clear(world);IMAGES.clear(); world=null;renderLight=null; }
+        if(event.getLevel()==world) {SeamDiagnostics.event("client","image.level_clear",()->"count="+IMAGES.size()); AlternativeRendererBridge.clear(world);IMAGES.clear(); world=null;renderLight=null; }
         if(renderLight!=null && renderLight.level==event.getLevel())renderLight=null;
         var fallback=empty;if(fallback!=null && fallback.getLevel()==event.getLevel())empty=null;
     }
     private static final class ImageChunk extends LevelChunk {
         private DataLayer[] sky,block;
         private int minLightSection;
+        private final long received=System.nanoTime();
         ImageChunk(ClientLevel level,ChunkPos pos) { super(level,pos); }
         DataLayer light(LightLayer layer,int sectionY) {
             var data=layer==LightLayer.SKY?sky:block;int i=sectionY-minLightSection;
@@ -140,6 +143,10 @@ public final class SeamImages {
         }
         @Override public void setBlockEntity(BlockEntity entity) { entity.setLevel(getLevel()); getBlockEntities().put(entity.getBlockPos(),entity); }
         @Override public void setUnsaved(boolean unsaved) {}
+    }
+    public static String diagnostic() {
+        long oldest=0,now=System.nanoTime();for(var chunk:IMAGES.values())if(chunk instanceof ImageChunk image)oldest=Math.max(oldest,now-image.received);
+        return "count="+IMAGES.size()+",oldestMs="+oldest/1_000_000;
     }
     private SeamImages() {}
 }

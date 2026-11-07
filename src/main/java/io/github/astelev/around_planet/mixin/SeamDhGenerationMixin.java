@@ -1,5 +1,6 @@
 package io.github.astelev.around_planet.mixin;
 
+import io.github.astelev.around_planet.diagnostics.SeamDiagnostics;
 import io.github.astelev.around_planet.compat.DhSeamBounds;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
@@ -13,6 +14,6 @@ import java.util.concurrent.CancellationException;
 public abstract class SeamDhGenerationMixin {
     @Inject(method="submitRetrievalTask",at=@At("HEAD"),cancellable=true)
     private void around_planet$noOutsideGeneration(long pos,byte detail,CallbackInfoReturnable<CompletableFuture<?>> cir) {
-        if(DhSeamBounds.generationOutside(this,pos)) cir.setReturnValue(CompletableFuture.failedFuture(new CancellationException("Outside planet seam")));
+        if(DhSeamBounds.generationOutside(this,pos)) {SeamDiagnostics.count("server","dh.generation_cancel_outside");cir.setReturnValue(CompletableFuture.failedFuture(new CancellationException("Outside planet seam")));}
     }
 }

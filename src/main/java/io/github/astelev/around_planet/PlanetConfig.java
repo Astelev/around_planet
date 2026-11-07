@@ -4,7 +4,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
-    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND;
+    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS;
     public static final ModConfigSpec.IntValue BOUNDARY, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND;
     static {
         var b = new ModConfigSpec.Builder();
@@ -42,6 +42,7 @@ public final class PlanetConfig {
                 .define("terrainSeamBlending",true);
         TERRAIN_BAND=b.comment("Blend width in blocks on each shore, capped at one quarter of circumference. Existing saved chunks are never rewritten.")
                 .defineInRange("terrainBlendWidthBlocks",256,32,2048);
+        DIAGNOSTICS=b.comment("Diagnostic build: bounded AP-DIAG summaries every 5 seconds, chunk/cache/DH counters and timings. No generation or render behavior changes.").define("seamDiagnostics",true);
         b.pop(); SPEC = b.build();
     }
     private PlanetConfig() {}

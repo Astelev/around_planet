@@ -1,5 +1,6 @@
 package io.github.astelev.around_planet.compat;
 
+import io.github.astelev.around_planet.diagnostics.SeamDiagnostics;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.seibel.distanthorizons.common.render.openGl.glObject.shader.GlShaderProgram;
@@ -15,14 +16,14 @@ public final class DhSeamCoverage {
     private static java.nio.ByteBuffer pixels;
 
     public static void bind(GlShaderProgram shader,RenderParams params,int shiftChunks) {
-        var mc=Minecraft.getInstance();
+        long diagnosticStart=SeamDiagnostics.start();var mc=Minecraft.getInstance();
         int radius=Math.min(32,Math.max(1,mc.options.getEffectiveRenderDistance()+1));
         int size=radius*2+1;
         int cx=Math.floorDiv((int)Math.floor(params.exactCameraPosition.x),16);
         int cz=Math.floorDiv((int)Math.floor(params.exactCameraPosition.z),16);
         int height=mc.level.getSectionsCount();
         if(pixels==null || pixels.capacity()!=size*size*height)pixels=BufferUtils.createByteBuffer(size*size*height);
-        pixels.clear();
+        pixels.clear();int diagnosticReady=0;
         // Texture layout: X contiguous, then Y, then Z; coverage is bounded by the native view.
         for(int z=cz-radius;z<=cz+radius;z++)for(int x=cx-radius;x<=cx+radius;x++) {
             for(int section=0;section<height;section++) {
@@ -30,9 +31,10 @@ public final class DhSeamCoverage {
                 boolean ready=(io.github.astelev.around_planet.client.SeamSectionCoverage.ready(mc.level,x+shiftChunks,y,z,null)
                         || io.github.astelev.around_planet.client.SeamMeshCache.hasMesh(x,y,z));
                 int index=((z-cz+radius)*height+section)*size+x-cx+radius;
-                pixels.put(index,(byte)(ready?255:0));
+                if(ready)diagnosticReady++;pixels.put(index,(byte)(ready?255:0));
             }
         }
+        SeamDiagnostics.add("client","dh.coverage_ready_cells",diagnosticReady);SeamDiagnostics.add("client","dh.coverage_cells",(long)size*size*height);
         pixels.position(pixels.capacity());pixels.flip();
         int active=GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
         active(GL13.GL_TEXTURE0+UNIT);
@@ -62,7 +64,7 @@ public final class DhSeamCoverage {
             active(active);
         }
         // Caller restores binding after both opaque and transparent terrain draws.
-        previousBinding=bound;previousActive=active;
+        previousBinding=bound;previousActive=active;SeamDiagnostics.time("client","dh.coverage_upload_cpu",diagnosticStart);
     }
     private static int previousBinding,previousActive,previousSampler;
     private static void active(int unit) {GlStateManager._activeTexture(unit);GL13.glActiveTexture(unit);}

@@ -1,5 +1,6 @@
 package io.github.astelev.around_planet.compat;
 
+import io.github.astelev.around_planet.diagnostics.SeamDiagnostics;
 import com.seibel.distanthorizons.common.render.openGl.GlDhMetaRenderer_neoforge;
 import com.seibel.distanthorizons.common.render.openGl.GlDhTerrainRenderer_neoforge;
 import com.seibel.distanthorizons.core.render.RenderParams;
@@ -21,9 +22,9 @@ public final class DhSeamRenderer {
                 || com.seibel.distanthorizons.core.config.Config.Client.Advanced.Debugging.renderWireframe.get())return;
         var shader=GlDhTerrainRenderer_neoforge.INSTANCE.getTerrainShaderProgram();
         if(GlDhMetaRenderer_neoforge.INSTANCE.shaderProgramForThisFrame!=shader)return;
-        var view=DhSeamViews.select(main);if(view==null)return;var p=view.params();
+        long diagnosticStart=SeamDiagnostics.start();var view=DhSeamViews.select(main);if(view==null)return;var p=view.params();
         p.renderBufferHandler.buildRenderList(p);
-        var buffers=p.renderBufferHandler.getColumnRenderBuffers();if(buffers.size()==0)return;
+        var buffers=p.renderBufferHandler.getColumnRenderBuffers();if(buffers.size()==0){SeamDiagnostics.count("client","dh.empty_render_list");SeamDiagnostics.time("client","dh.append_empty",diagnosticStart);return;}
         shader.bind();int program=GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         float near=GL20.glGetUniformf(program,shader.uClipDistance);
         int dither=GL20.glGetUniformi(program,shader.uDitherDhRendering);
@@ -37,9 +38,9 @@ public final class DhSeamRenderer {
             DhSeamCoverage.bind(shader,p,view.shiftChunks());
             try {
                 // Call the shader directly: re-entering the renderer would recurse into this append hook.
-                shader.render(p,opaque,buffers,profiler);passes++;
+                shader.render(p,opaque,buffers,profiler);passes++;SeamDiagnostics.count("client",opaque?"dh.opaque_pass":"dh.transparent_pass");
                 if(opaque)for(int i=0;i<buffers.size();i++)if(buffers.get(i).buffersUploaded)opaqueDraws++;
-            } finally {DhSeamCoverage.unbind(shader);}
+            } finally {DhSeamCoverage.unbind(shader);SeamDiagnostics.time("client","dh.append_cpu",diagnosticStart);}
         } finally {
             shader.bind();shader.setUniform(shader.uClipDistance,near);shader.setUniform(shader.uDitherDhRendering,dither!=0);
             var topology=PlanetBorders.get(mc.level.getWorldBorder());

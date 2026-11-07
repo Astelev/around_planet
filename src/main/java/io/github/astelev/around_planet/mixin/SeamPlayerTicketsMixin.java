@@ -12,6 +12,8 @@ public abstract class SeamPlayerTicketsMixin {
     @Shadow @Final private DistanceManager this$0;
     @ModifyVariable(method="onLevelChange(JIZZ)V",at=@At("HEAD"),argsOnly=true,ordinal=1)
     private boolean around_planet$canonicalTickets(boolean value,long pos,int level,boolean hadTicket,boolean hasTicket) {
-        return value && SeamTicketBounds.allow(this$0,ChunkPos.getX(pos),ChunkPos.getZ(pos));
+        boolean allowed=value && SeamTicketBounds.allow(this$0,ChunkPos.getX(pos),ChunkPos.getZ(pos));
+        if(value && !allowed)io.github.astelev.around_planet.diagnostics.SeamDiagnostics.count("server","ticket.filtered_outside");
+        return allowed;
     }
 }

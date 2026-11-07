@@ -33,6 +33,13 @@ public final class SeamLightCommands {
             c.getSource().sendSuccess(()->Component.literal(io.github.astelev.around_planet.transfer.TransferService.diagnostics(player)),false);
             return 1;
         }));
+        root.then(Commands.literal("diagmark").executes(c->{
+            if(!io.github.astelev.around_planet.diagnostics.SeamDiagnostics.enabled()){c.getSource().sendFailure(Component.literal("Diagnostics disabled: enable eastWest.seamDiagnostics."));return 0;}
+            var player=c.getSource().getPlayerOrException();
+            io.github.astelev.around_planet.diagnostics.SeamDiagnostics.event("server","diagnostic.mark",()->"xyz="+player.position()+" "+io.github.astelev.around_planet.transfer.TransferService.diagnostics(player));
+            c.getSource().sendSuccess(()->Component.literal("AP-DIAG MARK at "+player.position()+"; send logs/latest.log after reproducing the issue."),false);
+            return 1;
+        }));
         event.getDispatcher().register(root);
     }
     @SubscribeEvent public static void unload(net.neoforged.neoforge.event.level.LevelEvent.Unload event) {

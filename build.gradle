@@ -126,6 +126,7 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     neoForge.runs.named('client') {
         programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('around-ew-smoke'))
         jvmArguments.add('-Xmx3G')
+        if (providers.gradleProperty('planetDiagnosticSmoke').isPresent()) jvmArguments.add('-Daround_planet.diagnosticSmoke=true')
         if (providers.gradleProperty('planetGenerationSmoke').isPresent()) jvmArguments.add('-Daround_planet.generationSmoke=true')
         if (providers.gradleProperty('planetShipTransferSmoke').isPresent()) jvmArguments.addAll('-Daround_planet.shipTransferSmoke=true','-Daround_planet.traceShipTransfers=true')
         if (providers.gradleProperty('planetShipSmoke').isPresent()) jvmArguments.add('-Daround_planet.shipSmoke=true')

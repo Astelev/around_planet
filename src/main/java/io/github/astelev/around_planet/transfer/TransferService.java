@@ -1,5 +1,6 @@
 package io.github.astelev.around_planet.transfer;
 
+import io.github.astelev.around_planet.diagnostics.SeamDiagnostics;
 import io.github.astelev.around_planet.AroundPlanet;
 import io.github.astelev.around_planet.PlanetConfig;
 import io.github.astelev.around_planet.border.PlanetBorders;
@@ -114,7 +115,7 @@ public final class TransferService {
         if(shipPassenger){completed(level,entity);return;} // The ship group owns this passenger's coordinate change.
         if (!topology.outside(entity.getX())) return;
         double dx = targetX-entity.getX();
-        var readiness=ready(level,group,dx);pending(level,entity,readiness);
+        var readiness=ready(level,group,dx);pending(level,entity,readiness);SeamDiagnostics.count("server","transfer.gate."+readiness);
         if (readiness==Readiness.COLLISION) return; // Ordinary stitched collisions allow backing/sliding out; never repeatedly teleport a blocked vehicle.
         if (readiness!=Readiness.READY) {
             // Stay on the crossing side of the seam so even stationary entities retry next tick.
@@ -132,7 +133,7 @@ public final class TransferService {
     }
     private static void request(ServerLevel level,ChunkPos pos,boolean player) {
         var requests=REQUESTS.computeIfAbsent(level,ignored->new HashMap<>());
-        long now=level.getGameTime();requests.entrySet().removeIf(e->now-e.getValue().refreshed>=100);
+        long now=level.getGameTime();requests.entrySet().removeIf(e->{boolean expired=now-e.getValue().refreshed>=100;if(expired)SeamDiagnostics.count("server","lease.expired_record");return expired;});
         var previous=requests.get(pos);
         int radius=PlanetConfig.RADIUS.getAsInt()+((player || previous!=null && previous.playerUntil>=now)?1:0);
         long playerUntil=player?now+40:previous==null?Long.MIN_VALUE:previous.playerUntil;
@@ -152,7 +153,7 @@ public final class TransferService {
         }
         if(previous!=null && previous.radius!=radius)level.getChunkSource().removeRegionTicket(PRELOAD,pos,previous.radius,pos);
         // Player images need the extra outer ring; ordinary entities retain the smaller crossing square.
-        level.getChunkSource().addRegionTicket(PRELOAD,pos,radius,pos);
+        SeamDiagnostics.count("server",previous==null?"lease.add":"lease.refresh");level.getChunkSource().addRegionTicket(PRELOAD,pos,radius,pos);
         requests.put(pos,new Lease(now,playerUntil,radius));
     }
     private static Readiness ready(ServerLevel level,java.util.List<Entity> group,double dx) {
@@ -202,6 +203,7 @@ public final class TransferService {
     }
     public static void moveGroup(Entity root, double dx) {
         var members=root.getSelfAndPassengers().toList();
+        SeamDiagnostics.event("server","transfer.group",()->"dim="+root.level().dimension().location()+" root="+root.getId()+" type="+root.getType()+" xyz="+root.position()+" dx="+dx+" members="+members.size());
         var velocities=members.stream().map(Entity::getDeltaMovement).toList();
         // Relative position flags also preserve the client's creative/elytra movement and previous pose.
         root.teleportRelative(dx,0,0);

@@ -36,7 +36,9 @@
     "SeamMiningFeedbackMixin",
     "SeamNoiseStateMixin",
     "SeamGenerationBindMixin",
-    "SeamClimateSamplerMixin"
+    "SeamClimateSamplerMixin",
+    "SeamDhQueueDiagnosticsMixin",
+    "SeamServerChunkDiagnosticsMixin"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -70,6 +72,9 @@
     "SeamImageBlockUpdateMixin",
     "SeamShipInterpolationMixin",
     "SeamAttackInputMixin",
-    "SeamEntityLightMixin"
+    "SeamEntityLightMixin",
+    "SeamChunkDiagnosticsMixin",
+    "SeamRendererDiagnosticsMixin",
+    "SeamAlternativeDiagnosticsMixin"
   ]
 }

@@ -1,5 +1,6 @@
 package io.github.astelev.around_planet.mixin;
 
+import io.github.astelev.around_planet.diagnostics.SeamDiagnostics;
 import com.seibel.distanthorizons.core.level.ClientLevelModule;
 import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
@@ -21,7 +22,7 @@ public abstract class SeamDhModuleMixin {
     @Inject(method="clientTick",at=@At("RETURN"))
     private void around_planet$after(CallbackInfo ci) {around_planet$views.afterTick();}
     @Inject(method={"stopRenderer","clearRenderCache","onGeneratorPlanChanged"},at=@At("HEAD"))
-    private void around_planet$reset(CallbackInfo ci) {if(around_planet$views!=null)around_planet$views.reset();}
+    private void around_planet$reset(CallbackInfo ci) {if(around_planet$views!=null)around_planet$views.reset(ci.getId());}
     @Inject(method="close",at=@At("HEAD"))
     private void around_planet$close(CallbackInfo ci) {
         if(around_planet$views!=null)around_planet$views.close();

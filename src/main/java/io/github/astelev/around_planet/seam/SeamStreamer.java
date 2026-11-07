@@ -1,5 +1,6 @@
 package io.github.astelev.around_planet.seam;
 
+import io.github.astelev.around_planet.diagnostics.SeamDiagnostics;
 import io.github.astelev.around_planet.AroundPlanet;
 import io.github.astelev.around_planet.PlanetConfig;
 import io.github.astelev.around_planet.border.PlanetBorders;
@@ -46,7 +47,9 @@ public final class SeamStreamer {
                 if(Math.abs(imageX-player.chunkPosition().x)>visualRange) continue;
                 long key = ChunkPos.asLong(imageX,z); desired.add(key);
                 var chunk=level.getChunkSource().getChunkNow(sourceX,z);
-                if(chunk==null || !chunk.isLightCorrect())continue;
+                if(chunk==null){SeamDiagnostics.count("server","stream.missing");continue;}
+                if(!chunk.isLightCorrect()){SeamDiagnostics.count("server","stream.unlit");continue;}
+                SeamDiagnostics.count("server","stream.ready");
                 var previous=sent.get(key);
                 sources.put(key,new Source(imageX,z,chunk));
                 double dx=imageX-player.chunkPosition().x;
@@ -54,7 +57,7 @@ public final class SeamStreamer {
             }
             for(var next:SnapshotSchedule.choose(candidates,level.getGameTime(),
                     PlanetConfig.SNAPSHOT_INTERVAL.getAsInt(),PlanetConfig.SNAPSHOT_BUDGET.getAsInt())) {
-                long key=next.key();var source=sources.get(key);var previous=sent.get(key);
+                SeamDiagnostics.count("server","stream.serialized");long diagnosticStart=SeamDiagnostics.start();long key=next.key();var source=sources.get(key);var previous=sent.get(key);
                 var buf = new RegistryFriendlyByteBuf(Unpooled.buffer(),level.registryAccess());
                 try {
                     var packet = new ClientboundLevelChunkWithLightPacket(source.chunk,level.getChunkSource().getLightEngine(),null,null);
@@ -65,10 +68,12 @@ public final class SeamStreamer {
                     }
                     byte[] data = new byte[buf.readableBytes()]; buf.readBytes(data);
                     int hash = Arrays.hashCode(data);
-                    if(previous == null || previous.hash != hash) PacketDistributor.sendToPlayer(player,
-                        new SeamChunkPayload(level.dimension().location(),source.imageX,source.z,data));
+                    if(previous == null || previous.hash != hash) {
+                        SeamDiagnostics.count("server",previous==null?"stream.sent_new":"stream.sent_changed");SeamDiagnostics.add("server","stream.sent_bytes",data.length);
+                        PacketDistributor.sendToPlayer(player,new SeamChunkPayload(level.dimension().location(),source.imageX,source.z,data));
+                    } else SeamDiagnostics.count("server","stream.unchanged");
                     sent.put(key,new Sent(hash,level.getGameTime()));
-                } finally { buf.release(); }
+                } finally { buf.release();SeamDiagnostics.time("server","stream.serialize",diagnosticStart); }
             }
             sent.keySet().retainAll(desired);
         }
