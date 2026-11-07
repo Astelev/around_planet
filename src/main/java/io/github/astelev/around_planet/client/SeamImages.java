@@ -1,0 +1,152 @@
+package io.github.astelev.around_planet.client;
+
+import io.github.astelev.around_planet.diagnostics.SeamDiagnostics;
+import io.github.astelev.around_planet.AroundPlanet;
+import io.github.astelev.around_planet.PlanetConfig;
+import io.github.astelev.around_planet.border.PlanetBorders;
+import io.github.astelev.around_planet.network.SeamChunkPayload;
+import io.github.astelev.around_planet.seam.SeamGeometry;
+import io.netty.buffer.Unpooled;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.SectionPos;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.ColorResolver;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.chunk.DataLayer;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.EmptyLevelChunk;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.level.biome.Biomes;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.BitSet;
+import java.util.Iterator;
+
+/** Read-only render snapshots and seam collision prediction. Never inserted into the gameplay chunk cache. */
+@EventBusSubscriber(modid=AroundPlanet.MOD_ID,value=Dist.CLIENT)
+public final class SeamImages {
+    private static final ConcurrentHashMap<Long,LevelChunk> IMAGES = new ConcurrentHashMap<>();
+    private static volatile ClientLevel world;
+    private static volatile LevelChunk empty;
+    private static volatile SeamImageLight renderLight;
+    public static net.minecraft.world.level.lighting.LevelLightEngine renderLight(ClientLevel level) {
+        var light=renderLight;if(light==null || light.level!=level)renderLight=light=new SeamImageLight(level);
+        return light;
+    }
+    static DataLayer lightData(ClientLevel level,LightLayer layer,SectionPos section) {
+        var chunk=get(level,section.x(),section.z());
+        return chunk instanceof ImageChunk image?image.light(layer,section.y()):null;
+    }
+    public static LevelChunk get(ClientLevel level,int x,int z) { return level==world ? IMAGES.get(ChunkPos.asLong(x,z)) : null; }
+    public static int size() { return IMAGES.size(); }
+    public static java.util.List<ChunkPos> positions(ClientLevel level) {
+        return level==world?IMAGES.values().stream().map(LevelChunk::getPos).toList():java.util.List.of();
+    }
+    public static LevelChunk forRender(ClientLevel level,int x,int z) {
+        var image=get(level,x,z);
+        if(image!=null) return image;
+        var fallback=empty;
+        if(fallback==null || fallback.getLevel()!=level) {
+            fallback=new EmptyLevelChunk(level,new ChunkPos(0,0),level.registryAccess().registryOrThrow(Registries.BIOME).getHolderOrThrow(Biomes.PLAINS));
+            empty=fallback;
+        }
+        return fallback;
+    }
+    public static int tint(ClientLevel level,net.minecraft.core.BlockPos pos,ColorResolver resolver) {
+        var chunk=get(level,pos.getX()>>4,pos.getZ()>>4);
+        if(chunk==null) return 0xffffff;
+        var biome=chunk.getNoiseBiome(pos.getX()>>2,pos.getY()>>2,pos.getZ()>>2).value();
+        var topology=PlanetBorders.get(level.getWorldBorder());
+        return resolver.getColor(biome,topology.canonicalX(pos.getX()),pos.getZ());
+    }
+    public static void accept(SeamChunkPayload payload) {
+        var mc=Minecraft.getInstance(); var level=mc.level;
+        if(level==null || mc.player==null || !level.dimension().location().equals(payload.dimension())) {SeamDiagnostics.count("client","image.reject_world");return;}
+        var topology=PlanetBorders.get(level.getWorldBorder());
+        int range=Math.max(mc.options.getEffectiveRenderDistance()+2,PlanetConfig.RADIUS.getAsInt()+3);
+        if(topology==null || SeamGeometry.canonical(topology,payload.x())
+                || Math.abs((long)payload.x()-mc.player.chunkPosition().x)>range
+                || Math.abs((long)payload.z()-mc.player.chunkPosition().z)>PlanetConfig.RADIUS.getAsInt()+2) {SeamDiagnostics.count("client","image.reject_range_or_canonical");return;}
+        var buf=new RegistryFriendlyByteBuf(Unpooled.wrappedBuffer(payload.data()),level.registryAccess());
+        try {
+            var packet=ClientboundLevelChunkWithLightPacket.STREAM_CODEC.decode(buf);
+            if(packet.getX()!=SeamGeometry.sourceX(topology,payload.x()) || packet.getZ()!=payload.z()) {SeamDiagnostics.count("client","image.reject_source");return;}
+            if(world!=level) {SeamDiagnostics.event("client","image.world_reset",()->"old="+SeamDiagnostics.id(world)+" new="+SeamDiagnostics.id(level)+" count="+IMAGES.size()); IMAGES.clear(); world=level; }
+            if(IMAGES.size()>=192 && !IMAGES.containsKey(ChunkPos.asLong(payload.x(),payload.z()))) {SeamDiagnostics.count("client","image.reject_capacity");return;}
+            var chunk=new ImageChunk(level,new ChunkPos(payload.x(),payload.z()));
+            var data=packet.getChunkData();
+            chunk.replaceWithPacketData(data.getReadBuffer(),data.getHeightmaps(),data.getBlockEntitiesTagsConsumer(payload.x(),payload.z()));
+            var light=packet.getLightData();
+            int count=level.getSectionsCount()+2;
+            chunk.minLightSection=level.getMinSection()-1;
+            chunk.sky=readLight(count,light.getSkyYMask(),light.getEmptySkyYMask(),light.getSkyUpdates().iterator());
+            chunk.block=readLight(count,light.getBlockYMask(),light.getEmptyBlockYMask(),light.getBlockUpdates().iterator());
+            SeamDiagnostics.count("client",IMAGES.put(chunk.getPos().toLong(),chunk)==null?"image.created":"image.replaced");
+            SeamDiagnostics.add("client","image.received_bytes",payload.data().length);
+            AlternativeRendererBridge.changed(level);
+            mc.levelRenderer.onChunkLoaded(chunk.getPos());
+            dirty(level,chunk.getPos());
+            SeamMeshCache.changed(level,chunk.getPos());
+        } finally { buf.release(); }
+    }
+    public static void authoritativeBlock(net.minecraft.core.BlockPos source,net.minecraft.world.level.block.state.BlockState state) {
+        var mc=Minecraft.getInstance();var level=mc.level;if(level==null || mc.player==null || level!=world)return;
+        var topology=PlanetBorders.get(level.getWorldBorder());if(topology==null || topology.outside(source.getX()))return;
+        int dx=(int)(Math.floor((mc.player.getX()-source.getX())/topology.width()+0.5)*topology.width());
+        if(dx==0)return;var pos=source.offset(dx,0,0);var image=get(level,pos.getX()>>4,pos.getZ()>>4);if(image==null)return;
+        // Only the detached section palette is changed; no gameplay/light-engine notifications or saved data.
+        int index=image.getSectionIndex(pos.getY());if(index<0 || index>=image.getSectionsCount())return;
+        image.getSection(index).setBlockState(pos.getX()&15,pos.getY()&15,pos.getZ()&15,state);
+        dirty(level,image.getPos());AlternativeRendererBridge.changed(level);SeamMeshCache.changed(level,image.getPos());
+    }
+    private static DataLayer[] readLight(int count,BitSet full,BitSet empty,Iterator<byte[]> values) {
+        var layers=new DataLayer[count];
+        for(int i=0;i<count;i++)if(full.get(i)||empty.get(i))
+            layers[i]=full.get(i)?new DataLayer(values.next().clone()):new DataLayer();
+        return layers;
+    }
+    private static void dirty(ClientLevel level,ChunkPos pos) {
+        for(int y=level.getMinSection();y<level.getMaxSection();y++) level.setSectionDirtyWithNeighbors(pos.x,y,pos.z);
+    }
+    @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
+        var mc=Minecraft.getInstance(); if(mc.level!=world || mc.player==null) return;
+        int range=Math.max(mc.options.getEffectiveRenderDistance()+2,PlanetConfig.RADIUS.getAsInt()+3);
+        boolean removed=IMAGES.entrySet().removeIf(e -> {
+            var p=e.getValue().getPos();
+            if(Math.abs(p.x-mc.player.chunkPosition().x)<=range && Math.abs(p.z-mc.player.chunkPosition().z)<=PlanetConfig.RADIUS.getAsInt()+2) return false;
+            SeamDiagnostics.count("client","image.prune_range");dirty(mc.level,p); return true;
+        });
+        if(removed)AlternativeRendererBridge.changed(mc.level);
+    }
+    @SubscribeEvent public static void unload(LevelEvent.Unload event) {
+        if(net.neoforged.fml.ModList.get().isLoaded("sable"))ShipTransferClient.clear(event.getLevel());
+        if(event.getLevel()==world) {SeamDiagnostics.event("client","image.level_clear",()->"count="+IMAGES.size()); AlternativeRendererBridge.clear(world);IMAGES.clear(); world=null;renderLight=null; }
+        if(renderLight!=null && renderLight.level==event.getLevel())renderLight=null;
+        var fallback=empty;if(fallback!=null && fallback.getLevel()==event.getLevel())empty=null;
+    }
+    private static final class ImageChunk extends LevelChunk {
+        private DataLayer[] sky,block;
+        private int minLightSection;
+        private final long received=System.nanoTime();
+        ImageChunk(ClientLevel level,ChunkPos pos) { super(level,pos); }
+        DataLayer light(LightLayer layer,int sectionY) {
+            var data=layer==LightLayer.SKY?sky:block;int i=sectionY-minLightSection;
+            return data!=null && i>=0 && i<data.length?data[i]:null;
+        }
+        @Override public void setBlockEntity(BlockEntity entity) { entity.setLevel(getLevel()); getBlockEntities().put(entity.getBlockPos(),entity); }
+        @Override public void setUnsaved(boolean unsaved) {}
+    }
+    public static String diagnostic() {
+        long oldest=0,now=System.nanoTime();for(var chunk:IMAGES.values())if(chunk instanceof ImageChunk image)oldest=Math.max(oldest,now-image.received);
+        return "count="+IMAGES.size()+",oldestMs="+oldest/1_000_000;
+    }
+    private SeamImages() {}
+}
