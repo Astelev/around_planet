@@ -59,11 +59,18 @@ public final class ShipTransferService {
             var entries=group.ships().stream().map(s->new SeamShipTransferPayload.Ship(s.getUniqueId(),s.logicalPose().position().x)).toList();
             var payload=new SeamShipTransferPayload(level.dimension().location(),++serial,topology.width(),dx,entries);
             for(var player:level.players())if(player.connection.hasChannel(SeamShipTransferPayload.TYPE))PacketDistributor.sendToPlayer(player,payload);
+            // Plot-local seats never change storage coordinates. Snapshot world riders before moving poses.
+            var seated=new IdentityHashMap<Entity,Runnable>();
+            for(var root:roots)if(dev.ryanhcode.sable.Sable.HELPER.getContaining(root)!=null)
+                seated.put(root,ShipSeatTransfer.prepare(root,dx));
             for(var ship:group.ships()) {
                 pipeline.teleport(ship,new Vector3d(ship.logicalPose().position()).add(dx,0,0),ship.logicalPose().orientation());
                 ((ShipPoseHistory)ship).around_planet$shiftHistory(dx);ship.updateBoundingBox();
             }
-            for(var root:roots)TransferService.moveGroup(root,dx);
+            for(var root:roots) {
+                var seatTransfer=seated.get(root);
+                if(seatTransfer!=null)seatTransfer.run();else TransferService.moveGroup(root,dx);
+            }
         }
     }
     private ShipTransferService(){}

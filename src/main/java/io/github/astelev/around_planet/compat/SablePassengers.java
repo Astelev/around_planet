@@ -11,6 +11,10 @@ import net.minecraft.world.entity.Entity;
 public final class SablePassengers {
     public static SubLevel ship(Entity entity) {
         if(entity.isRemoved())return null;
+        for(var vehicle=entity.getVehicle();vehicle!=null;vehicle=vehicle.getVehicle()) {
+            var containing=Sable.HELPER.getContaining(vehicle);
+            if(containing!=null && !containing.isRemoved())return containing;
+        }
         var current=Sable.HELPER.getTrackingSubLevel(entity);if(current!=null && !current.isRemoved())return current;
         for(var vehicle=entity.getVehicle();vehicle!=null;vehicle=vehicle.getVehicle()) {
             var tracked=Sable.HELPER.getTrackingSubLevel(vehicle);if(tracked!=null && !tracked.isRemoved())return tracked;

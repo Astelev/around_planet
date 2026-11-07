@@ -96,6 +96,45 @@ public final class ShipSeamGameTests {
             PlanetBorders.unbind(level.getWorldBorder());
         }
     }
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=200)
+    public static void plotSeatStaysLocalWhileRiderWraps(GameTestHelper h) throws Exception {
+        if(!net.neoforged.fml.ModList.get().isLoaded("create")){h.succeed();return;}
+        var level=h.getLevel();var container=SubLevelContainer.getContainer(level);
+        PlanetBorders.bind(level.getWorldBorder(),new EastWestTopology(512));
+        ServerSubLevel ship=null;net.minecraft.world.entity.Entity seat=null,rider=null;
+        try {
+            for(int x:new int[]{-17,-16,15,16})for(int z=5;z<=7;z++)level.getChunk(x,z);
+            var pos=h.absolutePos(new BlockPos(1,2,1));level.setBlockAndUpdate(pos,Blocks.IRON_BLOCK.defaultBlockState());
+            ship=SubLevelAssemblyHelper.assembleBlocks(level,pos,java.util.List.of(pos),new BoundingBox3i(pos.getX(),pos.getY(),pos.getZ(),pos.getX(),pos.getY(),pos.getZ()));
+            var local=ship.getPlot().getBoundingBox();
+            seat=(net.minecraft.world.entity.Entity)Class.forName("com.simibubi.create.content.contraptions.actors.seat.SeatEntity")
+                    .getConstructor(net.minecraft.world.level.Level.class).newInstance(level);
+            seat.setPos(local.minX()+0.5,local.minY()+1,local.minZ()+0.5);level.addFreshEntity(seat);
+            var seatPos=seat.position();
+            var pipeline=container.physicsSystem().getPipeline();
+            pipeline.teleport(ship,new Vector3d(256.5,200,100),ship.logicalPose().orientation());ship.updateBoundingBox();ship.updateLastPose();
+            rider=net.minecraft.world.entity.EntityType.PIG.create(level);rider.setPos(256.5,202,100);level.addFreshEntity(rider);
+            rider.startRiding(seat,true);seat.positionRider(rider);
+            h.assertTrue(dev.ryanhcode.sable.Sable.HELPER.getContaining(seat)==ship,"Seat fixture is not in its plot");
+            h.assertTrue(io.github.astelev.around_planet.compat.SablePassengers.ship(rider)==ship,"Native seat did not identify its carrier");
+            var before=rider.position();rider.setDeltaMovement(0.2,0.1,0.3);
+            io.github.astelev.around_planet.compat.ShipTransferService.check(level,container);
+            h.assertTrue(seat.position().equals(seatPos),"Seat was translated out of its storage plot");
+            h.assertTrue(rider.getVehicle()==seat && rider.position().distanceTo(before.add(-512,0,0))<1e-6,"Seated rider did not wrap with its carrier");
+            h.assertTrue(rider.getDeltaMovement().equals(new net.minecraft.world.phys.Vec3(0.2,0.1,0.3)),"Seated rider lost velocity");
+            seat.positionRider(rider);
+            h.assertTrue(rider.position().distanceTo(before.add(-512,0,0))<1e-6,"Native riding update returned rider to old coordinates");
+            pipeline.teleport(ship,new Vector3d(-256.5,200,100),ship.logicalPose().orientation());ship.updateBoundingBox();seat.positionRider(rider);
+            before=rider.position();io.github.astelev.around_planet.compat.ShipTransferService.check(level,container);
+            h.assertTrue(seat.position().equals(seatPos) && rider.getVehicle()==seat && rider.position().distanceTo(before.add(512,0,0))<1e-6,"Reverse seat transfer changed coordinate space or detached rider");
+            h.succeed();
+        } finally {
+            if(rider!=null)rider.discard();if(seat!=null)seat.discard();
+            if(ship!=null)container.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);
+            PlanetBorders.unbind(level.getWorldBorder());
+        }
+    }
+
     private static dev.ryanhcode.sable.sublevel.SubLevel SableTracking(net.minecraft.world.entity.Entity entity) {
         return dev.ryanhcode.sable.Sable.HELPER.getTrackingSubLevel(entity);
     }
