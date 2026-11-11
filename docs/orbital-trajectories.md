@@ -2,10 +2,12 @@
 
 The original 0.11.0-dev stage added the mathematical and persistent data layer.
 The branch now includes the first [playable cell transport](space-entry.md) in
-0.11.0-alpha.3. Common engine velocity enters a persistent planet-centered
+0.11.0-alpha.5. Common engine velocity enters a persistent planet-centered
 trajectory while the owner center is held locally. A captured surface basis maps
 native forces to that trajectory; automatic reentry rotates and returns all
-loaded bodies in the cell. A navigation HUD displays server samples. Dormant
+loaded bodies in the cell. A navigation HUD and checker-shaded orbital map display server samples; free loaded
+groups now depart into independent saved trajectories/cells. A single circumference
+controls both borders and cosmic radius. Dormant
 native unload/activation hooks and planetary rendering remain subsequent integrations.
 
 ## Agreed world arrangement

@@ -1,4 +1,4 @@
-# First playable space transfer — 0.11.0-alpha.4
+# First playable space transfer — 0.11.0-alpha.5
 
 This alpha adds a fixed, nonrotating local frame to high-altitude Overworld
 cells. The owner's common translational velocity is stored in a persistent
@@ -14,6 +14,9 @@ and the existing Cruising JAR. No patched library and no new dimension are neede
 In `<world>/serverconfig/around_planet-server.toml`:
 
 ```toml
+[planet]
+circumferenceBlocks = 131072
+
 [eastWest]
 enabled = true
 
@@ -57,8 +60,9 @@ Ordinary entities also have local gravity suppressed without changing their save
 ## Planet coordinates and automatic return
 
 The virtual origin is the planet center, independent of Minecraft/F3 cell
-addresses. Planet circumference is `2*eastWest.boundaryX`, and radius is that
-circumference divided by `2*pi`. World X maps to longitude and wraps normally.
+addresses. Planet circumference is `planet.circumferenceBlocks`, the single source of
+size; radius is that circumference divided by `2*pi`, and both border half extents
+are half the circumference. See [size migration and independent objects](planet-scale-and-objects.md). World X maps to longitude and wraps normally.
 World Z maps to latitude between the existing solid north/south borders, stopping
 just short of the exact poles to keep the basis defined. This is a distorted
 surface chart, not a change to north/south border topology.
@@ -112,9 +116,10 @@ While riding or standing on a cell's assembly, use:
 
 This requests an immediate return at the current projected planet location and
 waits for full destination chunks. Already allocated
-cells can return even if new space arrivals are disabled. Complex changes to
-assembly membership inside a cell (splitting/docking) are not handled yet; a
-partial connected group is not returned independently.
+cells can return even if new space arrivals are disabled. Loaded owner membership is reconciled after native connection changes. Free
+groups can depart into independent frames; a partially loaded connected group
+is never returned independently. Full dormant lifecycle/rendezvous handling
+remains subsequent work.
 
 ## Cruising compatibility
 
@@ -149,7 +154,7 @@ CPU task, and does not yet provide a separate view for each cell.
 
 ## Validation
 
-- 57 unit tests and 13 native physics GameTests with Sable/Create/Cruising.
+- 63 unit tests and 17 native physics GameTests with Sable/Create/Cruising.
 - New native three-axis out/back transfer of two rotary-connected bodies and a
   real Create seat/pig: unchanged joint layout, linear/angular momentum, plot
   seat position and mount; persisted membership and Cruising ticket exclusion.

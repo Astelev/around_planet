@@ -21,7 +21,7 @@ public final class SpaceShipTransfers {
     private static final Set<UUID> RETURN=new HashSet<>();
     private static final Map<UUID,Long> RECENT_RETURN=new HashMap<>();
     private static final TicketType<ChunkPos> TICKET=TicketType.create("around_planet_space",Comparator.comparingLong(ChunkPos::toLong),100);
-    public static void clear(ServerLevel level){PENDING.remove(level);RETURN.clear();RECENT_RETURN.clear();SpaceReentry.clear(level);}
+    public static void clear(ServerLevel level){PENDING.remove(level);RETURN.clear();RECENT_RETURN.clear();SpaceReentry.clear(level);SpacePlanetScale.clear(level);SpaceDetachment.clear(level);}
     public static boolean requestReturn(ServerPlayer player) {
         var ship=SablePassengers.ship(player);if(ship==null)return false;
         var cell=SpaceCells.get(player.serverLevel()).forShip(ship.getUniqueId());if(cell==null)return false;
@@ -31,7 +31,8 @@ public final class SpaceShipTransfers {
         if(!level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD) || !PlanetConfig.SPEC.isLoaded()
                 )return;
         RECENT_RETURN.values().removeIf(until->until<level.getGameTime());
-        SpaceReentry.check(level,container,RETURN,RECENT_RETURN);
+        SpacePlanetScale.check(level);SpaceReentry.check(level,container,RETURN,RECENT_RETURN);
+        SpaceDetachment.check(level,container);
         var data=SpaceCells.get(level);var pending=PENDING.computeIfAbsent(level,k->new HashMap<>());
         pending.values().removeIf(p->level.getGameTime()-p.created>200);
         for(var group:ShipAssemblies.groups(level,container.getAllSubLevels())) {
@@ -44,7 +45,7 @@ public final class SpaceShipTransfers {
             if(!valid || mass<=0)continue;center.div(mass);
             var key=group.ships().stream().map(ServerSubLevel::getUniqueId).min(UUID::compareTo).orElseThrow();
             var cell=data.forShip(key);
-            if(cell!=null)continue;
+            if(cell!=null || group.ships().stream().anyMatch(s->SpaceDetachment.associated(level,s.getUniqueId())))continue;
             {
                 if(group.ships().stream().anyMatch(s->RECENT_RETURN.getOrDefault(s.getUniqueId(),0L)>level.getGameTime()))continue;
                 if(!PlanetConfig.ENABLED.getAsBoolean() || !PlanetConfig.SPACE.getAsBoolean())continue;
@@ -76,7 +77,8 @@ public final class SpaceShipTransfers {
             io.github.astelev.around_planet.AroundPlanet.LOGGER.info("SPACE_TRANSFER enter cell={} ships={} delta={}",cell.id(),group.ships().size(),delta);
         }
     }
-    private static SpaceCells.Cell allocate(ServerLevel level,SpaceCells data,Map<UUID,Pending> pending,List<ServerSubLevel> ships,Vector3d center) {
+    static SpaceCells.Cell allocateDetached(ServerLevel level,List<ServerSubLevel> ships,Vector3d center){return allocate(level,SpaceCells.get(level),PENDING.computeIfAbsent(level,k->new HashMap<>()),ships,center);}
+    static SpaceCells.Cell allocate(ServerLevel level,SpaceCells data,Map<UUID,Pending> pending,List<ServerSubLevel> ships,Vector3d center) {
         var occupied=new HashSet<Integer>();data.all().forEach(c->occupied.add(c.slot()));pending.values().forEach(p->occupied.add(p.cell.slot()));
         var b=level.getWorldBorder();var topology=io.github.astelev.around_planet.border.PlanetBorders.get(b);
         double west=topology==null?b.getMinX():Math.max(b.getMinX(),topology.west());
@@ -85,14 +87,14 @@ public final class SpaceShipTransfers {
         if(address.isEmpty())return null;var slot=address.get();
         return new SpaceCells.Cell(UUID.randomUUID(),slot.slot(),slot.x(),PlanetConfig.SPACE_Y.getAsInt(),slot.z(),center.x,PlanetConfig.SPACE_ENTRY.getAsInt()-32,center.z,ships.stream().map(ServerSubLevel::getUniqueId).toList());
     }
-    private static boolean fits(ServerLevel level,List<ServerSubLevel> ships,Vector3d delta,SpaceCells.Cell cell) {
+    static boolean fits(ServerLevel level,List<ServerSubLevel> ships,Vector3d delta,SpaceCells.Cell cell) {
         for(var s:ships) {
             var b=s.boundingBox();double lo=b.minY()+delta.y,hi=b.maxY()+delta.y;
             if(lo<level.getMaxBuildHeight()+24 || hi>2000)return false;
             if(cell!=null && (b.minX()+delta.x<cell.x()-256 || b.maxX()+delta.x>cell.x()+256 || b.minZ()+delta.z<cell.z()-256 || b.maxZ()+delta.z>cell.z()+256 || lo<cell.y()-256 || hi>cell.y()+256))return false;
         }return true;
     }
-    private static boolean ready(ServerLevel level,List<ServerSubLevel> ships,Vector3d delta) {
+    static boolean ready(ServerLevel level,List<ServerSubLevel> ships,Vector3d delta) {
         var columns=new HashSet<ChunkPos>();for(var s:ships){var b=s.boundingBox();for(int x=(int)Math.floor((b.minX()+delta.x)/16);x<=(int)Math.floor((b.maxX()+delta.x)/16);x++)for(int z=(int)Math.floor((b.minZ()+delta.z)/16);z<=(int)Math.floor((b.maxZ()+delta.z)/16);z++) {columns.add(new ChunkPos(x,z));if(columns.size()>128)return false;}}
         boolean ready=true;for(var pos:columns){level.getChunkSource().addRegionTicket(TICKET,pos,2,pos);var c=level.getChunkSource().getChunkNow(pos.x,pos.z);if(c==null || !c.isLightCorrect())ready=false;}
         return ready;

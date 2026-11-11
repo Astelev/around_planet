@@ -11,18 +11,26 @@ import java.util.*;
 
 /** Live orthographic navigation view; never pauses native physics or server time. */
 public final class OrbitMapScreen extends Screen {
+    private final OrbitSphereTexture sphere=new OrbitSphereTexture();
+    private record Other(io.github.astelev.around_planet.network.SpaceMapPayload.Body body,OrbitPlot plot,int color){}
+    private java.util.List<Other> others=java.util.List.of();private io.github.astelev.around_planet.network.SpaceMapPayload catalog;
     private final OrbitCamera camera=new OrbitCamera();private SpaceStatusPayload sampled;private OrbitPlot plot;private boolean fitted;
     private int left=8,top=64,right,bottom;private static final int FUTURE=0xFF69E4DB;
     public OrbitMapScreen(){super(Component.translatable("around_planet.map.title"));}
-    @Override protected void init(){right=width-8;bottom=height-45;addRenderableWidget(Button.builder(Component.translatable("around_planet.map.reset"),b->reset()).bounds(width-79,8,70,20).build());}
+    @Override protected void init(){right=width-8;bottom=height-45;SpaceMapCatalog.subscribe(true);addRenderableWidget(Button.builder(Component.translatable("around_planet.map.reset"),b->reset()).bounds(width-79,8,70,20).build());}
     @Override public void renderBackground(GuiGraphics g,int x,int y,float tick){}
     @Override public boolean isPauseScreen(){return false;}
-    @Override public void tick(){if(minecraft.player==null || !SpaceCells.contains(minecraft.player))onClose();}
+    @Override public void tick(){if(minecraft.player==null || !SpaceCells.contains(minecraft.player)){onClose();return;}if(minecraft.level.getGameTime()%40==0)SpaceMapCatalog.subscribe(true);}
+    @Override public void removed(){sphere.close();SpaceMapCatalog.subscribe(false);super.removed();}
     private void update(){var sample=SpaceHud.current();if(sample==null || !sample.active() || sample.radius()<=0)return;
         if(sample!=sampled){sampled=sample;plot=OrbitPlot.create(state(),sample.mu(),sample.radius(),sample.returnAltitude(),sample.returning());if(!fitted){reset();fitted=true;}}
+        var next=SpaceMapCatalog.current();if(next!=catalog){catalog=next;var list=new ArrayList<Other>();if(next!=null)for(var body:next.bodies()){
+            var state=new SpaceState(new SpaceVector(body.x(),body.y(),body.z()),new SpaceVector(body.vx(),body.vy(),body.vz()));
+            int[] colors={0xFFB59AFF,0xFFFFB775,0xFF92D98C,0xFFFF8BAF,0xFF80BFFF};int color=colors[Math.floorMod(body.id().hashCode(),colors.length)];
+            list.add(new Other(body,OrbitPlot.create(state,body.mu(),sample.radius(),body.returnAltitude(),body.waiting()),color));}others=List.copyOf(list);}
     }
     private SpaceState state(){return new SpaceState(new SpaceVector(sampled.x(),sampled.y(),sampled.z()),new SpaceVector(sampled.vx(),sampled.vy(),sampled.vz()));}
-    private void reset(){if(sampled!=null && plot!=null)camera.fit(state(),plot.extent(sampled.radius())*1.12);}
+    private void reset(){if(sampled!=null && plot!=null){double extent=plot.extent(sampled.radius());for(var other:others)extent=Math.max(extent,other.plot.extent(sampled.radius()));camera.fit(state(),extent*1.12);}}
     private double size(){return Math.max(1,Math.min(right-left,bottom-top));}
     private OrbitCamera.Point project(SpaceVector p){return camera.project(p,(left+right)/2.0,(top+bottom)/2.0,size());}
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
@@ -31,15 +39,21 @@ public final class OrbitMapScreen extends Screen {
         g.drawString(font,Component.translatable("around_planet.map.legend"),12,height-16,0xFF69E4DB,false);
         if(sampled==null || plot==null){g.drawCenteredString(font,Component.translatable("around_planet.map.waiting"),width/2,height/2,0xFFBAC9DC);super.render(g,mx,my,partial);return;}
         double speed=state().velocity().length();String stats=String.format(Locale.ROOT,"h %.0f m    v %.2f m/s",sampled.altitude(),speed);
-        g.drawString(font,stats,12,35,0xFFD5E2F5,false);
+        g.drawString(font,stats+"    "+Component.translatable("around_planet.map.objects",catalog!=null && catalog.total()>others.size()?others.size()+"/"+catalog.total():others.size()).getString(),12,35,0xFFD5E2F5,false);
         String peri=plot.periapsis()==null?"—":String.format(Locale.ROOT,"%.0f m",plot.periapsis().length()-sampled.radius());
         String apo=plot.apoapsis()==null?"—":String.format(Locale.ROOT,"%.0f m",plot.apoapsis().length()-sampled.radius());
         g.drawString(font,Component.translatable("around_planet.map.extrema",peri,apo),12,48,0xFFBAC9DC,false);
         g.enableScissor(left,top,right,bottom);g.fill(left,top,right,bottom,0xFF0B1423);
         double cx=(left+right)/2.0+camera.panX,cy=(top+bottom)/2.0+camera.panY,radius=sampled.radius()*camera.scale(size());
-        for(int i=1;i<=4;i++)circle(g,cx,cy,radius*i,0xFF19283C,false);
-        line(g,left,cy,right,cy,0xFF19283C);line(g,cx,top,cx,bottom,0xFF19283C);
-        arcs(g,true);circle(g,cx,cy,radius,0xFFF5F6FA,true);arcs(g,false);
+        g.drawManaged(()->{for(int i=1;i<=4;i++)circle(g,cx,cy,radius*i,0xFF19283C,false);
+            line(g,left,cy,right,cy,0xFF19283C);line(g,cx,top,cx,bottom,0xFF19283C);
+            for(var other:others)arcs(g,other.plot,other.color,true,3);arcs(g,true);
+        });
+        sphere.render(g,camera,sampled.radius(),left,top,right,bottom);
+        g.drawManaged(()->{for(var other:others)arcs(g,other.plot,other.color,false,3);arcs(g,false);
+            for(var other:others){var p=new SpaceVector(other.body.x(),other.body.y(),other.body.z());var screen=project(p);boolean hover=Math.hypot(screen.x()-mx,screen.y()-my)<8;
+                marker(g,p,other.color,hover?other.body.name()+(other.body.loaded()?"":" · "+Component.translatable("around_planet.map.dormant").getString()):"");}
+        });
         boolean circular=plot.periapsis()!=null && plot.apoapsis()!=null && Math.abs(plot.periapsis().length()-plot.apoapsis().length())<1e-6*plot.apoapsis().length();
         if(!circular){marker(g,plot.periapsis(),0xFFFF9CD1,"Pe");marker(g,plot.apoapsis(),0xFFAAA6FF,"Ap");}
         if(plot.reentry() && plot.points().size()>1)marker(g,plot.points().getLast(),0xFFFFAE68,Component.translatable("around_planet.map.entry").getString());
@@ -48,11 +62,12 @@ public final class OrbitMapScreen extends Screen {
         g.disableScissor();if(sampled.returning())g.drawCenteredString(font,Component.translatable("around_planet.space.returning"),width/2,top+9,0xFFFFAE68);
         super.render(g,mx,my,partial);
     }
-    private void arcs(GuiGraphics g,boolean behind){var points=plot.points();for(int i=1;i<points.size();i++){var a=project(points.get(i-1));var b=project(points.get(i));if(((a.depth()+b.depth())/2<0)==behind)line(g,a.x(),a.y(),b.x(),b.y(),behind?0xFF336A78:FUTURE);}}
+    private void arcs(GuiGraphics g,boolean behind){arcs(g,plot,FUTURE,behind,1);}
+    private void arcs(GuiGraphics g,OrbitPlot curve,int color,boolean behind,int stride){var points=curve.points();for(int i=0;i<points.size()-1;i+=stride){var a=project(points.get(i));var b=project(points.get(Math.min(points.size()-1,i+stride)));int dim=0xFF000000|((color&0xFEFEFE)>>>1);if(((a.depth()+b.depth())/2<0)==behind)line(g,a.x(),a.y(),b.x(),b.y(),behind?dim:color);}}
     private void marker(GuiGraphics g,SpaceVector v,int color,String text){if(v==null)return;var p=project(v);if(p.x()<left || p.x()>right || p.y()<top || p.y()>bottom)return;
         double scale=camera.scale(size()),x=p.x()-(left+right)/2.0-camera.panX,y=p.y()-(top+bottom)/2.0-camera.panY;
         if(p.depth()<0 && x*x+y*y<Math.pow(sampled.radius()*scale,2))return;
-        g.fill((int)p.x()-2,(int)p.y()-2,(int)p.x()+3,(int)p.y()+3,color);g.drawString(font,text,(int)p.x()+6,(int)p.y()-4,color,true);
+        g.fill((int)p.x()-2,(int)p.y()-2,(int)p.x()+3,(int)p.y()+3,color);if(!text.isEmpty())g.drawString(font,text,(int)p.x()+6,(int)p.y()-4,color,true);
     }
     private void circle(GuiGraphics g,double cx,double cy,double r,int color,boolean solid){if(r<.5 || !Double.isFinite(r))return;
         if(solid){for(int y=Math.max(top,(int)Math.ceil(cy-r));y<Math.min(bottom,(int)Math.floor(cy+r)+1);y++){double d=y-cy,dx=Math.sqrt(Math.max(0,r*r-d*d));g.fill(Math.max(left,(int)Math.ceil(cx-dx)),y,Math.min(right,(int)Math.floor(cx+dx)+1),y+1,color);}}

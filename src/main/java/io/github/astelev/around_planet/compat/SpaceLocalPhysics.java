@@ -25,7 +25,7 @@ public final class SpaceLocalPhysics {
     }
     public static SpaceNavigation navigation(ServerLevel level,SpaceCells.Cell cell) {
         var data=SpaceOrbitData.get(level.getServer());var old=data.navigation(cell.id());if(old.isPresent())return old.get();
-        var planet=new PlanetGeometry(io.github.astelev.around_planet.PlanetConfig.BOUNDARY.getAsInt(),io.github.astelev.around_planet.PlanetConfig.BOUNDARY_Z.getAsInt());
+        var planet=new PlanetScale(io.github.astelev.around_planet.PlanetConfig.PLANET_SIZE.get()).geometry();
         var nav=new SpaceNavigation(planet,planet.frame(cell.originX(),cell.originZ()));
         // Upgrade alpha.2's entry-relative linear chart without losing its displacement or velocity.
         var orbit=data.get(cell.id());if(orbit.isPresent()) {
@@ -60,6 +60,7 @@ public final class SpaceLocalPhysics {
             }
             // Partial loading must not reintroduce gravity before the complete owner is available.
             for(var ship:c.getAllSubLevels())if(!ship.isRemoved() && system.getPhysicsHandle(ship).isValid() && inCell(ship,cell)) {
+                SpaceDetachment.observe(level,ship,cell);
                 // Public pipeline velocity API is in world axes. Cancel native world gravity separately
                 // so gravity is not mistaken for engine thrust and saved into virtual velocity.
                 pipeline.addLinearAndAngularVelocity(ship,new Vector3d(antiGravity).sub(common),new Vector3d());

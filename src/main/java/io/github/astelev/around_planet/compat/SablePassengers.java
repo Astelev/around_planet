@@ -11,6 +11,8 @@ import net.minecraft.world.entity.Entity;
 public final class SablePassengers {
     public static SubLevel ship(Entity entity) {
         if(entity.isRemoved())return null;
+        // A native plot-local seat can already be visible before its world-space rider is registered.
+        var storage=Sable.HELPER.getContaining(entity);if(storage!=null && !storage.isRemoved())return storage;
         for(var vehicle=entity.getVehicle();vehicle!=null;vehicle=vehicle.getVehicle()) {
             var containing=Sable.HELPER.getContaining(vehicle);
             if(containing!=null && !containing.isRemoved())return containing;

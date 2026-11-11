@@ -118,9 +118,10 @@ public final class ShipSeamGameTests {
             h.assertTrue(dev.ryanhcode.sable.Sable.HELPER.getContaining(seat)==ship,"Seat fixture is not in its plot");
             h.assertTrue(io.github.astelev.around_planet.compat.SablePassengers.ship(rider)==ship,"Native seat did not identify its carrier");
             var before=rider.position();rider.setDeltaMovement(0.2,0.1,0.3);
+            var observed=rider;boolean listed=java.util.stream.StreamSupport.stream(level.getAllEntities().spliterator(),false).anyMatch(e->e==observed);var storage=dev.ryanhcode.sable.Sable.HELPER.getContaining(rider);
             io.github.astelev.around_planet.compat.ShipTransferService.check(level,container);
             h.assertTrue(seat.position().equals(seatPos),"Seat was translated out of its storage plot");
-            h.assertTrue(rider.getVehicle()==seat && rider.position().distanceTo(before.add(-512,0,0))<1e-6,"Seated rider did not wrap with its carrier");
+            h.assertTrue(rider.getVehicle()==seat && rider.position().distanceTo(before.add(-512,0,0))<1e-6,"Seated rider mismatch: before="+before+" after="+rider.position()+" ship="+ship.logicalPose().position()+" mounted="+(rider.getVehicle()==seat)+" listed="+listed+" storage="+storage+" seat="+seat.position());
             h.assertTrue(rider.getDeltaMovement().equals(new net.minecraft.world.phys.Vec3(0.2,0.1,0.3)),"Seated rider lost velocity");
             seat.positionRider(rider);
             h.assertTrue(rider.position().distanceTo(before.add(-512,0,0))<1e-6,"Native riding update returned rider to old coordinates");
@@ -264,6 +265,61 @@ public final class ShipSeamGameTests {
             var expectedP=io.github.astelev.around_planet.compat.SpaceRotation.point(before,new Vector3d(101,1536,80),actualCenter,q);h.assertTrue(free.logicalPose().position().distance(expectedP)<.01,"Free body did not preserve its relative layout");
             h.assertTrue(joint.isValid() && cooldown.keySet().containsAll(ships.stream().map(ServerSubLevel::getUniqueId).toList()),"Reentry lost a rotary joint or a free body");h.succeed();
         } finally {if(cell!=null){orbits.remove(cell.id());cells.remove(level,cell);}if(joint!=null && joint.isValid())joint.remove();for(var ship:ships)c.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);}
+    }
+
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=200)
+    public static void distantFreeRotaryGroupGetsIndependentOrbitWithoutLosingNativeMomentum(GameTestHelper h) {
+        var level=h.getLevel();var c=SubLevelContainer.getContainer(level);var pipeline=c.physicsSystem().getPipeline();var ships=new ArrayList<ServerSubLevel>();
+        var cells=io.github.astelev.around_planet.space.SpaceCells.get(level);var orbits=io.github.astelev.around_planet.space.SpaceOrbitData.get(level.getServer());
+        var oldBorder=PlanetBorders.get(level.getWorldBorder());double oldZ=PlanetBorders.boundaryZ(level.getWorldBorder());
+        PlanetBorders.bind(level.getWorldBorder(),new EastWestTopology(131072),65536);
+        io.github.astelev.around_planet.space.SpaceCells.Cell parent=null,child=null;dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle joint=null;
+        try {
+            for(int n=0;n<3;n++){var p=h.absolutePos(new BlockPos(1+3*n,2,1));level.setBlockAndUpdate(p,Blocks.IRON_BLOCK.defaultBlockState());var ship=SubLevelAssemblyHelper.assembleBlocks(level,p,java.util.List.of(p),new BoundingBox3i(p.getX(),p.getY(),p.getZ(),p.getX(),p.getY(),p.getZ()));ships.add(ship);pipeline.teleport(ship,new Vector3d(n==0?0:191+2*n,1536,0),ship.logicalPose().orientation());ship.updateBoundingBox();ship.updateLastPose();}
+            var owner=ships.get(0);var a=ships.get(1);var b=ships.get(2);
+            joint=pipeline.addConstraint(a,b,new dev.ryanhcode.sable.api.physics.constraint.RotaryConstraintConfiguration(new Vector3d(a.getSelfMassTracker().getCenterOfMass()).add(1,0,0),new Vector3d(b.getSelfMassTracker().getCenterOfMass()).add(-1,0,0),new Vector3d(0,1,0),new Vector3d(0,1,0)));
+            parent=new io.github.astelev.around_planet.space.SpaceCells.Cell(java.util.UUID.randomUUID(),40,0,1536,0,0,736,0,java.util.List.of(owner.getUniqueId()));cells.add(level,parent);
+            var planet=new io.github.astelev.around_planet.space.PlanetGeometry(65536,65536);var frame=io.github.astelev.around_planet.space.SpaceFrame.IDENTITY;
+            var trajectory=new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(new io.github.astelev.around_planet.space.SpaceVector(0,planet.radius()+1000,0),new io.github.astelev.around_planet.space.SpaceVector(20,30,40)),0);orbits.put(parent.id(),trajectory);orbits.navigate(parent.id(),new io.github.astelev.around_planet.space.SpaceNavigation(planet,frame));
+            for(var ship:java.util.List.of(a,b))pipeline.addLinearAndAngularVelocity(ship,new Vector3d(2,3,4),new Vector3d(.1,.2,.3));var angular=pipeline.getAngularVelocity(a,new Vector3d());
+            io.github.astelev.around_planet.compat.SpaceDetachment.check(level,c);
+            if(cells.forShip(a.getUniqueId())==null){h.assertTrue(a.logicalPose().position().x==193 && b.logicalPose().position().x==195 && orbits.ids().contains(parent.id()),"Partial group moved before destination readiness");for(int x=-66;x<=-62;x++)for(int z=-66;z<=-62;z++)level.getChunk(x,z);io.github.astelev.around_planet.compat.SpaceDetachment.check(level,c);}
+            child=cells.forShip(a.getUniqueId());h.assertTrue(child!=null && !child.id().equals(parent.id()) && cells.forShip(b.getUniqueId()).id().equals(child.id()),"Distant free group was not promoted together");
+            var state=orbits.sample(child.id(),level.getGameTime());h.assertTrue(state.position().subtract(trajectory.initial().position().add(new io.github.astelev.around_planet.space.SpaceVector(194,0,0))).length()<1e-6,"Detached cosmic position lost the local offset");
+            h.assertTrue(state.velocity().subtract(new io.github.astelev.around_planet.space.SpaceVector(22,33,44)).length()<1e-6,"Detached object lost inherited/relative velocity");
+            h.assertTrue(pipeline.getLinearVelocity(a,new Vector3d()).length()<1e-6 && pipeline.getAngularVelocity(a,new Vector3d()).distance(angular)<1e-6 && joint.isValid(),"New fixed frame lost native angular motion or joint identity");
+            h.assertTrue(Math.abs(a.logicalPose().position().distance(b.logicalPose().position())-2)<1e-6,"Detachment changed connected body layout");
+            orbits.impulse(parent.id(),level.getGameTime(),new io.github.astelev.around_planet.space.SpaceVector(100,0,0));h.assertTrue(orbits.sample(child.id(),level.getGameTime()).equals(state),"Parent maneuver changed the detached orbit");
+            var restored=io.github.astelev.around_planet.space.SpaceOrbitData.load(orbits.save(new net.minecraft.nbt.CompoundTag(),level.registryAccess()),level.registryAccess());h.assertTrue(restored.sample(child.id(),level.getGameTime()+200).equals(orbits.sample(child.id(),level.getGameTime()+200)),"Independent coasting state did not survive persistence");h.succeed();
+        }finally {if(parent!=null){orbits.remove(parent.id());cells.remove(level,parent);}if(child!=null){orbits.remove(child.id());cells.remove(level,child);}if(joint!=null && joint.isValid())joint.remove();for(var ship:ships)c.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);io.github.astelev.around_planet.compat.SpaceDetachment.clear(level);if(oldBorder==null)PlanetBorders.unbind(level.getWorldBorder());else PlanetBorders.bind(level.getWorldBorder(),oldBorder,oldZ);}
+    }
+
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=200)
+    public static void disconnectedOwnerChildBecomesFreeWithoutJumpingCosmicPosition(GameTestHelper h) {
+        var level=h.getLevel();var c=SubLevelContainer.getContainer(level);var pipeline=c.physicsSystem().getPipeline();var ships=new ArrayList<ServerSubLevel>();
+        var cells=io.github.astelev.around_planet.space.SpaceCells.get(level);var data=io.github.astelev.around_planet.space.SpaceOrbitData.get(level.getServer());io.github.astelev.around_planet.space.SpaceCells.Cell cell=null;
+        try {
+            for(int n=0;n<2;n++){var p=h.absolutePos(new BlockPos(1+3*n,2,1));level.setBlockAndUpdate(p,Blocks.IRON_BLOCK.defaultBlockState());var ship=SubLevelAssemblyHelper.assembleBlocks(level,p,java.util.List.of(p),new BoundingBox3i(p.getX(),p.getY(),p.getZ(),p.getX(),p.getY(),p.getZ()));ships.add(ship);pipeline.teleport(ship,new Vector3d(-1+2*n,1536,0),ship.logicalPose().orientation());ship.updateBoundingBox();ship.updateLastPose();}
+            cell=new io.github.astelev.around_planet.space.SpaceCells.Cell(java.util.UUID.randomUUID(),40,0,1536,0,0,736,0,ships.stream().map(ServerSubLevel::getUniqueId).toList());cells.add(level,cell);
+            var position=new io.github.astelev.around_planet.space.SpaceVector(0,22000,0);data.put(cell.id(),new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(position,io.github.astelev.around_planet.space.SpaceVector.ZERO),0));data.navigate(cell.id(),new io.github.astelev.around_planet.space.SpaceNavigation(new io.github.astelev.around_planet.space.PlanetGeometry(65536,65536),io.github.astelev.around_planet.space.SpaceFrame.IDENTITY));
+            // Original connected-group membership remains saved after its joint has disappeared.
+            io.github.astelev.around_planet.compat.SpaceDetachment.check(level,c);
+            var current=cells.forShip(ships.getFirst().getUniqueId());h.assertTrue(current.ships().size()==1 && cells.forShip(ships.getLast().getUniqueId())==null,"Disconnected child remained part of the fixed owner");
+            var origin=data.sample(cell.id(),level.getGameTime()).position();var child=ships.getLast().logicalPose().position();
+            h.assertTrue(origin.add(new io.github.astelev.around_planet.space.SpaceVector(child.x,child.y-1536,child.z)).subtract(position.add(new io.github.astelev.around_planet.space.SpaceVector(1,0,0))).length()<1e-6,"Owner rebasing changed the free child's absolute cosmic location");
+            h.assertTrue(ships.getFirst().logicalPose().position().distance(new Vector3d(0,1536,0))<1e-6 && io.github.astelev.around_planet.compat.SpaceDetachment.associated(level,ships.getLast().getUniqueId()),"Split owner did not retain a local free-body association");h.succeed();
+        } finally {if(cell!=null){data.remove(cell.id());cells.remove(level,cell);}for(var ship:ships)c.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);io.github.astelev.around_planet.compat.SpaceDetachment.clear(level);}
+    }
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
+    public static void planetResizePreservesAltitudeVelocityAndPendingContact(GameTestHelper h){
+        var level=h.getLevel();var data=io.github.astelev.around_planet.space.SpaceOrbitData.get(level.getServer());var a=java.util.UUID.randomUUID();var b=java.util.UUID.randomUUID();int old=io.github.astelev.around_planet.PlanetConfig.PLANET_SIZE.get();
+        try {var planet=new io.github.astelev.around_planet.space.PlanetGeometry(65536,65536);var nav=new io.github.astelev.around_planet.space.SpaceNavigation(planet,planet.frame(50,60));var v=new io.github.astelev.around_planet.space.SpaceVector(10,20,30);double mu=9.81*planet.radius()*planet.radius();
+            for(var id:java.util.List.of(a,b)){data.put(id,new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(planet.position(50,1000,60),v),mu));data.navigate(id,nav);}data.reenter(b,planet.position(50,736,60),level.getGameTime());
+            io.github.astelev.around_planet.PlanetConfig.PLANET_SIZE.set(262144);io.github.astelev.around_planet.compat.SpacePlanetScale.clear(level);io.github.astelev.around_planet.compat.SpacePlanetScale.check(level);var next=new io.github.astelev.around_planet.space.PlanetScale(262144).geometry();
+            h.assertTrue(Math.abs(data.sample(a,level.getGameTime()).position().length()-next.radius()-1000)<1e-6 && data.sample(a,level.getGameTime()).velocity().equals(v),"Planet resize changed altitude or inertial velocity");
+            h.assertTrue(Math.abs(data.get(a).orElseThrow().mu()/mu-4)<1e-9 && data.navigation(a).orElseThrow().planet().equals(next),"Radius and gravitational parameter did not share the planet size");
+            h.assertTrue(Math.abs(data.sample(b,level.getGameTime()).position().length()-next.radius()-736)<1e-6 && data.reentry(b).isPresent(),"Resize lost a pending crossing");h.succeed();
+        }finally{data.remove(a);data.remove(b);io.github.astelev.around_planet.PlanetConfig.PLANET_SIZE.set(old);io.github.astelev.around_planet.compat.SpacePlanetScale.clear(level);}
     }
 
     private static dev.ryanhcode.sable.sublevel.SubLevel SableTracking(net.minecraft.world.entity.Entity entity) {

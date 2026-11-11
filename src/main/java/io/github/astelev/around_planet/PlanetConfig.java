@@ -4,21 +4,20 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
+    public static final ModConfigSpec.ConfigValue<Integer> PLANET_SIZE;
+    public static final java.util.function.IntSupplier BOUNDARY=()->PlanetConfig.PLANET_SIZE.get()/2,BOUNDARY_Z=BOUNDARY;
     public static final ModConfigSpec.DoubleValue SPACE_GRAVITY;
     public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS,PROGRESSIVE,SPACE;
-    public static final ModConfigSpec.IntValue SPACE_ENTRY,SPACE_Y,BOUNDARY,BOUNDARY_Z, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
+    public static final ModConfigSpec.IntValue SPACE_ENTRY,SPACE_Y, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
     static {
         var b = new ModConfigSpec.Builder();
-        b.push("eastWest");
+        b.push("planet");
+        PLANET_SIZE=b.comment("Equatorial circumference in blocks. Single source for both world borders (+/- half) and cosmic radius (circumference / 2pi).",
+                "Multiple of 32, from 256 to 59000000. Default preserves +/-65536 borders. Restart required.").define("circumferenceBlocks",131072,v->v instanceof Integer n && n>=256 && n<=59000000 && n%32==0);
+        b.pop();b.push("eastWest");
         ENABLED = b.comment("Experimental Overworld east/west transfer. Enable in a test world. Restart after changing these settings.",
                 "Renders loaded chunks, ordinary entities and optional Sable ships across the seam. Optional Sable assemblies transfer by their combined center of mass. Optional terrainSeamBlending smooths noise-based generation near the seam.")
                 .define("enabled", false);
-        BOUNDARY = b.comment("Absolute X of each seam: +boundaryX wraps to -boundaryX, not to zero.",
-                "Multiple of 16; total circumference is twice this value. Replaces the old widthBlocks setting.")
-                .defineInRange("boundaryX", 65536, 128, 29500000);
-        BOUNDARY_Z=b.comment("Absolute Z of the solid north/south world border, centered at Z=0. No north/south wrapping.",
-                "Applies only when eastWest.enabled is true. A tighter vanilla border remains in effect. Restart required.")
-                .defineInRange("boundaryZ",65536,128,29500000);
         ACTIVATION = b.comment("Distance from either seam at which destination preloading begins; limited to one quarter of width.")
                 .defineInRange("activationDistance", 128, 16, 1024);
         RADIUS = b.comment("Destination chunk radius. Bounded transient tickets; no synchronous generation in the entity tick.")

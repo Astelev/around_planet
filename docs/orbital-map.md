@@ -1,4 +1,4 @@
-# Orbital map — 0.11.0-alpha.4
+# Orbital map — 0.11.0-alpha.5
 
 Press **M** in a registered space cell to open the live navigation map. M and Esc
 close it. The binding can be changed under Controls → Around Planet. In space,
@@ -13,7 +13,7 @@ already-open screens retain their own keyboard handling.
 - The initial/reset view faces the orbital plane, making circular/elliptical
   paths readable without first finding their plane manually.
 
-The **white disk** is the planet, **yellow marker/arrow** is the current cell and
+The **checker-shaded sphere** is the planet, **yellow marker/arrow** is the current cell and
 velocity direction, and **cyan line** is the future coast trajectory. Distant
 parts behind the planet are occluded by its disk. Pe/Ap mark periapsis/apoapsis
 when they are distinct; heights are relative to the planet radius. An orange
@@ -38,10 +38,11 @@ impulses update the displayed path with the next telemetry sample.
 The map **does not pause simulation**. Thrust, collisions and automatic reentry
 continue; the screen closes when its cell membership ends. Keep matching client
 and server JARs: telemetry protocol version changed to include orbital parameters.
-This view currently displays the occupied cell, not a catalog of other ships.
+The view also receives a bounded one-Hz catalog of independent saved orbits,
+including unloaded records. See [planet size and objects](planet-scale-and-objects.md).
 
-Validation: 57 unit tests (including conics, shell termination, near-parabolic
-cases, camera rotation, clipping and zoom limits); 7 GameTests without optional
+Validation: 63 unit tests (including conics, shell termination, near-parabolic
+cases, camera rotation, clipping and zoom limits); 8 GameTests without optional
 mods. Actual client with Sable/Create/Cruising/Sodium/DH/Simple Clouds checks M
 priority against another M binding and key events, zoom/rotate/pan/reset, live
 orbit updates and reentry with the map open; ordinary M binding/events resume on

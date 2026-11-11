@@ -72,6 +72,13 @@ public final class SpaceOrbitGameTests {
         h.assertTrue(restored.navigation(id).orElseThrow().equals(nav) && restored.sample(id,now+10000).equals(state) && restored.reentry(id).orElseThrow().equals(contact),"Pending reentry did not survive saving");
         restored.remove(id);h.assertTrue(restored.navigation(id).isEmpty() && restored.reentry(id).isEmpty(),"Returned cell left stale navigation");h.succeed();
     }
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
+    public static void singlePlanetSizeMigratesLegacyBordersAndRespectsExplicitSetting(GameTestHelper h) {
+        var c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("eastWest.boundaryX",65536);c.set("eastWest.boundaryZ",32768);new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);
+        h.assertTrue(((Number)c.get("planet.circumferenceBlocks")).intValue()==131072 && !c.contains("eastWest.boundaryX") && !c.contains("eastWest.boundaryZ"),"Legacy borders were not migrated to one circumference");
+        c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("eastWest.boundaryX",65536);c.set("planet.circumferenceBlocks",262144);new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);h.assertTrue(((Number)c.get("planet.circumferenceBlocks")).intValue()==262144,"Legacy field overrode explicitly selected planet size");
+        c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("eastWest.boundaryX",256);new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);h.assertTrue(((Number)c.get("planet.circumferenceBlocks")).intValue()==512,"Custom test-world size was not preserved");h.succeed();
+    }
     private static void reject(GameTestHelper h,CompoundTag tag) {
         try{SpaceOrbitData.load(tag,h.getLevel().registryAccess());throw new AssertionError("Invalid save accepted");}
         catch(IllegalArgumentException expected){}

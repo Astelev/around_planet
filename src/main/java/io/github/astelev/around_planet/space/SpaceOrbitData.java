@@ -45,7 +45,7 @@ public final class SpaceOrbitData extends SavedData {
     public SpaceTrajectory detach(UUID source,UUID detached,long gameTick,SpaceFrame frame,SpaceState local) {
         if(objects.containsKey(detached))throw new IllegalArgumentException("Detached object ID already exists");
         var parent=require(source);
-        var trajectory=new SpaceTrajectory(parent.primary(),gameTick,frame.detach(parent.at(gameTick),local),parent.mu());
+        var trajectory=new SpaceTrajectory(parent.primary(),gameTick,frame.detach(sample(source,gameTick),local),parent.mu());
         put(detached,trajectory);return trajectory;
     }
     private SpaceTrajectory require(UUID id){var value=objects.get(id);if(value==null)throw new IllegalArgumentException("Unknown space object: "+id);return value;}
