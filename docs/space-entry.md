@@ -1,10 +1,10 @@
-# First playable space transfer — 0.11.0-alpha.1
+# First playable space transfer — 0.11.0-alpha.2
 
-This alpha activates **transport into high-altitude Overworld cells**, with an
-optional Cruising compatibility adapter. Virtual thrust, owner-frame holding,
-orbital reentry, a space sky and strict per-cell entity/render/interaction
-isolation are subsequent stages. Physics still runs normally in the local cell;
-this is a transport test, not the completed space flight model.
+This alpha adds a fixed, nonrotating local frame to high-altitude Overworld
+cells. The owner's common translational velocity is stored in a persistent
+virtual trajectory; native rotation, bearings and relative body motion remain
+active. Orbital reentry, a planet visual and strict per-cell entity/interaction
+isolation are subsequent stages.
 
 ## Try it
 
@@ -43,12 +43,20 @@ location and native ship IDs are saved in `data/around_planet_space_cells.dat`.
 The physical return destination is the original X/Z, at `entryY-32`, so it does
 not immediately trigger another ascent.
 
-For this first transport test, lowering the assembly center below `cellY-128`
-returns it. To avoid leaving the safe local area before frame-holding is added,
-raising it above `cellY+192` or moving its center over 192 blocks horizontally
-also requests return. Normal local momentum is preserved: continuing to thrust
-upward can therefore take the assembly out of this bounded test area. Orbital
-motion is not yet driving this behavior.
+## Local physics
+
+The mass-weighted assembly center remains at the cell anchor. Immediately before
+each native physics substep, after queued engine forces, its common linear
+velocity is transferred into the saved virtual trajectory and subtracted from
+bodies in the cell. Native world gravity is compensated locally; angular
+velocities are untouched. Free bodies receive the opposite frame impulse.
+Ordinary entities also have local gravity suppressed without changing their saved
+`NoGravity` flag. Partial owner loading still receives gravity compensation.
+
+This is an **entry-frame linear trajectory** (`mu=0`), not yet a spherical
+planetary orbit. There is no automatic geometric return at the edges of a cell;
+use the command below until orbital reentry is integrated. Returning restores
+virtual linear velocity and applies a five-second reentry cooldown.
 
 While riding or standing on a cell's assembly, use:
 
@@ -78,21 +86,38 @@ Chunk columns underneath still contain ordinary terrain. They are actually
 loaded and sent, preserving native lighting/block-entity behavior; no saved
 column is replaced with empty data. Ship blocks stay in their original Sable
 plots, not in newly created sections above Minecraft's normal build height.
-Gravity and other mods' atmosphere/sky behavior are not globally overridden.
+Outside registered space cells, gravity and ordinary rendering retain their
+normal paths.
+
+## Space rendering
+
+While the camera/player is in a registered cell, ordinary terrain, DH LOD passes,
+vanilla sky/clouds/weather, Simple Clouds render/compute passes and retained seam
+meshes are skipped. The backdrop is black for now; the round planet is a later
+stage. Sable terrain-layer callbacks and ship block entities remain rendered.
+These are render gates, not empty chunk replacements: actual chunks, lighting
+and block entities remain loaded for mod behavior. Returning resumes the normal
+render paths. This does not eliminate terrain streaming or every mod's background
+CPU task, and does not yet provide a separate view for each cell.
 
 ## Validation
 
-- 41 unit tests and 10 native GameTests with Sable/Create/Cruising.
+- 41 unit tests and 11 native GameTests with Sable/Create/Cruising.
 - New native three-axis out/back transfer of two rotary-connected bodies and a
   real Create seat/pig: unchanged joint layout, linear/angular momentum, plot
   seat position and mount; persisted membership and Cruising ticket exclusion.
-- Actual integrated client with Sable/Create/Cruising/Sodium/DH: ascent triggers
+- Actual integrated client with Sable/Create/Cruising/Sodium/DH/Simple Clouds: ascent triggers
   automatic allocation and transport; same native ship, seat, client object/GPU
   mesh and chest block entity; real FULL client chunks; Cruising height view and
   DH flight mode inactive in the cell. Requested return preserves the passenger
   and ship identity, and Cruising height mode resumes outside. A live-physics
   stage removes the forced native ship ticket and retains the occupied ship
-  while real UDP snapshots run.
+  while real UDP snapshots run. Ten seconds of unpaused physics checks the fixed
+  center, virtual thrust impulse, render gates and retained ship callbacks.
+- A 500-step native physics test covers two rotary-connected owner bodies, a
+  free body and a control body outside space: fixed owner center, unchanged
+  controller angular velocities, virtual thrust, opposite free-body impulse,
+  and ordinary gravity outside the cell.
 - Optional integrations are also checked on a server without Sable/Cruising/DH.
 
 Saved membership is serialized and tested through a fresh data instance. Full

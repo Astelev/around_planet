@@ -43,7 +43,9 @@
     "ProgressiveQueueMixin",
     "ProgressiveProviderMixin",
     "SpaceCruisingFlightMixin",
-    "SpaceCruisingAssemblyMixin"
+    "SpaceCruisingAssemblyMixin",
+    "SpacePhysicsStepMixin",
+    "SpaceEntityGravityMixin"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -83,6 +85,14 @@
     "SeamAlternativeDiagnosticsMixin",
     "SpaceCruisingClientViewMixin",
     "SpaceCruisingDhMixin",
-    "SpaceCruisingFallbackMixin"
+    "SpaceCruisingFallbackMixin",
+    "SpaceTerrainRenderMixin",
+    "SpaceSodiumTerrainMixin",
+    "SpaceDhRenderMixin",
+    "SpaceCloudRenderMixin",
+    "SpaceCloudDhRenderMixin",
+    "SpaceFogMixin",
+    "SpaceShipRenderMonitorMixin",
+    "SpaceBlockEntityRenderMixin"
   ]
 }

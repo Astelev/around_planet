@@ -2,8 +2,9 @@
 
 The original 0.11.0-dev stage added the mathematical and persistent data layer.
 The branch now includes the first [playable cell transport](space-entry.md) in
-0.11.0-alpha.1. Virtual engine interception, orbital reentry, dormant native
-unload/activation hooks and orbital rendering remain subsequent integrations.
+0.11.0-alpha.2. Common engine velocity now enters a persistent linear entry-frame
+trajectory while the owner center is held locally. Orbital reentry, dormant native
+unload/activation hooks and planetary rendering remain subsequent integrations.
 
 ## Agreed world arrangement
 
@@ -19,7 +20,7 @@ empty replacement would erase that terrain. Cruising's existing temporary-air
 facades are relevant here: `TemporaryLevelChunk` never enters the normal
 save/lighting pipeline, and `HighAltitudePolicy` suppresses Sable terrain tickets
 only when the whole hull clears the configured threshold and collision margin.
-Actual per-cell loading/isolation and compatibility hooks remain to be added.
+Cell loading and Cruising compatibility are implemented; strict per-cell isolation remains to be added.
 
 Choose the physical altitude/bounds with native coordinate packing in mind:
 `BlockPos.asLong` has a signed 12-bit Y field. Arbitrarily huge physical Y values

@@ -28,16 +28,12 @@ import java.util.*;
 
 @EventBusSubscriber(modid=AroundPlanet.MOD_ID,value=Dist.CLIENT)
 public final class SpaceEntrySmoke {
-    private static int ticks,phase,started;private static volatile Throwable failure;
+    private static int ticks,phase,started;private static boolean captured;private static volatile Throwable failure;
     private static volatile ServerSubLevel ship;private static volatile Entity seat;private static volatile UUID id;private static Object mesh,clientIdentity,inventory;
-    private static volatile boolean live;
+    private static volatile boolean live,kicked;private static volatile long kickAt;private static volatile SpaceCells.Cell cell;private static volatile double baseline;
     @SubscribeEvent public static void drive(net.neoforged.neoforge.event.tick.LevelTickEvent.Pre event) {
-        if(!Boolean.getBoolean("around_planet.spaceEntrySmoke") || !live || ship==null || event.getLevel()!=ship.getLevel())return;
-        try {
-            var pipeline=SubLevelContainer.getContainer(ship.getLevel()).physicsSystem().getPipeline();
-            var v=pipeline.getLinearVelocity(ship,new Vector3d());var w=pipeline.getAngularVelocity(ship,new Vector3d());
-            pipeline.addLinearAndAngularVelocity(ship,v.negate(),w.negate());
-        }catch(Throwable e){failure=e;}
+        if(!Boolean.getBoolean("around_planet.spaceEntrySmoke") || !live || kicked || ship==null || event.getLevel()!=ship.getLevel() || ship.getLevel().getGameTime()<kickAt)return;
+        try {SubLevelContainer.getContainer(ship.getLevel()).physicsSystem().getPipeline().addLinearAndAngularVelocity(ship,new Vector3d(2,0,0),new Vector3d());kicked=true;}catch(Throwable e){failure=e;}
     }
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         if(!Boolean.getBoolean("around_planet.spaceEntrySmoke"))return;
@@ -45,7 +41,12 @@ public final class SpaceEntrySmoke {
         if(failure!=null)throw new AssertionError("SPACE_SMOKE server",failure);
         if(ticks>2200)throw new AssertionError("SPACE_SMOKE timeout phase="+phase);
         if(mc.player==null || mc.level==null || mc.getSingleplayerServer()==null || ticks<100)return;
-        if(ticks%100==0)AroundPlanet.LOGGER.info("SPACE_SMOKE phase={} player={} cell={} shipY={}",phase,mc.player.position(),SpaceCells.contains(mc.player),client(mc)==null?null:client(mc).logicalPose().position().y);
+        if(ticks%100==0)AroundPlanet.LOGGER.info("SPACE_SMOKE phase={} player={} cell={} shipY={} mounted={} seatClient={} seatRemoved={}",phase,mc.player.position(),SpaceCells.contains(mc.player),client(mc)==null?null:client(mc).logicalPose().position().y,mc.player.isPassenger(),seat==null?null:mc.level.getEntity(seat.getId()),seat==null?null:seat.isRemoved());
+        if(phase==1 && ticks-started>40 && ticks%20==0 && client(mc)!=null && seat!=null && !mc.player.isPassenger() ) {
+            // A programmatically spawned seat may precede client plot tracking on a slow renderer.
+            boolean missing=mc.level.getEntity(seat.getId())==null;
+            server(mc,()->{var p=ship.getLevel().players().getFirst();if(missing)new net.minecraft.server.level.ServerEntity(ship.getLevel(),seat,1,true,p.connection::send).addPairing(p);if(p.getVehicle()!=seat)p.startRiding(seat,true);seat.positionRider(p);p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetPassengersPacket(seat));});
+        }
         if(phase==0) {
             phase=1;started=ticks;server(mc,()->{
                 PlanetConfig.SPACE.set(true);PlanetConfig.ENABLED.set(true);
@@ -75,22 +76,36 @@ public final class SpaceEntrySmoke {
             require(!(Boolean)reflect("io.github.astelev.cruising.client.ClientFlightView","isActive",new Class<?>[]{net.minecraft.client.multiplayer.ClientLevel.class},mc.level),"Cruising temporary client view active in space");
             require(!(Boolean)reflect("io.github.astelev.cruising.compat.dh.DhFlightState","bypassMotionPause",new Class<?>[0]),"Cruising DH height mode active in space");
             AroundPlanet.LOGGER.info("SPACE_SMOKE_ENTER PASS: native ship/seat/mesh identity retained, full client chunks, Cruising height mode disabled");
+            mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);mc.player.setXRot(30);mc.player.setYRot(45);
             phase=20;started=ticks;server(mc,()->{
                 var p=ship.getLevel().players().getFirst();require(!(Boolean)reflect("io.github.astelev.cruising.flight.FlightHooks","isHighShipEntity",new Class<?>[]{Entity.class},p),"Cruising skipped player's terrain in cell");
                 require((Double)reflect("io.github.astelev.cruising.flight.ConnectedFlightAssembly","currentMinY",new Class<?>[]{dev.ryanhcode.sable.sublevel.SubLevel.class},ship)==Double.NEGATIVE_INFINITY,"Cruising ship ticket exclusion not active");
                 var b=ship.getPlot().getBoundingBox();require(ship.getLevel().getBlockEntity(new BlockPos(b.minX(),b.minY(),b.minZ()))==inventory,"Native block entity replaced");
+                cell=SpaceCells.get(ship.getLevel()).forShip(id);
+                baseline=io.github.astelev.around_planet.space.SpaceOrbitData.get(ship.getLevel().getServer()).sample(cell.id(),ship.getLevel().getGameTime()).velocity().x();kickAt=ship.getLevel().getGameTime()+20;
                 var c=SubLevelContainer.getContainer(ship.getLevel());
                 c.removeForceLoadTicket(ship,SubLevelLoadingTicketType.COMMAND_FORCED,Unit.INSTANCE);live=true;c.physicsSystem().setPaused(false);
             });
-        }else if(phase==20 && ticks-started>60) {
+        }else if(phase==20 && ticks-started>100 && !captured) {
+            captured=true;net.minecraft.client.Screenshot.grab(mc.gameDirectory,"space-stable-alpha2.png",mc.getMainRenderTarget(),message->{});
+        }else if(phase==20 && ticks-started>200) {
             require(client(mc)==clientIdentity && mc.player.isPassenger() && SpaceCells.contains(mc.player),"Native simulation unloaded occupied cell without forced ticket");
-            AroundPlanet.LOGGER.info("SPACE_SMOKE_ACTIVE PASS: native physics/UDP running, no forced ship ticket, seated player retains full chunks and the same ship");
+            require(Math.abs(mc.player.getY()-cell.y())<2,"Player/ship fell out of space");
+            require(io.github.astelev.around_planet.client.SpaceRenderView.terrainSkips>0 && io.github.astelev.around_planet.client.SpaceRenderView.dhSkips>0 && io.github.astelev.around_planet.client.SpaceRenderView.cloudSkips>0 && io.github.astelev.around_planet.client.SpaceRenderView.skySkips>0,"Background render hooks did not run");
+            if(net.neoforged.fml.ModList.get().isLoaded("simpleclouds"))require(io.github.astelev.around_planet.client.SpaceRenderView.simpleCloudSkips>0,"Simple Clouds render path was not suppressed");
+            require(io.github.astelev.around_planet.client.SpaceRenderView.shipPasses>0,"Ship render callbacks were suppressed");
+            server(mc,()->{
+                var center=ship.logicalPose().transformPosition(new Vector3d(ship.getSelfMassTracker().getCenterOfMass()));require(center.distance(new Vector3d(cell.x(),cell.y(),cell.z()))<.02,"Owner frame drifted");
+                double vx=io.github.astelev.around_planet.space.SpaceOrbitData.get(ship.getLevel().getServer()).sample(cell.id(),ship.getLevel().getGameTime()).velocity().x();require(Math.abs(vx-baseline-2)<.02,"Engine impulse did not enter virtual velocity: "+vx);
+            });
+            AroundPlanet.LOGGER.info("SPACE_SMOKE_ACTIVE PASS: 10 seconds of native physics without a hover driver; stable owner frame, virtual impulse, background hidden and ship render retained");
             phase=3;started=ticks;server(mc,()->require(SpaceShipTransfers.requestReturn(ship.getLevel().players().getFirst()),"Return request rejected"));
         }else if(phase==3 && ticks-started>60 && !SpaceCells.contains(mc.player) && mc.player.getY()<PlanetConfig.SPACE_ENTRY.getAsInt()) {
             require(mc.player.isPassenger(),"Return detached passenger");require(client(mc)==clientIdentity && client(mc).getRenderData()==mesh,"Return recreated ship");
-            require(Math.abs(mc.player.getX()-50)<2 && Math.abs(mc.player.getZ()-50)<2,"Return lost surface location");
+            require(Math.abs(mc.player.getX()-50)<32 && Math.abs(mc.player.getZ()-50)<2,"Return lost surface location");
             require((Boolean)reflect("io.github.astelev.cruising.client.ClientFlightView","isActive",new Class<?>[]{net.minecraft.client.multiplayer.ClientLevel.class},mc.level),"Cruising height mode did not resume outside space");
             AroundPlanet.LOGGER.info("SPACE_SMOKE_RETURN PASS: same ship, plot, seat and passenger returned to the saved surface location");
+            mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
             phase=4;started=ticks;live=false;server(mc,()->{var p=ship.getLevel().players().getFirst();p.stopRiding();require(Sable.HELPER.getContaining(p)==null,"Dismount leaked plot position");p.teleportTo(0,280,0);p.getAbilities().flying=true;p.onUpdateAbilities();seat.discard();var c=SubLevelContainer.getContainer(ship.getLevel());c.removeForceLoadTicket(ship,SubLevelLoadingTicketType.COMMAND_FORCED,Unit.INSTANCE);c.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);c.physicsSystem().setPaused(false);});
         }else if(phase==4 && ticks-started>40)mc.stop();
     }

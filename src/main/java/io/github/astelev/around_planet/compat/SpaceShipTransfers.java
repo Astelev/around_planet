@@ -19,8 +19,9 @@ public final class SpaceShipTransfers {
     private record Pending(SpaceCells.Cell cell,long created){}
     private static final Map<ServerLevel,Map<UUID,Pending>> PENDING=new WeakHashMap<>();
     private static final Set<UUID> RETURN=new HashSet<>();
+    private static final Map<UUID,Long> RECENT_RETURN=new HashMap<>();
     private static final TicketType<ChunkPos> TICKET=TicketType.create("around_planet_space",Comparator.comparingLong(ChunkPos::toLong),100);
-    public static void clear(ServerLevel level){PENDING.remove(level);RETURN.clear();}
+    public static void clear(ServerLevel level){PENDING.remove(level);RETURN.clear();RECENT_RETURN.clear();}
     public static boolean requestReturn(ServerPlayer player) {
         var ship=SablePassengers.ship(player);if(ship==null)return false;
         var cell=SpaceCells.get(player.serverLevel()).forShip(ship.getUniqueId());if(cell==null)return false;
@@ -29,6 +30,7 @@ public final class SpaceShipTransfers {
     public static void check(ServerLevel level,ServerSubLevelContainer container) {
         if(!level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD) || !PlanetConfig.SPEC.isLoaded()
                 )return;
+        RECENT_RETURN.values().removeIf(until->until<level.getGameTime());
         var data=SpaceCells.get(level);var pending=PENDING.computeIfAbsent(level,k->new HashMap<>());
         pending.values().removeIf(p->level.getGameTime()-p.created>200);
         for(var group:ShipAssemblies.groups(level,container.getAllSubLevels())) {
@@ -44,10 +46,11 @@ public final class SpaceShipTransfers {
             if(returning) {
                 var ids=group.ships().stream().map(ServerSubLevel::getUniqueId).toList();
                 if(!ids.containsAll(cell.ships()) || !cell.ships().containsAll(ids))continue;
-                if(!RETURN.contains(cell.id()) && center.y>=cell.y()-128 && center.y<=cell.y()+192
-                        && Math.abs(center.x-cell.x())<192 && Math.abs(center.z-cell.z())<192)continue;
+                if(!RETURN.contains(cell.id()))continue;
             } else {
+                if(group.ships().stream().anyMatch(s->RECENT_RETURN.getOrDefault(s.getUniqueId(),0L)>level.getGameTime()))continue;
                 if(!PlanetConfig.ENABLED.getAsBoolean() || !PlanetConfig.SPACE.getAsBoolean())continue;
+                if(SpaceCells.contains(level,center.x,center.y,center.z))continue;
                 if(center.y<PlanetConfig.SPACE_ENTRY.getAsInt()) {pending.remove(key);continue;}
                 boolean clear=group.ships().stream().allMatch(s->s.boundingBox().minY()>level.getMaxBuildHeight()+24);
                 if(!clear)continue;
@@ -70,7 +73,8 @@ public final class SpaceShipTransfers {
             if(!ready(level,group.ships(),delta))continue;
             if(!returning)data.add(level,cell);
             move(level,container,group.ships(),roots,delta,data.all());
-            if(returning){data.remove(level,cell);RETURN.remove(cell.id());}
+            if(returning){SpaceLocalPhysics.leave(level,container,cell);for(var id:cell.ships())RECENT_RETURN.put(id,level.getGameTime()+100);data.remove(level,cell);RETURN.remove(cell.id());}
+            else SpaceLocalPhysics.enter(level,container,cell);
             pending.remove(key);
             io.github.astelev.around_planet.AroundPlanet.LOGGER.info("SPACE_TRANSFER {} cell={} ships={} delta={}",returning?"return":"enter",cell.id(),group.ships().size(),delta);
         }
@@ -96,7 +100,7 @@ public final class SpaceShipTransfers {
         boolean ready=true;for(var pos:columns){level.getChunkSource().addRegionTicket(TICKET,pos,2,pos);var c=level.getChunkSource().getChunkNow(pos.x,pos.z);if(c==null || !c.isLightCorrect())ready=false;}
         return ready;
     }
-    private static Set<Entity> roots(ServerLevel level,List<ServerSubLevel> ships) {
+    static Set<Entity> roots(ServerLevel level,List<ServerSubLevel> ships) {
         var members=new HashSet<>(ships);Set<Entity> roots=Collections.newSetFromMap(new IdentityHashMap<>());
         for(var entity:level.getAllEntities())if(members.contains(SablePassengers.ship(entity)))roots.add(entity.getRootVehicle());return roots;
     }

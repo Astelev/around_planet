@@ -178,6 +178,55 @@ public final class ShipSeamGameTests {
         }
     }
 
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=200)
+    public static void spaceOwnerDoesNotFallAndEngineImpulseMovesOnlyVirtualFrame(GameTestHelper h) {
+        var level=h.getLevel();var container=SubLevelContainer.getContainer(level);var system=container.physicsSystem();var pipeline=system.getPipeline();
+        var ships=new ArrayList<ServerSubLevel>();
+        io.github.astelev.around_planet.space.SpaceCells.Cell cell=null;
+        dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle joint=null;
+        try {
+            for(int i=0;i<4;i++) {
+                var pos=h.absolutePos(new BlockPos(1+3*i,2,1));level.setBlockAndUpdate(pos,Blocks.IRON_BLOCK.defaultBlockState());
+                var ship=SubLevelAssemblyHelper.assembleBlocks(level,pos,java.util.List.of(pos),new BoundingBox3i(pos.getX(),pos.getY(),pos.getZ(),pos.getX(),pos.getY(),pos.getZ()));ships.add(ship);
+                pipeline.teleport(ship,new Vector3d(i<2?100+2*i:130,i==3?500:1536,80),ship.logicalPose().orientation());ship.updateBoundingBox();ship.updateLastPose();
+            }
+            var a=ships.get(0);var b=ships.get(1);var free=ships.get(2);var surface=ships.get(3);
+            var anchorA=new Vector3d(a.getSelfMassTracker().getCenterOfMass()).add(1,0,0);var anchorB=new Vector3d(b.getSelfMassTracker().getCenterOfMass()).add(-1,0,0);
+            joint=pipeline.addConstraint(a,b,new dev.ryanhcode.sable.api.physics.constraint.RotaryConstraintConfiguration(anchorA,anchorB,new Vector3d(0,1,0),new Vector3d(0,1,0)));
+            for(var ship:java.util.List.of(a,b))pipeline.addLinearAndAngularVelocity(ship,new Vector3d(4,-8,3),new Vector3d(0,.05,0));
+            cell=new io.github.astelev.around_planet.space.SpaceCells.Cell(java.util.UUID.randomUUID(),40,101,1536,80,20,736,20,java.util.List.of(a.getUniqueId(),b.getUniqueId()));
+            io.github.astelev.around_planet.space.SpaceCells.get(level).add(level,cell);
+            io.github.astelev.around_planet.compat.SpaceLocalPhysics.enter(level,container,cell);
+            var orbit=io.github.astelev.around_planet.space.SpaceOrbitData.get(level.getServer());
+            h.assertTrue(Math.abs(orbit.sample(cell.id(),level.getGameTime()).velocity().y()+8)<1e-6,"Entry velocity was discarded instead of retained virtually");
+            pipeline.prePhysicsTicks();
+            for(int step=0;step<500;step++) {
+                if(step==50)for(var ship:java.util.List.of(a,b))pipeline.addLinearAndAngularVelocity(ship,new Vector3d(1,0,0),new Vector3d());
+                var freeBefore=pipeline.getLinearVelocity(free,new Vector3d());
+                var beforeAngular=pipeline.getAngularVelocity(a,new Vector3d());
+                io.github.astelev.around_planet.compat.SpaceLocalPhysics.before(system,.02);
+                if(step==50)h.assertTrue(Math.abs(pipeline.getLinearVelocity(free,new Vector3d()).x-freeBefore.x+1)<.01,"Free craft missed the opposite instantaneous engine delta-v");
+                h.assertTrue(pipeline.getAngularVelocity(a,new Vector3d()).distance(beforeAngular)<1e-9,"Frame velocity removal changed native angular velocity");
+                pipeline.physicsTick(.02);for(var ship:ships)system.updatePose(ship);
+                var integratedAngular=pipeline.getAngularVelocity(a,new Vector3d());
+                io.github.astelev.around_planet.compat.SpaceLocalPhysics.after(system);
+                h.assertTrue(pipeline.getAngularVelocity(a,new Vector3d()).distance(integratedAngular)<1e-9,"Recentering changed solver angular velocity");
+                if(step==9)h.assertTrue(pipeline.getLinearVelocity(surface,new Vector3d()).y<-.1,"Surface gravity was incorrectly disabled");
+            }
+            pipeline.postPhysicsTicks();
+            var center=new Vector3d();double mass=0;for(var ship:java.util.List.of(a,b)){double m=ship.getSelfMassTracker().getMass();center.fma(m,ship.logicalPose().transformPosition(new Vector3d(ship.getSelfMassTracker().getCenterOfMass())));mass+=m;}center.div(mass);
+            h.assertTrue(center.distance(new Vector3d(101,1536,80))<.01,"Owner drifted/fell out of its cell: "+center);
+            double vx=orbit.sample(cell.id(),level.getGameTime()).velocity().x();h.assertTrue(Math.abs(vx-5)<.02,"Owner thrust was not added exactly once to virtual motion: "+vx);
+            h.assertTrue(joint.isValid(),"Frame controller broke the rotary group");
+            h.assertTrue(free.logicalPose().position().x<129.9,"Free craft did not move opposite to owner thrust: "+free.logicalPose().position());
+            h.assertTrue(Math.abs(pipeline.getLinearVelocity(free,new Vector3d()).y)<.02,"Free craft still experiences surface gravity");
+            h.succeed();
+        } finally {
+            if(cell!=null){io.github.astelev.around_planet.space.SpaceOrbitData.get(level.getServer()).remove(cell.id());io.github.astelev.around_planet.space.SpaceCells.get(level).remove(level,cell);}
+            if(joint!=null && joint.isValid())joint.remove();for(var ship:ships)container.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);
+        }
+    }
+
     private static dev.ryanhcode.sable.sublevel.SubLevel SableTracking(net.minecraft.world.entity.Entity entity) {
         return dev.ryanhcode.sable.Sable.HELPER.getTrackingSubLevel(entity);
     }

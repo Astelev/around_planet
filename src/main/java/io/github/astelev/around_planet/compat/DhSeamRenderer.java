@@ -15,6 +15,7 @@ import org.lwjgl.opengl.GL20;
 public final class DhSeamRenderer {
     public static long passes,opaqueDraws;
     public static void append(RenderParams main,boolean opaque,IProfilerWrapper profiler) {
+        if(io.github.astelev.around_planet.client.SpaceRenderView.active())return;
         var mc=Minecraft.getInstance();
         if(mc.level==null || main.renderBufferHandler==null || !PlanetConfig.SPEC.isLoaded()
                 || !PlanetConfig.DH_SEAM.getAsBoolean() || PlanetBorders.get(mc.level.getWorldBorder())==null

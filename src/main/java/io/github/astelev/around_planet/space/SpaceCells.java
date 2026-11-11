@@ -40,7 +40,9 @@ public final class SpaceCells extends SavedData {
         if(!level.dimension().equals(Level.OVERWORLD))return false;
         var view=VIEWS.get(level);return view!=null && view.stream().anyMatch(c->c.contains(x,y,z));
     }
+    public static synchronized boolean hasCells(Level level){var cells=VIEWS.get(level);return level.dimension().equals(Level.OVERWORLD) && cells!=null && !cells.isEmpty();}
     public static boolean contains(net.minecraft.world.entity.Entity e){
+        if(!hasCells(e.level()))return false;
         return contains(e.level(),e.getX(),e.getY(),e.getZ()) || net.neoforged.fml.ModList.get().isLoaded("sable")
                 && io.github.astelev.around_planet.compat.SpaceMembership.attached(e);
     }
