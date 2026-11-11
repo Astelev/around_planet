@@ -18,6 +18,7 @@ public final class AroundPlanet {
         bus.addListener(io.github.astelev.around_planet.network.SeamEntitiesPayload::register);
         bus.addListener(io.github.astelev.around_planet.network.SeamShipTransferPayload::register);
         bus.addListener(io.github.astelev.around_planet.network.SpaceTransferPayload::register);
+        bus.addListener(io.github.astelev.around_planet.network.SpaceStatusPayload::register);
         container.registerConfig(ModConfig.Type.SERVER, PlanetConfig.SPEC);
     }
 }

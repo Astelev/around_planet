@@ -23,10 +23,26 @@ public final class SpaceLocalPhysics {
         }
         return mass>0?new Group(ships,center.div(mass),velocity.div(mass)):null;
     }
-    public static void enter(ServerLevel level,ServerSubLevelContainer c,SpaceCells.Cell cell) {
+    public static SpaceNavigation navigation(ServerLevel level,SpaceCells.Cell cell) {
+        var data=SpaceOrbitData.get(level.getServer());var old=data.navigation(cell.id());if(old.isPresent())return old.get();
+        var planet=new PlanetGeometry(io.github.astelev.around_planet.PlanetConfig.BOUNDARY.getAsInt(),io.github.astelev.around_planet.PlanetConfig.BOUNDARY_Z.getAsInt());
+        var nav=new SpaceNavigation(planet,planet.frame(cell.originX(),cell.originZ()));
+        // Upgrade alpha.2's entry-relative linear chart without losing its displacement or velocity.
+        var orbit=data.get(cell.id());if(orbit.isPresent()) {
+            var state=orbit.get().at(level.getGameTime());
+            data.put(cell.id(),new SpaceTrajectory("around_planet:overworld",level.getGameTime(),new SpaceState(
+                planet.position(cell.originX(),cell.originY()+32,cell.originZ()).add(nav.frame().toCosmic(state.position())),nav.frame().toCosmic(state.velocity())),mu(planet)));
+        }
+        data.navigate(cell.id(),nav);return nav;
+    }
+    private static double mu(PlanetGeometry p){return io.github.astelev.around_planet.PlanetConfig.SPACE_GRAVITY.get()*p.radius()*p.radius();}
+    public static void enter(ServerLevel level,ServerSubLevelContainer c,SpaceCells.Cell cell){enter(level,c,cell,cell.originY()+32);}
+    public static void enter(ServerLevel level,ServerSubLevelContainer c,SpaceCells.Cell cell,double altitude) {
         var group=owner(c,cell);if(group==null)return;
-        var data=SpaceOrbitData.get(level.getServer());
-        if(data.get(cell.id()).isEmpty())data.put(cell.id(),new SpaceTrajectory("around_planet:entry_frame/"+cell.id(),level.getGameTime(),new SpaceState(SpaceVector.ZERO,vector(group.velocity)),0));
+        var data=SpaceOrbitData.get(level.getServer());var nav=navigation(level,cell);
+        if(data.get(cell.id()).isEmpty())data.put(cell.id(),new SpaceTrajectory("around_planet:overworld",level.getGameTime(),new SpaceState(
+                nav.planet().position(cell.originX(),altitude,cell.originZ()),nav.frame().toCosmic(vector(group.velocity))),mu(nav.planet())));
+        SpaceReentry.entered(level,cell.id(),data.sample(cell.id(),level.getGameTime()).position());
         for(var s:group.ships)c.physicsSystem().getPipeline().addLinearAndAngularVelocity(s,new Vector3d(group.velocity).negate(),new Vector3d());
     }
     /** Called immediately before native integration, AFTER queued engine/other forces have been applied. */
@@ -37,9 +53,9 @@ public final class SpaceLocalPhysics {
         for(var cell:cells) {
             var group=owner(c,cell);var common=new Vector3d();
             if(group!=null) {
-                var orbits=SpaceOrbitData.get(level.getServer());
-                if(orbits.get(cell.id()).isEmpty())orbits.put(cell.id(),new SpaceTrajectory("around_planet:entry_frame/"+cell.id(),level.getGameTime(),new SpaceState(SpaceVector.ZERO,vector(group.velocity)),0));
-                else if(group.velocity.lengthSquared()>1e-10)orbits.impulse(cell.id(),level.getGameTime(),vector(group.velocity));
+                var orbits=SpaceOrbitData.get(level.getServer());var nav=navigation(level,cell);
+                if(orbits.get(cell.id()).isEmpty())orbits.put(cell.id(),new SpaceTrajectory("around_planet:overworld",level.getGameTime(),new SpaceState(nav.planet().position(cell.originX(),cell.originY()+32,cell.originZ()),nav.frame().toCosmic(vector(group.velocity))),mu(nav.planet())));
+                else if(group.velocity.lengthSquared()>1e-10)orbits.impulse(cell.id(),level.getGameTime(),nav.frame().toCosmic(vector(group.velocity)));
                 common.set(group.velocity);
             }
             // Partial loading must not reintroduce gravity before the complete owner is available.
@@ -53,7 +69,7 @@ public final class SpaceLocalPhysics {
                 entity.setDeltaMovement(entity.getDeltaMovement().add(-common.x/20,-common.y/20,-common.z/20));
         }
     }
-    private static boolean inCell(ServerSubLevel s,SpaceCells.Cell cell){
+    static boolean inCell(ServerSubLevel s,SpaceCells.Cell cell){
         if(cell.ships().contains(s.getUniqueId()))return true;
         if(SpaceCells.containsShip(s.getLevel(),s.getUniqueId()) || s.getSelfMassTracker().getCenterOfMass()==null)return false;
         var p=s.logicalPose().transformPosition(new Vector3d(s.getSelfMassTracker().getCenterOfMass()));return cell.contains(p.x,p.y,p.z);
@@ -73,12 +89,6 @@ public final class SpaceLocalPhysics {
                 ((ShipPoseHistory)ship).around_planet$shiftHistory(delta.x,delta.y,delta.z);ship.updateBoundingBox();
             }
         }
-    }
-    public static void leave(ServerLevel level,ServerSubLevelContainer c,SpaceCells.Cell cell) {
-        var data=SpaceOrbitData.get(level.getServer());var trajectory=data.get(cell.id());if(trajectory.isEmpty())return;
-        var velocity=trajectory.get().at(level.getGameTime()).velocity();
-        for(var id:cell.ships()){var ship=(ServerSubLevel)c.getSubLevel(id);if(ship!=null)c.physicsSystem().getPipeline().addLinearAndAngularVelocity(ship,new Vector3d(velocity.x(),velocity.y(),velocity.z()),new Vector3d());}
-        data.remove(cell.id());
     }
     private static SpaceVector vector(Vector3d v){return new SpaceVector(v.x,v.y,v.z);}
     private SpaceLocalPhysics(){}

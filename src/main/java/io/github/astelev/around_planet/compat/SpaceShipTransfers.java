@@ -14,14 +14,14 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Vector3d;
 import java.util.*;
 
-/** First playable stage: native same-level translation, no rigid body recreation or virtual thrust yet. */
+/** Native same-level transfer; stable plots and joint identity are retained. */
 public final class SpaceShipTransfers {
     private record Pending(SpaceCells.Cell cell,long created){}
     private static final Map<ServerLevel,Map<UUID,Pending>> PENDING=new WeakHashMap<>();
     private static final Set<UUID> RETURN=new HashSet<>();
     private static final Map<UUID,Long> RECENT_RETURN=new HashMap<>();
     private static final TicketType<ChunkPos> TICKET=TicketType.create("around_planet_space",Comparator.comparingLong(ChunkPos::toLong),100);
-    public static void clear(ServerLevel level){PENDING.remove(level);RETURN.clear();RECENT_RETURN.clear();}
+    public static void clear(ServerLevel level){PENDING.remove(level);RETURN.clear();RECENT_RETURN.clear();SpaceReentry.clear(level);}
     public static boolean requestReturn(ServerPlayer player) {
         var ship=SablePassengers.ship(player);if(ship==null)return false;
         var cell=SpaceCells.get(player.serverLevel()).forShip(ship.getUniqueId());if(cell==null)return false;
@@ -31,6 +31,7 @@ public final class SpaceShipTransfers {
         if(!level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD) || !PlanetConfig.SPEC.isLoaded()
                 )return;
         RECENT_RETURN.values().removeIf(until->until<level.getGameTime());
+        SpaceReentry.check(level,container,RETURN,RECENT_RETURN);
         var data=SpaceCells.get(level);var pending=PENDING.computeIfAbsent(level,k->new HashMap<>());
         pending.values().removeIf(p->level.getGameTime()-p.created>200);
         for(var group:ShipAssemblies.groups(level,container.getAllSubLevels())) {
@@ -42,12 +43,9 @@ public final class SpaceShipTransfers {
             }
             if(!valid || mass<=0)continue;center.div(mass);
             var key=group.ships().stream().map(ServerSubLevel::getUniqueId).min(UUID::compareTo).orElseThrow();
-            var cell=data.forShip(key);boolean returning=cell!=null;
-            if(returning) {
-                var ids=group.ships().stream().map(ServerSubLevel::getUniqueId).toList();
-                if(!ids.containsAll(cell.ships()) || !cell.ships().containsAll(ids))continue;
-                if(!RETURN.contains(cell.id()))continue;
-            } else {
+            var cell=data.forShip(key);
+            if(cell!=null)continue;
+            {
                 if(group.ships().stream().anyMatch(s->RECENT_RETURN.getOrDefault(s.getUniqueId(),0L)>level.getGameTime()))continue;
                 if(!PlanetConfig.ENABLED.getAsBoolean() || !PlanetConfig.SPACE.getAsBoolean())continue;
                 if(SpaceCells.contains(level,center.x,center.y,center.z))continue;
@@ -60,9 +58,9 @@ public final class SpaceShipTransfers {
                     pending.put(key,new Pending(cell,level.getGameTime()));
                 }else cell=existing.cell;
             }
-            var target=returning?new Vector3d(cell.originX(),cell.originY(),cell.originZ()):new Vector3d(cell.x(),cell.y(),cell.z());
+            var target=new Vector3d(cell.x(),cell.y(),cell.z());
             var delta=target.sub(center);
-            if(!fits(level,group.ships(),delta,returning?null:cell))continue;
+            if(!fits(level,group.ships(),delta,cell))continue;
             var roots=roots(level,group.ships());
             if(roots.stream().flatMap(Entity::getSelfAndPassengers).filter(ServerPlayer.class::isInstance).map(ServerPlayer.class::cast)
                     .anyMatch(p->!(p instanceof net.neoforged.neoforge.common.util.FakePlayer) && !p.connection.hasChannel(SpaceTransferPayload.TYPE)))continue;
@@ -71,12 +69,11 @@ public final class SpaceShipTransfers {
             for(var e:level.getAllEntities())if(e instanceof net.minecraft.world.entity.Mob m && m.isLeashed() && moving.contains(m)!=moving.contains(m.getLeashHolder())){externalLeash=true;break;}
             if(externalLeash)continue;
             if(!ready(level,group.ships(),delta))continue;
-            if(!returning)data.add(level,cell);
+            data.add(level,cell);
             move(level,container,group.ships(),roots,delta,data.all());
-            if(returning){SpaceLocalPhysics.leave(level,container,cell);for(var id:cell.ships())RECENT_RETURN.put(id,level.getGameTime()+100);data.remove(level,cell);RETURN.remove(cell.id());}
-            else SpaceLocalPhysics.enter(level,container,cell);
+            SpaceLocalPhysics.enter(level,container,cell,center.y);
             pending.remove(key);
-            io.github.astelev.around_planet.AroundPlanet.LOGGER.info("SPACE_TRANSFER {} cell={} ships={} delta={}",returning?"return":"enter",cell.id(),group.ships().size(),delta);
+            io.github.astelev.around_planet.AroundPlanet.LOGGER.info("SPACE_TRANSFER enter cell={} ships={} delta={}",cell.id(),group.ships().size(),delta);
         }
     }
     private static SpaceCells.Cell allocate(ServerLevel level,SpaceCells data,Map<UUID,Pending> pending,List<ServerSubLevel> ships,Vector3d center) {

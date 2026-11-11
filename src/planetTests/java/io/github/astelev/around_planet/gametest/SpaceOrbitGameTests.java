@@ -61,6 +61,17 @@ public final class SpaceOrbitGameTests {
         tag=good.save(new CompoundTag(),h.getLevel().registryAccess());var entries=tag.getList("objects",10);entries.add(entries.getCompound(0).copy());reject(h,tag);
         h.succeed();
     }
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
+    public static void pendingReentryKeepsNavigationMomentumAndContactAcrossSave(GameTestHelper h) {
+        var data=new SpaceOrbitData();var id=UUID.randomUUID();var planet=new PlanetGeometry(65536,65536);var nav=new SpaceNavigation(planet,planet.frame(120,45));long now=h.getLevel().getGameTime();
+        var contact=planet.position(340,736,70);var velocity=planet.frame(340,70).toCosmic(new SpaceVector(30,-20,5));
+        data.put(id,new SpaceTrajectory("around_planet:overworld",now,new SpaceState(planet.position(340,737,70),velocity),1));data.navigate(id,nav);data.reenter(id,contact,now);
+        data.impulse(id,now+100,new SpaceVector(1,2,3));var state=data.sample(id,now+10000);
+        h.assertTrue(state.position().equals(contact) && state.velocity().equals(velocity.add(new SpaceVector(1,2,3))),"Waiting for chunks moved the contact or discarded engine momentum");
+        var restored=SpaceOrbitData.load(data.save(new CompoundTag(),h.getLevel().registryAccess()),h.getLevel().registryAccess());
+        h.assertTrue(restored.navigation(id).orElseThrow().equals(nav) && restored.sample(id,now+10000).equals(state) && restored.reentry(id).orElseThrow().equals(contact),"Pending reentry did not survive saving");
+        restored.remove(id);h.assertTrue(restored.navigation(id).isEmpty() && restored.reentry(id).isEmpty(),"Returned cell left stale navigation");h.succeed();
+    }
     private static void reject(GameTestHelper h,CompoundTag tag) {
         try{SpaceOrbitData.load(tag,h.getLevel().registryAccess());throw new AssertionError("Invalid save accepted");}
         catch(IllegalArgumentException expected){}

@@ -198,7 +198,7 @@ public final class ShipSeamGameTests {
             io.github.astelev.around_planet.space.SpaceCells.get(level).add(level,cell);
             io.github.astelev.around_planet.compat.SpaceLocalPhysics.enter(level,container,cell);
             var orbit=io.github.astelev.around_planet.space.SpaceOrbitData.get(level.getServer());
-            h.assertTrue(Math.abs(orbit.sample(cell.id(),level.getGameTime()).velocity().y()+8)<1e-6,"Entry velocity was discarded instead of retained virtually");
+            h.assertTrue(Math.abs(orbit.navigation(cell.id()).orElseThrow().frame().toLocal(orbit.sample(cell.id(),level.getGameTime()).velocity()).y()+8)<1e-6,"Entry velocity was discarded instead of retained virtually");
             pipeline.prePhysicsTicks();
             for(int step=0;step<500;step++) {
                 if(step==50)for(var ship:java.util.List.of(a,b))pipeline.addLinearAndAngularVelocity(ship,new Vector3d(1,0,0),new Vector3d());
@@ -216,7 +216,7 @@ public final class ShipSeamGameTests {
             pipeline.postPhysicsTicks();
             var center=new Vector3d();double mass=0;for(var ship:java.util.List.of(a,b)){double m=ship.getSelfMassTracker().getMass();center.fma(m,ship.logicalPose().transformPosition(new Vector3d(ship.getSelfMassTracker().getCenterOfMass())));mass+=m;}center.div(mass);
             h.assertTrue(center.distance(new Vector3d(101,1536,80))<.01,"Owner drifted/fell out of its cell: "+center);
-            double vx=orbit.sample(cell.id(),level.getGameTime()).velocity().x();h.assertTrue(Math.abs(vx-5)<.02,"Owner thrust was not added exactly once to virtual motion: "+vx);
+            double vx=orbit.navigation(cell.id()).orElseThrow().frame().toLocal(orbit.sample(cell.id(),level.getGameTime()).velocity()).x();h.assertTrue(Math.abs(vx-5)<.02,"Owner thrust was not added exactly once to virtual motion: "+vx);
             h.assertTrue(joint.isValid(),"Frame controller broke the rotary group");
             h.assertTrue(free.logicalPose().position().x<129.9,"Free craft did not move opposite to owner thrust: "+free.logicalPose().position());
             h.assertTrue(Math.abs(pipeline.getLinearVelocity(free,new Vector3d()).y)<.02,"Free craft still experiences surface gravity");
@@ -225,6 +225,45 @@ public final class ShipSeamGameTests {
             if(cell!=null){io.github.astelev.around_planet.space.SpaceOrbitData.get(level.getServer()).remove(cell.id());io.github.astelev.around_planet.space.SpaceCells.get(level).remove(level,cell);}
             if(joint!=null && joint.isValid())joint.remove();for(var ship:ships)container.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);
         }
+    }
+
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=200)
+    public static void sphericalReentryDetectsFastCrossingAfterManeuverAndRetainsAllBodyMomentum(GameTestHelper h) {
+        var level=h.getLevel();var c=SubLevelContainer.getContainer(level);var pipeline=c.physicsSystem().getPipeline();
+        var ships=new ArrayList<ServerSubLevel>();var cells=io.github.astelev.around_planet.space.SpaceCells.get(level);var orbits=io.github.astelev.around_planet.space.SpaceOrbitData.get(level.getServer());
+        io.github.astelev.around_planet.space.SpaceCells.Cell cell=null;dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle joint=null;
+        try {
+            for(int i=0;i<3;i++){var p=h.absolutePos(new BlockPos(1+3*i,2,1));level.setBlockAndUpdate(p,Blocks.IRON_BLOCK.defaultBlockState());var ship=SubLevelAssemblyHelper.assembleBlocks(level,p,java.util.List.of(p),new BoundingBox3i(p.getX(),p.getY(),p.getZ(),p.getX(),p.getY(),p.getZ()));ships.add(ship);pipeline.teleport(ship,new Vector3d(i<2?100+2*i:130,1536,80),ship.logicalPose().orientation());ship.updateBoundingBox();ship.updateLastPose();}
+            var a=ships.get(0);var b=ships.get(1);var free=ships.get(2);
+            joint=pipeline.addConstraint(a,b,new dev.ryanhcode.sable.api.physics.constraint.RotaryConstraintConfiguration(new Vector3d(a.getSelfMassTracker().getCenterOfMass()).add(1,0,0),new Vector3d(b.getSelfMassTracker().getCenterOfMass()).add(-1,0,0),new Vector3d(0,1,0),new Vector3d(0,1,0)));
+            cell=new io.github.astelev.around_planet.space.SpaceCells.Cell(java.util.UUID.randomUUID(),40,101,1536,80,0,736,0,java.util.List.of(a.getUniqueId(),b.getUniqueId()));cells.add(level,cell);
+            var planet=new io.github.astelev.around_planet.space.PlanetGeometry(256,256);var frame=io.github.astelev.around_planet.space.SpaceFrame.IDENTITY;
+            orbits.navigate(cell.id(),new io.github.astelev.around_planet.space.SpaceNavigation(planet,frame));
+            var velocity=planet.frame(90,50).toCosmic(new io.github.astelev.around_planet.space.SpaceVector(30,-1000000,2));
+            // A full-shell step followed by a maneuver has already rebased the trajectory epoch.
+            // Its latest point is outside and outbound; only the previous observed position detects entry.
+            io.github.astelev.around_planet.compat.SpaceReentry.entered(level,cell.id(),planet.position(90,737,50));
+            orbits.put(cell.id(),new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(planet.position(90,737,50).scale(-2),velocity),0));
+            pipeline.addLinearAndAngularVelocity(free,new Vector3d(3,1,2),new Vector3d(.1,.2,.3));
+            var before=new Vector3d(free.logicalPose().position());var oldOmega=pipeline.getAngularVelocity(free,new Vector3d());
+            var request=new java.util.HashSet<java.util.UUID>();var cooldown=new java.util.HashMap<java.util.UUID,Long>();
+            io.github.astelev.around_planet.compat.SpaceReentry.check(level,c,request,cooldown);
+            if(cells.forShip(a.getUniqueId())!=null){
+                h.assertTrue(cells.forShip(a.getUniqueId())!=null && a.logicalPose().position().y>1400 && free.logicalPose().position().y>1400,"Reentry moved only part of the region before chunks were ready");
+                var held=orbits.reentry(cell.id()).orElseThrow();var saved=orbits.save(new net.minecraft.nbt.CompoundTag(),level.registryAccess());var restored=io.github.astelev.around_planet.space.SpaceOrbitData.load(saved,level.registryAccess());h.assertTrue(restored.navigation(cell.id()).orElseThrow().equals(orbits.navigation(cell.id()).orElseThrow()) && restored.reentry(cell.id()).orElseThrow().equals(held),"Pending reentry/basis did not persist");
+                for(int x=-3;x<=12;x++)for(int z=-3;z<=12;z++)level.getChunk(x,z);
+                io.github.astelev.around_planet.compat.SpaceReentry.check(level,c,request,cooldown);
+            }
+            h.assertTrue(cells.forShip(a.getUniqueId())==null && orbits.get(cell.id()).isEmpty(),"Automatic radial reentry did not complete");
+            var actualCenter=a.logicalPose().transformPosition(new Vector3d(a.getSelfMassTracker().getCenterOfMass())).add(b.logicalPose().transformPosition(new Vector3d(b.getSelfMassTracker().getCenterOfMass()))).mul(.5);
+            h.assertTrue(Math.abs(actualCenter.y-736)<.01,"Reentry altitude is wrong");
+            var destination=planet.frame(actualCenter.x,actualCenter.z);var q=io.github.astelev.around_planet.compat.SpaceRotation.between(frame,destination);var boost=destination.toLocal(velocity);
+            var expectedV=q.transform(new Vector3d(3,1,2)).add(boost.x(),boost.y(),boost.z());// Rapier stores velocity with float precision: one ULP at this deliberately extreme speed.
+            h.assertTrue(pipeline.getLinearVelocity(free,new Vector3d()).distance(expectedV)<=Math.max(1e-6,Math.ulp((float)expectedV.length())),"Free body velocity: actual="+pipeline.getLinearVelocity(free,new Vector3d())+" expected="+expectedV+" error="+pipeline.getLinearVelocity(free,new Vector3d()).distance(expectedV));
+            h.assertTrue(pipeline.getAngularVelocity(free,new Vector3d()).distance(q.transform(oldOmega))<1e-6,"Reentry lost angular momentum direction");
+            var expectedP=io.github.astelev.around_planet.compat.SpaceRotation.point(before,new Vector3d(101,1536,80),actualCenter,q);h.assertTrue(free.logicalPose().position().distance(expectedP)<.01,"Free body did not preserve its relative layout");
+            h.assertTrue(joint.isValid() && cooldown.keySet().containsAll(ships.stream().map(ServerSubLevel::getUniqueId).toList()),"Reentry lost a rotary joint or a free body");h.succeed();
+        } finally {if(cell!=null){orbits.remove(cell.id());cells.remove(level,cell);}if(joint!=null && joint.isValid())joint.remove();for(var ship:ships)c.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);}
     }
 
     private static dev.ryanhcode.sable.sublevel.SubLevel SableTracking(net.minecraft.world.entity.Entity entity) {

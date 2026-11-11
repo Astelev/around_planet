@@ -19,6 +19,7 @@ public abstract class SeamShipRenderPoseMixin implements io.github.astelev.aroun
     @org.spongepowered.asm.mixin.Shadow @org.spongepowered.asm.mixin.Final private Pose3d renderPose;
     @org.spongepowered.asm.mixin.Shadow private float lastRenderPosePartialTick;
     @Override public void around_planet$shiftRenderCache(double dx,double dy,double dz){renderPose.position().add(dx,dy,dz);lastRenderPosePartialTick=-1;}
+    @Override public void around_planet$rotateRenderCache(org.joml.Vector3dc old,org.joml.Vector3dc target,org.joml.Quaterniondc q){io.github.astelev.around_planet.compat.SpaceRotation.pose(renderPose,old,target,q);lastRenderPosePartialTick=-1;}
     private double around_planet$shift(double x) {
         var ship=(ClientSubLevel)(Object)this;var topology=ShipSeams.topology(ship.getLevel());
         return !ShipRenderScope.active() || topology==null?0:ShipSeams.nearestShift(x,

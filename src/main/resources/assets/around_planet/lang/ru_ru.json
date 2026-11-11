@@ -1,0 +1,6 @@
+{
+  "around_planet.space.coordinates": "Космическая область: координаты от центра планеты (м)",
+  "around_planet.space.speed": "Скорость: %s м/с (%s км/ч)",
+  "around_planet.space.altitude": "Высота над планетой: %s м",
+  "around_planet.space.returning": "Возврат: подготовка чанков назначения"
+}

@@ -34,5 +34,23 @@ public final class ShipSeatTransfer {
             }
         };
     }
+    /** Reentry rotates world riders; native plot-local seat entities stay exactly where they are. */
+    public static Runnable prepareRigid(Entity root,org.joml.Vector3dc old,org.joml.Vector3dc target,org.joml.Quaterniondc q,org.joml.Vector3dc boost,boolean attached) {
+        record Snapshot(Entity e,org.joml.Vector3d p,org.joml.Vector3d v,org.joml.Vector3d look){}
+        var riders=root.getSelfAndPassengers().filter(e->Sable.HELPER.getContaining(e)==null).map(e->new Snapshot(e,
+            new org.joml.Vector3d(e.getX(),e.getY(),e.getZ()),new org.joml.Vector3d(e.getDeltaMovement().x,e.getDeltaMovement().y,e.getDeltaMovement().z),new org.joml.Vector3d(e.getLookAngle().x,e.getLookAngle().y,e.getLookAngle().z))).toList();
+        return ()->{
+            for(var r:riders){var p=SpaceRotation.point(r.p,old,target,q);var look=q.transform(r.look);var v=q.transform(r.v);if(!attached)v.fma(1.0/20,boost);
+                if(r.e instanceof ServerPlayer player)player.teleportTo(p.x,p.y,p.z);else r.e.setPos(p.x,p.y,p.z);
+                r.e.setYRot((float)Math.toDegrees(Math.atan2(-look.x,look.z)));r.e.setXRot((float)Math.toDegrees(Math.atan2(-look.y,Math.hypot(look.x,look.z))));
+                r.e.setDeltaMovement(v.x,v.y,v.z);r.e.fallDistance=0;
+            }
+            for(var r:riders)if(r.e instanceof ServerPlayer player){
+                ((ChunkTrackingAccessor)player.serverLevel().getChunkSource().chunkMap).around_planet$updateChunkTracking(player);player.serverLevel().getChunkSource().move(player);
+                player.connection.teleport(player.getX(),player.getY(),player.getZ(),player.getYRot(),player.getXRot());
+                if(Sable.HELPER.getContaining(root)==null && root!=player)player.connection.send(new net.minecraft.network.protocol.game.ClientboundMoveVehiclePacket(root));
+            }
+        };
+    }
     private ShipSeatTransfer() {}
 }

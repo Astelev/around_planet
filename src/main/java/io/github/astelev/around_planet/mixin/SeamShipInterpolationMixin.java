@@ -24,9 +24,10 @@ public abstract class SeamShipInterpolationMixin implements ShipInterpolation {
         }
     }
     @Unique private org.joml.Vector3d around_planet$oldSpace,around_planet$newSpace,around_planet$spaceDelta;
-    @Override public void around_planet$spaceRebase(org.joml.Vector3dc old,org.joml.Vector3dc delta) {
+    @Unique private org.joml.Quaterniond around_planet$spaceRotation=new org.joml.Quaterniond();
+    @Override public void around_planet$spaceRebase(org.joml.Vector3dc old,org.joml.Vector3dc delta,org.joml.Quaterniondc rotation) {
         synchronized(buffer) {
-            around_planet$width=0;
+            around_planet$width=0;around_planet$spaceRotation.set(rotation);
             around_planet$oldSpace=new org.joml.Vector3d(old);around_planet$spaceDelta=new org.joml.Vector3d(delta);
             around_planet$newSpace=new org.joml.Vector3d(old).add(delta);
             runningSnapshot.set(around_planet$normalizeSpace(runningSnapshot));
@@ -35,7 +36,7 @@ public abstract class SeamShipInterpolationMixin implements ShipInterpolation {
     }
     @Unique private Pose3dc around_planet$normalizeSpace(Pose3dc pose) {
         if(around_planet$oldSpace!=null && pose.position().distanceSquared(around_planet$oldSpace)<pose.position().distanceSquared(around_planet$newSpace)) {
-            var copy=new Pose3d().set(pose);copy.position().add(around_planet$spaceDelta);return copy;
+            var copy=new Pose3d().set(pose);io.github.astelev.around_planet.compat.SpaceRotation.pose(copy,around_planet$oldSpace,around_planet$newSpace,around_planet$spaceRotation);return copy;
         }
         return pose;
     }

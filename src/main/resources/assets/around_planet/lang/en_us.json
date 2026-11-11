@@ -1,0 +1,6 @@
+{
+  "around_planet.space.coordinates": "Space cell: planet-centered coordinates (m)",
+  "around_planet.space.speed": "Speed: %s m/s (%s km/h)",
+  "around_planet.space.altitude": "Planet altitude: %s m",
+  "around_planet.space.returning": "Reentry: waiting for destination chunks"
+}

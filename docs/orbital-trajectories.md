@@ -2,9 +2,11 @@
 
 The original 0.11.0-dev stage added the mathematical and persistent data layer.
 The branch now includes the first [playable cell transport](space-entry.md) in
-0.11.0-alpha.2. Common engine velocity now enters a persistent linear entry-frame
-trajectory while the owner center is held locally. Orbital reentry, dormant native
-unload/activation hooks and planetary rendering remain subsequent integrations.
+0.11.0-alpha.3. Common engine velocity enters a persistent planet-centered
+trajectory while the owner center is held locally. A captured surface basis maps
+native forces to that trajectory; automatic reentry rotates and returns all
+loaded bodies in the cell. A navigation HUD displays server samples. Dormant
+native unload/activation hooks and planetary rendering remain subsequent integrations.
 
 ## Agreed world arrangement
 
@@ -69,19 +71,18 @@ would be a separate policy, not implicitly enabled.
 
 ## Next integrations, kept separate from the foundation
 
-1. Allocate isolated local cells high in Overworld, define owner/connected group
-   membership, and move whole assemblies with a common same-level transform.
-   Keep plot coordinates and seat trees intact; do not reconstruct ships using
-   the cross-dimensional serializer.
-2. Measure non-gravitational owner motion at Sable physics-step boundaries,
-   transfer it to virtual motion, and apply the counter-impulse only to objects
-   not rigidly connected to the owner. Joint rotors and angular motion remain
+1. Implemented: allocate high Overworld cells, retain owner/connected group
+   membership, and move assemblies with same-level transforms. Strict isolation
+   between cells remains pending. Native plots and seat trees are retained.
+2. Implemented: measure non-gravitational owner motion at Sable physics-step boundaries,
+   transfer it to virtual motion, and apply the counter-impulse to free objects. Joint rotors and angular motion remain
    native. A seated/standing passenger attached to the owner is not free debris.
 3. At actual native unload, capture free constructions' absolute state and
    stable bindings before releasing their active cell. Region isolation also
    needs tracking/render/interaction filters; large real spacing alone is not a
    complete isolation mechanism.
-4. Add a persisted event queue for the next atmosphere/surface crossing or
+4. Active-cell inward crossing detection and pending-contact persistence are implemented.
+   A future persisted event queue for dormant objects should track the next atmosphere/surface crossing or
    attractor change. A dormant object approaching the planet must produce an
    event even without an observer. Rescheduling needs stale-event cancellation
    after maneuvers. This cannot be replaced by checking all objects every tick.

@@ -15,10 +15,11 @@ public final class SpaceShipTransferClient {
         var container=SubLevelContainer.getContainer(level);if(container==null)return;
         for(var m:packet.moves())if(container.getSubLevel(m.ship()) instanceof ClientSubLevel ship) {
             var old=new Vector3d(m.x(),m.y(),m.z());var delta=new Vector3d(m.dx(),m.dy(),m.dz());
-            ((ShipInterpolation)ship.getInterpolator()).around_planet$spaceRebase(old,delta);
+            var rotation=new org.joml.Quaterniond(m.qx(),m.qy(),m.qz(),m.qw());var target=new Vector3d(old).add(delta);
+            ((ShipInterpolation)ship.getInterpolator()).around_planet$spaceRebase(old,delta,rotation);
             if(ship.logicalPose().position().distanceSquared(old)<ship.logicalPose().position().distanceSquared(new Vector3d(old).add(delta))) {
-                ship.logicalPose().position().add(delta);((ShipPoseHistory)ship).around_planet$shiftHistory(delta.x,delta.y,delta.z);
-                ((ShipClientHistory)ship).around_planet$shiftRenderCache(delta.x,delta.y,delta.z);
+                SpaceRotation.pose(ship.logicalPose(),old,target,rotation);((ShipPoseHistory)ship).around_planet$rotateHistory(old,target,rotation);
+                ((ShipClientHistory)ship).around_planet$rotateRenderCache(old,target,rotation);
             }ship.forceUpdateBounds();
         }
     }
