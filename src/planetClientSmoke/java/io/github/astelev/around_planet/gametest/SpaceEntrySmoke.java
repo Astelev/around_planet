@@ -70,6 +70,12 @@ public final class SpaceEntrySmoke {
         }else if(phase==1 && ticks-started>60 && client(mc)!=null && mc.player.isPassenger()) {
             mesh=client(mc).getRenderData();clientIdentity=client(mc);phase=2;started=ticks;
             server(mc,()->{var c=SubLevelContainer.getContainer(ship.getLevel());var center=ship.logicalPose().transformPosition(new Vector3d(ship.getSelfMassTracker().getCenterOfMass()));
+                try {var holding=c.getHoldingChunkMap();var column=new net.minecraft.world.level.ChunkPos((int)Math.floor(center.x/16),(int)Math.floor(center.z/16));
+                    var create=holding.getClass().getDeclaredMethod("getOrLoadHoldingChunk",net.minecraft.world.level.ChunkPos.class,boolean.class);create.setAccessible(true);create.invoke(holding,column,true);
+                    var unload=holding.getClass().getDeclaredMethod("processUnload",net.minecraft.world.level.ChunkPos.class,java.util.Collection.class);unload.setAccessible(true);unload.invoke(holding,column,List.of());
+                    require(c.getSubLevel(id)==ship && !ship.isRemoved() && ship.getLevel().players().getFirst().getVehicle()==seat,"Holding retirement removed a real seated player's ship");
+                    AroundPlanet.LOGGER.info("CRUISING_SEAT_HOLDING PASS: real player and native seat retained while the ordinary holding column retires");
+                }catch(ReflectiveOperationException e){throw new AssertionError(e);}
                 c.physicsSystem().getPipeline().teleport(ship,new Vector3d(ship.logicalPose().position()).add(0,PlanetConfig.SPACE_ENTRY.getAsInt()+2-center.y,0),ship.logicalPose().orientation());ship.updateBoundingBox();ship.updateLastPose();seat.positionRider(ship.getLevel().players().getFirst());});
         }else if(phase==2 && ticks-started>60 && SpaceCells.contains(mc.player) && client(mc)!=null) {
             var chunk=mc.level.getChunkSource().getChunk(mc.player.chunkPosition().x,mc.player.chunkPosition().z,ChunkStatus.FULL,false);
@@ -152,7 +158,7 @@ public final class SpaceEntrySmoke {
             require(mc.screen==null,"Map did not close on automatic reentry");require(mc.player.isPassenger(),"Return detached passenger");require(client(mc)==clientIdentity && client(mc).getRenderData()==mesh,"Return recreated ship");
             require(Math.abs(mc.player.getX()-80)<100 && Math.abs(mc.player.getZ()-60)<100,"Return lost surface location");
             require(!(Boolean)reflect("io.github.astelev.cruising.client.ClientFlightView","isActive",new Class<?>[]{net.minecraft.client.multiplayer.ClientLevel.class},mc.level),"Cruising disabled real chunks during descent");
-            server(mc,()->require(freeShip.logicalPose().position().y>2000 && freeShip.logicalPose().position().y<PlanetConfig.SPACE_ENTRY.getAsInt(),"Free construction stayed in the space cell"));
+            server(mc,()->require(freeShip.logicalPose().position().distance(ship.logicalPose().position())<100 && freeShip.logicalPose().position().y<PlanetConfig.SPACE_ENTRY.getAsInt(),"Free construction stayed in the space cell"));
             net.minecraft.client.Screenshot.grab(mc.gameDirectory,"space-return-alpha3.png",mc.getMainRenderTarget(),message->{});
             AroundPlanet.LOGGER.info("SPACE_SMOKE_RETURN PASS: automatic spherical reentry, free construction, original ship/plot/seat/passenger retained");
             mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);

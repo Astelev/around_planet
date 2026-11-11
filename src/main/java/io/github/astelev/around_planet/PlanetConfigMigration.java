@@ -6,7 +6,11 @@ public final class PlanetConfigMigration implements IConfigSpec {
     public static void migrate(CommentedConfig config){
         // Upgrade the old shipped default once, while retaining custom ascent thresholds.
         if(!config.contains("space.atmosphereTop") && config.get("space.entryY") instanceof Number n && n.intValue()==768)
-            config.set("space.entryY",3000);
+            config.set("space.entryY",2208);
+        if(!config.contains("space.cloudCeilingRevision")){
+            if(config.get("space.entryY") instanceof Number n && n.intValue()==3000)config.set("space.entryY",2208);
+            config.set("space.cloudCeilingRevision",1);
+        }
         if(!config.contains("planet.circumferenceBlocks")){
             Object old=config.get("eastWest.boundaryX");
             if(old instanceof Number n && n.longValue()>=128 && n.longValue()<=29_500_000){long size=(n.longValue()*2+16)/32*32;config.set("planet.circumferenceBlocks",(int)size);}

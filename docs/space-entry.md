@@ -1,4 +1,4 @@
-# First playable space transfer — 0.11.0-alpha.8
+# First playable space transfer — 0.11.0-alpha.9
 
 This alpha adds a fixed, nonrotating local frame to high-altitude Overworld
 cells. The owner's common translational velocity is stored in a persistent
@@ -9,7 +9,7 @@ active. A fixed Sun/star sky and shaded planet are rendered in space. Strict per
 ## Try it
 
 Install the same around_planet JAR on server and client; keep Sable/Aeronautics
-and Cruising 1.1.5 or later. No patched library and no new dimension are needed.
+and Cruising 1.1.6 or later. No patched library and no new dimension are needed.
 In `<world>/serverconfig/around_planet-server.toml`:
 
 ```toml
@@ -21,14 +21,14 @@ enabled = true
 
 [space]
 enabled = true
-entryY = 3000
+entryY = 2208
 cellY = 1536
 ```
 
 `space.enabled` defaults to true; the existing top-level experimental activation
 `eastWest.enabled` is still required for new arrivals. Restart after changing
 settings. Raise an **unanchored** assembly's combined center of mass through
-Y=3000. Its entire hull must clear ordinary terrain plus a safety margin. A real
+Y=2208. Its entire hull must clear ordinary terrain plus a safety margin. A real
 external/world constraint or rope prevents a partial transfer, as at the X seam.
 
 A destination is prepared asynchronously with ordinary, fully lit chunks. The

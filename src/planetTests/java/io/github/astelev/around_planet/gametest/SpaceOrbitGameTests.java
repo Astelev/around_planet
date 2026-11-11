@@ -83,7 +83,8 @@ public final class SpaceOrbitGameTests {
     public static void oldSpaceDefaultMovesAboveAeroworksButCustomSettingsRemain(GameTestHelper h) {
         var c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("space.entryY",768);
         new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);
-        h.assertTrue(((Number)c.get("space.entryY")).intValue()==3000 && ((Number)c.get("space.atmosphereTop")).intValue()==6000,"Old default was not upgraded with atmosphere settings");
+        h.assertTrue(((Number)c.get("space.entryY")).intValue()==2208 && ((Number)c.get("space.atmosphereTop")).intValue()==6000,"Old default was not upgraded with atmosphere settings");
+        c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("space.entryY",3000);new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);h.assertTrue(((Number)c.get("space.entryY")).intValue()==2208,"Alpha.8 default was not lowered");
         c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("space.entryY",900);
         new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);
         h.assertTrue(((Number)c.get("space.entryY")).intValue()==900,"Custom entry threshold was overwritten");
