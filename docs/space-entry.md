@@ -1,4 +1,4 @@
-# First playable space transfer — 0.11.0-alpha.5
+# First playable space transfer — 0.11.0-alpha.6
 
 This alpha adds a fixed, nonrotating local frame to high-altitude Overworld
 cells. The owner's common translational velocity is stored in a persistent
@@ -154,7 +154,7 @@ CPU task, and does not yet provide a separate view for each cell.
 
 ## Validation
 
-- 63 unit tests and 17 native physics GameTests with Sable/Create/Cruising.
+- 66 unit tests and 18 native physics GameTests with Sable/Create/Cruising.
 - New native three-axis out/back transfer of two rotary-connected bodies and a
   real Create seat/pig: unchanged joint layout, linear/angular momentum, plot
   seat position and mount; persisted membership and Cruising ticket exclusion.

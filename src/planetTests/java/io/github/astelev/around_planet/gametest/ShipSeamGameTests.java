@@ -322,6 +322,22 @@ public final class ShipSeamGameTests {
         }finally{data.remove(a);data.remove(b);io.github.astelev.around_planet.PlanetConfig.PLANET_SIZE.set(old);io.github.astelev.around_planet.compat.SpacePlanetScale.clear(level);}
     }
 
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
+    public static void unloadedReentryHoldsContactWithoutLoadingDestinationOrMovingStorage(GameTestHelper h){
+        var level=h.getLevel();var c=SubLevelContainer.getContainer(level);var cells=io.github.astelev.around_planet.space.SpaceCells.get(level);var data=io.github.astelev.around_planet.space.SpaceOrbitData.get(level.getServer());
+        var id=java.util.UUID.randomUUID();var missingBody=java.util.UUID.randomUUID();var planet=new io.github.astelev.around_planet.space.PlanetGeometry(65536,65536);
+        var cell=new io.github.astelev.around_planet.space.SpaceCells.Cell(id,40,0,1536,0,13000,736,24000,java.util.List.of(missingBody));var column=new net.minecraft.world.level.ChunkPos(13000>>4,24000>>4);
+        h.assertTrue(level.getChunkSource().getChunkNow(column.x,column.z)==null,"Dormant destination was already loaded");
+        try {cells.add(level,cell);var velocity=planet.frame(13000,24000).up().scale(-20);
+            data.navigate(id,new io.github.astelev.around_planet.space.SpaceNavigation(planet,planet.frame(13000,24000)));
+            data.put(id,new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(planet.position(13000,735,24000),velocity),0));
+            io.github.astelev.around_planet.compat.SpaceReentry.check(level,c,new java.util.HashSet<>(),new java.util.HashMap<>());
+            h.assertTrue(data.reentry(id).isPresent() && Math.abs(data.sample(id,level.getGameTime()).position().length()-planet.radius()-736)<1e-6,"Unloaded inbound record did not latch the surface contact");
+            h.assertTrue(level.getChunkSource().getChunkNow(column.x,column.z)==null && c.getSubLevel(missingBody)==null,"Dormant return forced destination chunks or a native body to load");
+            h.assertTrue(cells.forShip(missingBody).equals(cell) && data.sample(id,level.getGameTime()+200).velocity().equals(velocity),"Current dormant return unexpectedly relocated/removed its storage frame or lost velocity");h.succeed();
+        }finally{data.remove(id);cells.remove(level,cell);io.github.astelev.around_planet.compat.SpaceReentry.clear(level);}
+    }
+
     private static dev.ryanhcode.sable.sublevel.SubLevel SableTracking(net.minecraft.world.entity.Entity entity) {
         return dev.ryanhcode.sable.Sable.HELPER.getTrackingSubLevel(entity);
     }

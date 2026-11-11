@@ -13,5 +13,6 @@
   "key.around_planet.orbit_map": "Орбитальная карта",
   "key.categories.around_planet": "Around Planet",
   "around_planet.map.objects": "Другие объекты: %s",
-  "around_planet.map.dormant": "выгружен"
+  "around_planet.map.dormant": "выгружен",
+  "around_planet.map.global_axes": "Глобальные XYZ"
 }

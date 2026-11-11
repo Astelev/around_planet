@@ -1,4 +1,4 @@
-# Orbital map — 0.11.0-alpha.5
+# Orbital map — 0.11.0-alpha.6
 
 Press **M** in a registered space cell to open the live navigation map. M and Esc
 close it. The binding can be changed under Controls → Around Planet. In space,
@@ -12,6 +12,13 @@ already-open screens retain their own keyboard handling.
 - Wheel or +/- zooms; **R** or the Reset button fits the trajectory again.
 - The initial/reset view faces the orbital plane, making circular/elliptical
   paths readable without first finding their plane manually.
+
+The map also shows planet-centered **global inertial XYZ axes**: X red, Y green,
+Z blue. Positive rays have arrowheads and + labels; negative rays are dim/dashed.
+The globe occludes their hidden parts. A corner XYZ compass stays visible when
+pan/zoom takes the origin offscreen; it follows camera orientation but ignores
+pan and zoom. These are the cosmic axes shared by all orbit records, not F3's
+Minecraft storage coordinates or the ship's rotating local axes.
 
 The **checker-shaded sphere** is the planet, **yellow marker/arrow** is the current cell and
 velocity direction, and **cyan line** is the future coast trajectory. Distant
@@ -41,7 +48,7 @@ and server JARs: telemetry protocol version changed to include orbital parameter
 The view also receives a bounded one-Hz catalog of independent saved orbits,
 including unloaded records. See [planet size and objects](planet-scale-and-objects.md).
 
-Validation: 63 unit tests (including conics, shell termination, near-parabolic
+Validation: 66 unit tests (including conics, shell termination, near-parabolic
 cases, camera rotation, clipping and zoom limits); 8 GameTests without optional
 mods. Actual client with Sable/Create/Cruising/Sodium/DH/Simple Clouds checks M
 priority against another M binding and key events, zoom/rotate/pan/reset, live

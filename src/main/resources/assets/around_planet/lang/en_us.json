@@ -13,5 +13,6 @@
   "key.around_planet.orbit_map": "Orbital map",
   "key.categories.around_planet": "Around Planet",
   "around_planet.map.objects": "Other objects: %s",
-  "around_planet.map.dormant": "unloaded"
+  "around_planet.map.dormant": "unloaded",
+  "around_planet.map.global_axes": "Global XYZ"
 }

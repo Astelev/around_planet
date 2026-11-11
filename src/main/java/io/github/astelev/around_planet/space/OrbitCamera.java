@@ -15,6 +15,11 @@ public final class OrbitCamera {
         double c=y*Math.cos(pitch)-b*Math.sin(pitch),depth=y*Math.sin(pitch)+b*Math.cos(pitch);double scale=scale(viewportSize);
         return new Point(cx+panX+a*scale,cy+panY-c*scale,depth);
     }
+    /** Unit direction in screen axes (+X right, +Y down, positive depth toward viewer), without pan/zoom. */
+    public Point direction(SpaceVector p){
+        double x=p.dot(right),y=p.dot(up),z=p.dot(forward),a=x*Math.cos(yaw)+z*Math.sin(yaw),b=-x*Math.sin(yaw)+z*Math.cos(yaw);
+        return new Point(a,-(y*Math.cos(pitch)-b*Math.sin(pitch)),y*Math.sin(pitch)+b*Math.cos(pitch));
+    }
     public SpaceVector fromView(double x,double y,double z){
         double yy=y*Math.cos(pitch)+z*Math.sin(pitch),zz=-y*Math.sin(pitch)+z*Math.cos(pitch);
         double xx=x*Math.cos(yaw)-zz*Math.sin(yaw),z0=x*Math.sin(yaw)+zz*Math.cos(yaw);

@@ -103,3 +103,19 @@ by this diagnostic view.
 - Integrated client with Sodium/DH/Simple Clouds: actual free-ship promotion,
   catalog delivery of that ship plus a saved unloaded record, checker/rotated
   screenshots, key priority, live simulation and return with a real Create seat.
+
+## Current unloaded reentry behavior (alpha.6 audit)
+
+The desired dormant return is to move the saved body's world pose and holding
+address to the planet destination without creating physics bodies or requesting
+terrain tickets. It should then activate through native observation when that
+world chunk loads. That storage/index relocation is **not implemented yet**.
+
+Currently `SpaceReentry` evaluates an inward crossing even for an unloaded cell,
+persists/holds the contact and velocity, then checks that all owner bodies are
+available. A missing native body stops the transaction before destination
+readiness/ticket requests. The original cell/storage address remains. When the
+native group becomes available again, normal loaded reentry prepares destination
+chunks and moves the group. It does not yet arrive in a dormant destination
+chunk on its own. A new native regression test explicitly covers the held record,
+unchanged cell address, retained velocity, and absence of destination chunk loads.

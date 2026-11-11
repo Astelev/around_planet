@@ -119,10 +119,10 @@ public final class SpaceEntrySmoke {
         }else if(phase==26 && ticks-started>20){
             var catalog=io.github.astelev.around_planet.client.SpaceMapCatalog.current();if(catalog==null || catalog.bodies().stream().noneMatch(b->b.id().equals(detachedCell)) || catalog.bodies().stream().noneMatch(b->b.id().equals(passiveId) && !b.loaded()))return;
             AroundPlanet.LOGGER.info("ORBIT_CATALOG PASS: actual detached native ship and saved unloaded orbit received without loading that object");
-            net.minecraft.client.Screenshot.grab(mc.gameDirectory,"orbital-map-grid-alpha5.png",mc.getMainRenderTarget(),message->{});
+            net.minecraft.client.Screenshot.grab(mc.gameDirectory,"orbital-map-axes-alpha6.png",mc.getMainRenderTarget(),message->{});
             mc.screen.mouseScrolled(200,100,0,2);mc.screen.mouseDragged(200,120,0,80,35);mc.screen.mouseDragged(200,120,1,25,-10);phase=27;started=ticks;
         }else if(phase==27 && ticks-started>20){
-            net.minecraft.client.Screenshot.grab(mc.gameDirectory,"orbital-map-rotated-alpha5.png",mc.getMainRenderTarget(),message->{});
+            net.minecraft.client.Screenshot.grab(mc.gameDirectory,"orbital-map-axes-rotated-alpha6.png",mc.getMainRenderTarget(),message->{});
             mc.screen.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_R,0,0);mapKey(mc);require(mc.screen==null,"M failed to close orbital map");require(ordinaryMapEvents==0,"Close key reached a competing map event");mapKey(mc);require(mc.screen instanceof io.github.astelev.around_planet.client.OrbitMapScreen,"M failed to reopen map");
             AroundPlanet.LOGGER.info("ORBIT_MAP PASS: priority M open/close, live circular orbit, zoom/rotation/pan/reset; simulation kept running");phase=28;started=ticks;
         }else if(phase==28 && ticks-started>20){
