@@ -9,5 +9,5 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class SpaceFogMixin {
     @Shadow private static float fogRed,fogGreen,fogBlue;
     @Inject(method="setupColor",at=@At("TAIL"))
-    private static void space$blackBackground(CallbackInfo ci){if(SpaceRenderView.active()){fogRed=0;fogGreen=0;fogBlue=0;RenderSystem.clearColor(0,0,0,0);}}
+    private static void space$blackBackground(CallbackInfo ci){if(SpaceRenderView.active()){fogRed=.002f;fogGreen=.003f;fogBlue=.008f;RenderSystem.clearColor(fogRed,fogGreen,fogBlue,0);}}
 }

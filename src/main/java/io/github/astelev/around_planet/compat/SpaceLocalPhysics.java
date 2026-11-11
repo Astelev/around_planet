@@ -47,6 +47,7 @@ public final class SpaceLocalPhysics {
     }
     /** Called immediately before native integration, AFTER queued engine/other forces have been applied. */
     public static void before(SubLevelPhysicsSystem system,double dt) {
+        SpaceDormant.before(system,dt);
         var level=system.getLevel();if(!level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD))return;
         var c=SubLevelContainer.getContainer(level);var cells=SpaceCells.get(level).all();if(cells.isEmpty())return;
         var pipeline=system.getPipeline();var antiGravity=new Vector3d(DimensionPhysicsData.getGravity(level)).mul(-dt);
@@ -72,11 +73,12 @@ public final class SpaceLocalPhysics {
     }
     static boolean inCell(ServerSubLevel s,SpaceCells.Cell cell){
         if(cell.ships().contains(s.getUniqueId()))return true;
-        if(SpaceCells.containsShip(s.getLevel(),s.getUniqueId()) || s.getSelfMassTracker().getCenterOfMass()==null)return false;
+        if(SpaceDormant.bound(s) || SpaceCells.containsShip(s.getLevel(),s.getUniqueId()) || s.getSelfMassTracker().getCenterOfMass()==null)return false;
         var p=s.logicalPose().transformPosition(new Vector3d(s.getSelfMassTracker().getCenterOfMass()));return cell.contains(p.x,p.y,p.z);
     }
     /** Compensate tiny integrator/solver position drift without resetting angular or relative velocities. */
     public static void after(SubLevelPhysicsSystem system) {
+        SpaceDormant.after(system);
         var level=system.getLevel();if(!level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD))return;
         var c=SubLevelContainer.getContainer(level);
         for(var cell:SpaceCells.get(level).all()) {

@@ -10,9 +10,10 @@ import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import java.util.*;
 @EventBusSubscriber(modid="around_planet",value=Dist.CLIENT)
 public final class SpaceHud {
-    private static SpaceStatusPayload sample;private static net.minecraft.client.multiplayer.ClientLevel sampledLevel;
-    public static void accept(SpaceStatusPayload p){sample=p;sampledLevel=Minecraft.getInstance().level;}
+    private static long receivedTick;private static SpaceStatusPayload sample;private static net.minecraft.client.multiplayer.ClientLevel sampledLevel;
+    public static void accept(SpaceStatusPayload p){sample=p;sampledLevel=Minecraft.getInstance().level;receivedTick=sampledLevel==null?0:sampledLevel.getGameTime();}
     public static SpaceStatusPayload current(){return Minecraft.getInstance().level==sampledLevel?sample:null;}
+    public static double age(float partial){return sampledLevel==null?0:Math.max(0,Math.min(1,(sampledLevel.getGameTime()-receivedTick+partial)/20.0));}
     @SubscribeEvent public static void render(RenderGuiEvent.Post event){
         var mc=Minecraft.getInstance();var p=sample;
         if(mc.options.hideGui || mc.player==null || mc.level!=sampledLevel || p==null || !p.active() || !SpaceCells.contains(mc.player))return;

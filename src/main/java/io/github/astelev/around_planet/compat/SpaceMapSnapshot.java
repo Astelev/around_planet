@@ -13,9 +13,9 @@ public final class SpaceMapSnapshot {
         for(var id:new TreeSet<>(data.ids())){
             if(id.equals(focus.id()))continue;var other=data.navigation(id);var orbit=data.get(id).orElseThrow();
             if(other.isEmpty() || !other.get().planet().equals(nav.get().planet()) || !orbit.primary().equals(data.get(focus.id()).orElseThrow().primary()))continue;
-            var cell=cells.all().stream().filter(c->c.id().equals(id)).findFirst().orElse(null);boolean loaded=cell!=null && cell.ships().stream().allMatch(ship->container.getSubLevel(ship)!=null);
-            String name="Object "+id.toString().substring(0,8);if(loaded){var ship=container.getSubLevel(cell.ships().getFirst());if(ship.getName()!=null && !ship.getName().isBlank())name=ship.getName();}if(name.length()>80)name=name.substring(0,80);
-            var state=data.sample(id,level.getGameTime());var r=state.position();var v=state.velocity();list.add(new SpaceMapPayload.Body(id,name,r.x(),r.y(),r.z(),v.x(),v.y(),v.z(),orbit.mu(),cell==null?focus.originY():cell.originY(),data.reentry(id).isPresent(),loaded));
+            var cell=cells.all().stream().filter(c->c.id().equals(id)).findFirst().orElse(null);var dormant=SpaceDormantData.get(p.getServer()).get(id);boolean loaded=cell!=null && cell.ships().stream().allMatch(ship->container.getSubLevel(ship)!=null);
+            String name=dormant==null?"Object "+id.toString().substring(0,8):dormant.name();if(loaded){var ship=container.getSubLevel(cell.ships().getFirst());if(ship.getName()!=null && !ship.getName().isBlank())name=ship.getName();}if(name.length()>80)name=name.substring(0,80);
+            var state=data.sample(id,level.getGameTime());var r=state.position();var v=state.velocity();list.add(new SpaceMapPayload.Body(id,name,r.x(),r.y(),r.z(),v.x(),v.y(),v.z(),orbit.mu(),cell==null?(dormant==null?focus.originY():dormant.returnAltitude()):cell.originY(),data.reentry(id).isPresent(),loaded));
         }
         return new SpaceMapPayload(focus.id(),list.size(),List.copyOf(list.subList(0,Math.min(128,list.size()))));
     }

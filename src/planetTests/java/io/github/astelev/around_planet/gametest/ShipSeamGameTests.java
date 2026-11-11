@@ -338,6 +338,41 @@ public final class ShipSeamGameTests {
         }finally{data.remove(id);cells.remove(level,cell);io.github.astelev.around_planet.compat.SpaceReentry.clear(level);}
     }
 
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=200)
+    public static void nativeUnloadPromotesFastFreeBodyButNotSlowBodyOrOwner(GameTestHelper h){
+        var level=h.getLevel();var c=SubLevelContainer.getContainer(level);var pipeline=c.physicsSystem().getPipeline();var ships=new ArrayList<ServerSubLevel>();
+        var cells=io.github.astelev.around_planet.space.SpaceCells.get(level);var orbits=io.github.astelev.around_planet.space.SpaceOrbitData.get(level.getServer());var registry=io.github.astelev.around_planet.space.SpaceDormantData.get(level.getServer());
+        var previousBorder=PlanetBorders.get(level.getWorldBorder());double previousZ=PlanetBorders.boundaryZ(level.getWorldBorder());PlanetBorders.bind(level.getWorldBorder(),new EastWestTopology(131072),65536);
+        io.github.astelev.around_planet.space.SpaceCells.Cell parent=null,child=null;java.util.UUID dormantId=null;double oldThreshold=io.github.astelev.around_planet.PlanetConfig.SPACE_UNLOAD_SPEED.get();
+        try {io.github.astelev.around_planet.PlanetConfig.SPACE_UNLOAD_SPEED.set(1.0);
+            for(int i=0;i<3;i++){var pos=h.absolutePos(new BlockPos(1+3*i,2,1));level.setBlockAndUpdate(pos,Blocks.IRON_BLOCK.defaultBlockState());var ship=SubLevelAssemblyHelper.assembleBlocks(level,pos,java.util.List.of(pos),new BoundingBox3i(pos.getX(),pos.getY(),pos.getZ(),pos.getX(),pos.getY(),pos.getZ()));ships.add(ship);pipeline.teleport(ship,new Vector3d(i*40,1536,0),ship.logicalPose().orientation());ship.updateBoundingBox();ship.updateLastPose();}
+            var owner=ships.get(0);var fast=ships.get(1);var slow=ships.get(2);
+            parent=new io.github.astelev.around_planet.space.SpaceCells.Cell(java.util.UUID.randomUUID(),40,0,1536,0,0,736,0,java.util.List.of(owner.getUniqueId()));cells.add(level,parent);
+            var planet=new io.github.astelev.around_planet.space.PlanetGeometry(65536,65536);var frame=io.github.astelev.around_planet.space.SpaceFrame.IDENTITY;
+            var initial=new io.github.astelev.around_planet.space.SpaceState(new io.github.astelev.around_planet.space.SpaceVector(0,planet.radius()+1000,0),new io.github.astelev.around_planet.space.SpaceVector(20,30,40));
+            orbits.put(parent.id(),new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),initial,0));orbits.navigate(parent.id(),new io.github.astelev.around_planet.space.SpaceNavigation(planet,frame));
+            pipeline.addLinearAndAngularVelocity(fast,new Vector3d(2,0,0),new Vector3d(.1,.2,.3));pipeline.addLinearAndAngularVelocity(slow,new Vector3d(.1,0,0),new Vector3d());
+            var target=new net.minecraft.world.level.ChunkPos(-64,-64);boolean wasLoaded=level.getChunkSource().getChunkNow(target.x,target.z)!=null;
+            c.getHoldingChunkMap().moveToUnloaded(fast,new net.minecraft.world.level.ChunkPos(2,0));
+            var binding=registry.forShip(fast.getUniqueId());h.assertTrue(binding!=null,"Real native unload did not create an independent record below distance threshold");dormantId=binding.orbit();
+            h.assertTrue(c.getSubLevel(fast.getUniqueId())==null && c.getHoldingChunkMap().getHoldingSubLevel(fast.getUniqueId())!=null,"Fixture did not enter native holding storage");
+            h.assertTrue(cells.all().size()==1 && (level.getChunkSource().getChunkNow(target.x,target.z)!=null)==wasLoaded,"Dormant capture allocated/loaded an active destination");
+            var state=orbits.sample(dormantId,level.getGameTime());h.assertTrue(state.position().subtract(initial.position().add(new io.github.astelev.around_planet.space.SpaceVector(40,0,0))).length()<1e-6 && state.velocity().subtract(new io.github.astelev.around_planet.space.SpaceVector(22,30,40)).length()<1e-6,"Unload lost relative or inherited motion");
+            c.getHoldingChunkMap().moveToUnloaded(slow,new net.minecraft.world.level.ChunkPos(5,0));h.assertTrue(registry.forShip(slow.getUniqueId())==null,"Slow free body was unnecessarily promoted");
+            io.github.astelev.around_planet.compat.SpaceDormant.capture(owner,java.util.List.of(owner.getUniqueId()));h.assertTrue(registry.forShip(owner.getUniqueId())==null,"Owner was detached by unload speed policy");
+            var restoredData=io.github.astelev.around_planet.space.SpaceDormantData.load(registry.save(new net.minecraft.nbt.CompoundTag(),level.registryAccess()),level.registryAccess());h.assertTrue(restoredData.forShip(fast.getUniqueId()).equals(binding),"Dormant binding did not survive save/load");
+            var held=c.getHoldingChunkMap().getHoldingSubLevel(fast.getUniqueId());c.getHoldingChunkMap().loadHoldingSubLevel(held);var restored=(ServerSubLevel)c.getSubLevel(fast.getUniqueId());h.assertTrue(restored!=null,"Native holding record did not reload");
+            io.github.astelev.around_planet.compat.SpaceDormant.prepare(c);io.github.astelev.around_planet.compat.SpaceDormant.check(level,c);
+            if(cells.forShip(restored.getUniqueId())==null){for(int x=-66;x<=-62;x++)for(int z=-66;z<=-62;z++)level.getChunk(x,z);io.github.astelev.around_planet.compat.SpaceDormant.check(level,c);}
+            child=cells.forShip(restored.getUniqueId());h.assertTrue(child!=null && child.id().equals(dormantId) && registry.forShip(restored.getUniqueId())==null,"Observed dormant object did not acquire its own active frame");
+            h.assertTrue(pipeline.getLinearVelocity(restored,new Vector3d()).length()<1e-6 && orbits.sample(dormantId,level.getGameTime()).velocity().subtract(state.velocity()).length()<1e-6,"Activation counted stored motion twice");
+            h.assertTrue(pipeline.getAngularVelocity(restored,new Vector3d()).distance(new Vector3d(.1,.2,.3))<1e-6,"Native angular motion was lost on reactivation");h.succeed();
+        } finally {if(dormantId!=null){registry.remove(dormantId);orbits.remove(dormantId);}if(parent!=null){orbits.remove(parent.id());cells.remove(level,parent);}if(child!=null)cells.remove(level,child);
+            for(var old:ships){var current=c.getSubLevel(old.getUniqueId());if(current!=null)c.removeSubLevel(current,SubLevelRemovalReason.REMOVED);else{var holding=c.getHoldingChunkMap().getHoldingSubLevel(old.getUniqueId());if(holding!=null){c.getHoldingChunkMap().loadHoldingSubLevel(holding);var reloaded=c.getSubLevel(old.getUniqueId());if(reloaded!=null)c.removeSubLevel(reloaded,SubLevelRemovalReason.REMOVED);}}}
+            io.github.astelev.around_planet.compat.SpaceDormant.clear(level);io.github.astelev.around_planet.PlanetConfig.SPACE_UNLOAD_SPEED.set(oldThreshold);if(previousBorder==null)PlanetBorders.unbind(level.getWorldBorder());else PlanetBorders.bind(level.getWorldBorder(),previousBorder,previousZ);
+        }
+    }
+
     private static dev.ryanhcode.sable.sublevel.SubLevel SableTracking(net.minecraft.world.entity.Entity entity) {
         return dev.ryanhcode.sable.Sable.HELPER.getTrackingSubLevel(entity);
     }

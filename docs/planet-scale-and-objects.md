@@ -72,9 +72,7 @@ No persistent force-load ticket is added. Native Sable unload/observation rules
 still apply; the independent orbit record survives unloading and save/load.
 A reserved cell address is retained as metadata even when its body is unloaded;
 it does not by itself force terrain or native physics to remain loaded. The
-existing allocator is bounded to 81 addresses. Capturing objects that unload
-*before* promotion, releasing dormant addresses and arbitrary orbital rendezvous /
-reactivation scheduling remain subsequent lifecycle work.
+existing allocator is bounded to 81 addresses. Alpha.7 also [captures fast objects that unload before distance promotion](space-sky-and-unload.md), without reserving a new address while dormant. Releasing older dormant cell addresses and arbitrary orbital rendezvous / reactivation scheduling remain subsequent lifecycle work.
 
 ## Other trajectories on the map
 

@@ -15,6 +15,10 @@ public record SpaceTrajectory(String primary,long epochTick,SpaceState initial,d
     }
     public SpaceState at(long tick) {
         double dt=Math.subtractExact(tick,epochTick)/20.0;
+        return afterSeconds(dt);
+    }
+    public SpaceState afterSeconds(double dt) {
+        if(!Double.isFinite(dt))throw new IllegalArgumentException("Nonfinite elapsed time");
         if(dt==0)return initial;
         if(mu==0)return new SpaceState(initial.position().add(initial.velocity().scale(dt)),initial.velocity());
         return KeplerMotion.at(initial,mu,dt);

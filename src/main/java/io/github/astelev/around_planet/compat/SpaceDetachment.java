@@ -20,7 +20,7 @@ public final class SpaceDetachment {
         var cells=SpaceCells.get(level);if(cells.all().isEmpty()){SOURCE.remove(level);return;}var data=SpaceOrbitData.get(level.getServer());var sources=SOURCE.computeIfAbsent(level,k->new HashMap<>());
         var groups=ShipAssemblies.groups(level,container.getAllSubLevels());normalizeOwners(level,container,groups);
         sources.entrySet().removeIf(e->SpaceCells.containsShip(level,e.getKey()) || cells.all().stream().noneMatch(c->c.id().equals(e.getValue())) || container.getSubLevel(e.getKey())==null);
-        for(var group:groups){if(group.anchored() || group.ships().isEmpty() || group.ships().size()>256 || group.ships().stream().anyMatch(s->SpaceCells.containsShip(level,s.getUniqueId()) || !container.physicsSystem().getPhysicsHandle(s).isValid()))continue;
+        for(var group:groups){if(group.anchored() || group.ships().isEmpty() || group.ships().size()>256 || group.ships().stream().anyMatch(s->SpaceDormant.bound(s) || SpaceCells.containsShip(level,s.getUniqueId()) || !container.physicsSystem().getPhysicsHandle(s).isValid()))continue;
             var center=center(group.ships());if(center==null)continue;
             SpaceCells.Cell parent=null;
             for(var cell:cells.all())if(cell.contains(center.x,center.y,center.z) || group.ships().stream().anyMatch(s->cell.id().equals(sources.get(s.getUniqueId())))){parent=cell;break;}
@@ -50,7 +50,7 @@ public final class SpaceDetachment {
         for(var cell:cells.all()){
             if(data.get(cell.id()).isEmpty() || data.reentry(cell.id()).isPresent() || cell.ships().stream().anyMatch(id->c.getSubLevel(id)==null))continue;
             var group=groups.stream().filter(g->g.ships().stream().anyMatch(s->s.getUniqueId().equals(cell.ships().getFirst()))).findFirst().orElse(null);
-            if(group==null || group.anchored() || group.ships().stream().anyMatch(s->!c.physicsSystem().getPhysicsHandle(s).isValid()) || group.ships().stream().anyMatch(s->{var other=cells.forShip(s.getUniqueId());return other!=null && !other.id().equals(cell.id());}))continue;
+            if(group==null || group.anchored() || group.ships().stream().anyMatch(s->SpaceDormant.bound(s) || !c.physicsSystem().getPhysicsHandle(s).isValid()) || group.ships().stream().anyMatch(s->{var other=cells.forShip(s.getUniqueId());return other!=null && !other.id().equals(cell.id());}))continue;
             var ids=group.ships().stream().map(ServerSubLevel::getUniqueId).toList();if(new HashSet<>(ids).equals(new HashSet<>(cell.ships())))continue;
             var center=center(group.ships());if(center==null)continue;var nav=SpaceLocalPhysics.navigation(level,cell);var state=data.sample(cell.id(),level.getGameTime());var orbit=data.get(cell.id()).orElseThrow();
             var offset=new SpaceVector(center.x-cell.x(),center.y-cell.y(),center.z-cell.z());
