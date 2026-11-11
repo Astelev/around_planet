@@ -130,6 +130,7 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
         if (providers.gradleProperty('planetProgressiveSmoke').isPresent() || providers.gradleProperty('planetProgressiveTerrainSmoke').isPresent()) jvmArguments.add('-Daround_planet.progressiveSmoke=true')
         if (providers.gradleProperty('planetDiagnosticSmoke').isPresent()) jvmArguments.add('-Daround_planet.diagnosticSmoke=true')
         if (providers.gradleProperty('planetGenerationSmoke').isPresent()) jvmArguments.add('-Daround_planet.generationSmoke=true')
+        if (providers.gradleProperty('planetNorthSouthBorderSmoke').isPresent()) jvmArguments.add('-Daround_planet.northSouthBorderSmoke=true')
         if (providers.gradleProperty('planetSeatTransferSmoke').isPresent()) jvmArguments.addAll('-Daround_planet.seatTransferSmoke=true','-Daround_planet.traceShipTransfers=true')
         if (providers.gradleProperty('planetShipTransferSmoke').isPresent()) jvmArguments.addAll('-Daround_planet.shipTransferSmoke=true','-Daround_planet.traceShipTransfers=true')
         if (providers.gradleProperty('planetShipSmoke').isPresent()) jvmArguments.add('-Daround_planet.shipSmoke=true')

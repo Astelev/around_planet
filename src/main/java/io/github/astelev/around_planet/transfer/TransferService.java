@@ -62,9 +62,10 @@ public final class TransferService {
                 || !PlanetConfig.SPEC.isLoaded() || !PlanetConfig.ENABLED.getAsBoolean()) return;
         try {
             var topology=EastWestTopology.atBoundary(PlanetConfig.BOUNDARY.getAsInt());
-            PlanetBorders.bind(world.getWorldBorder(), topology);
+            PlanetBorders.bind(world.getWorldBorder(), topology,PlanetConfig.BOUNDARY_Z.getAsInt());
             if (world instanceof ServerLevel) AroundPlanet.LOGGER.info("East/west seams: X={} and X={}, circumference={} blocks",
                     topology.west(),topology.east(),topology.width());
+            if (world instanceof ServerLevel) AroundPlanet.LOGGER.info("Solid north/south borders: Z=±{} blocks",PlanetConfig.BOUNDARY_Z.getAsInt());
         } catch (IllegalArgumentException exception) {
             AroundPlanet.LOGGER.error("East/west transfer disabled: {}", exception.getMessage());
         }

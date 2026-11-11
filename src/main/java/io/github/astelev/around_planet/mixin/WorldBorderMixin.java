@@ -26,6 +26,14 @@ public abstract class WorldBorderMixin {
         var topology = PlanetBorders.get((WorldBorder)(Object)this);
         if (topology != null) cir.setReturnValue(Math.min(cir.getReturnValue(), topology.east()+PlanetBorders.guardMargin()));
     }
+    @Inject(method="getMinZ", at=@At("RETURN"), cancellable=true)
+    private void around_planet$north(CallbackInfoReturnable<Double> cir) {
+        cir.setReturnValue(Math.max(cir.getReturnValue(),-PlanetBorders.boundaryZ((WorldBorder)(Object)this)));
+    }
+    @Inject(method="getMaxZ", at=@At("RETURN"), cancellable=true)
+    private void around_planet$south(CallbackInfoReturnable<Double> cir) {
+        cir.setReturnValue(Math.min(cir.getReturnValue(),PlanetBorders.boundaryZ((WorldBorder)(Object)this)));
+    }
     @Inject(method="getCollisionShape", at=@At("HEAD"), cancellable=true)
     private void around_planet$guard(CallbackInfoReturnable<VoxelShape> cir) {
         var border = (WorldBorder)(Object)this;
