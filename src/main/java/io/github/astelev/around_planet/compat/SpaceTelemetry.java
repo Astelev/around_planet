@@ -6,9 +6,9 @@ public final class SpaceTelemetry {
     public static SpaceStatusPayload sample(ServerPlayer p){
         var cells=SpaceCells.get(p.serverLevel());var ship=SablePassengers.ship(p);var cell=ship==null?null:cells.forShip(ship.getUniqueId());
         if(cell==null)cell=cells.all().stream().filter(c->c.contains(p.getX(),p.getY(),p.getZ())).findFirst().orElse(null);
-        var data=SpaceOrbitData.get(p.getServer());if(cell==null || data.get(cell.id()).isEmpty())return new SpaceStatusPayload(false,0,0,0,0,0,0,0,false);
+        var data=SpaceOrbitData.get(p.getServer());if(cell==null || data.get(cell.id()).isEmpty())return new SpaceStatusPayload(false,0,0,0,0,0,0,0,false,0,0,0);
         var nav=SpaceLocalPhysics.navigation(p.serverLevel(),cell);var state=data.sample(cell.id(),p.serverLevel().getGameTime());var r=state.position();var v=state.velocity();
-        return new SpaceStatusPayload(true,r.x(),r.y(),r.z(),v.x(),v.y(),v.z(),r.length()-nav.planet().radius(),data.reentry(cell.id()).isPresent());
+        return new SpaceStatusPayload(true,r.x(),r.y(),r.z(),v.x(),v.y(),v.z(),r.length()-nav.planet().radius(),data.reentry(cell.id()).isPresent(),nav.planet().radius(),data.get(cell.id()).orElseThrow().mu(),cell.originY());
     }
     private SpaceTelemetry(){}
 }

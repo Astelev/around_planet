@@ -1,4 +1,4 @@
-# First playable space transfer — 0.11.0-alpha.3
+# First playable space transfer — 0.11.0-alpha.4
 
 This alpha adds a fixed, nonrotating local frame to high-altitude Overworld
 cells. The owner's common translational velocity is stored in a persistent
@@ -71,6 +71,10 @@ existing analytical two-body solver, with `mu=surfaceGravity*radius^2`.
 entry to retain straight inertial coasting. Existing planet-bound trajectories
 keep their captured parameters. A suborbital craft therefore returns without a
 continuous thrust to support it, while its physical owner center stays fixed.
+
+The [orbital map](orbital-map.md) opens on M in space, with a white planet disk,
+current trajectory, zoom/pan/rotation and return-shell marker. It does not pause
+simulation or change the trajectory.
 
 The HUD shows planet-centered XYZ, velocity components, total speed in m/s and
 km/h (one block = one meter), and radial altitude. Samples come from the server
@@ -145,7 +149,7 @@ CPU task, and does not yet provide a separate view for each cell.
 
 ## Validation
 
-- 48 unit tests and 13 native GameTests with Sable/Create/Cruising.
+- 57 unit tests and 13 native physics GameTests with Sable/Create/Cruising.
 - New native three-axis out/back transfer of two rotary-connected bodies and a
   real Create seat/pig: unchanged joint layout, linear/angular momentum, plot
   seat position and mount; persisted membership and Cruising ticket exclusion.

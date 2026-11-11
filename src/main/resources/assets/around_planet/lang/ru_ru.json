@@ -2,5 +2,14 @@
   "around_planet.space.coordinates": "Космическая область: координаты от центра планеты (м)",
   "around_planet.space.speed": "Скорость: %s м/с (%s км/ч)",
   "around_planet.space.altitude": "Высота над планетой: %s м",
-  "around_planet.space.returning": "Возврат: подготовка чанков назначения"
+  "around_planet.space.returning": "Возврат: подготовка чанков назначения",
+  "around_planet.map.title": "Орбитальная карта",
+  "around_planet.map.reset": "Сброс / R",
+  "around_planet.map.controls": "ЛКМ: вращение | ПКМ: сдвиг | Колесо: масштаб | M / Esc: закрыть",
+  "around_planet.map.legend": "Белый: планета   Жёлтый: аппарат   Голубой: траектория",
+  "around_planet.map.waiting": "Ожидание навигационных данных…",
+  "around_planet.map.extrema": "Перицентр: %s    Апоцентр: %s",
+  "around_planet.map.entry": "Возврат",
+  "key.around_planet.orbit_map": "Орбитальная карта",
+  "key.categories.around_planet": "Around Planet"
 }

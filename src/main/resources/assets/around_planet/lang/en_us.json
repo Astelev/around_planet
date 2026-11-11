@@ -2,5 +2,14 @@
   "around_planet.space.coordinates": "Space cell: planet-centered coordinates (m)",
   "around_planet.space.speed": "Speed: %s m/s (%s km/h)",
   "around_planet.space.altitude": "Planet altitude: %s m",
-  "around_planet.space.returning": "Reentry: waiting for destination chunks"
+  "around_planet.space.returning": "Reentry: waiting for destination chunks",
+  "around_planet.map.title": "Orbital map",
+  "around_planet.map.reset": "Reset / R",
+  "around_planet.map.controls": "Drag: rotate | Right drag: pan | Wheel: zoom | M / Esc: close",
+  "around_planet.map.legend": "White: planet   Yellow: craft   Cyan: future path",
+  "around_planet.map.waiting": "Waiting for navigation data…",
+  "around_planet.map.extrema": "Periapsis: %s    Apoapsis: %s",
+  "around_planet.map.entry": "Reentry",
+  "key.around_planet.orbit_map": "Orbital map",
+  "key.categories.around_planet": "Around Planet"
 }

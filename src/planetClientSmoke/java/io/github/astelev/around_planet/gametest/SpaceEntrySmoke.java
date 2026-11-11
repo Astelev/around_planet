@@ -28,6 +28,8 @@ import java.util.*;
 
 @EventBusSubscriber(modid=AroundPlanet.MOD_ID,value=Dist.CLIENT)
 public final class SpaceEntrySmoke {
+    private static net.minecraft.client.KeyMapping otherMap;private static int ordinaryMapEvents;
+    @SubscribeEvent public static void ordinaryKey(net.neoforged.neoforge.client.event.InputEvent.Key event){if(Boolean.getBoolean("around_planet.spaceEntrySmoke") && event.getKey()==org.lwjgl.glfw.GLFW.GLFW_KEY_M)ordinaryMapEvents++;}
     private static int ticks,phase,started;private static boolean captured;private static volatile Throwable failure;
     private static volatile ServerSubLevel freeShip;private static volatile ServerSubLevel ship;private static volatile Entity seat;private static volatile UUID id;private static Object mesh,clientIdentity,inventory;
     private static volatile boolean live,kicked;private static volatile long kickAt;private static volatile SpaceCells.Cell cell;private static volatile double baseline;
@@ -100,6 +102,22 @@ public final class SpaceEntrySmoke {
             });
             require(io.github.astelev.around_planet.client.SpaceHud.current()!=null && io.github.astelev.around_planet.client.SpaceHud.current().active(),"Cosmic HUD telemetry not received");
             AroundPlanet.LOGGER.info("SPACE_SMOKE_ACTIVE PASS: 10 seconds of native physics without a hover driver; stable owner frame, virtual impulse, background hidden and ship render retained");
+            phase=25;started=ticks;server(mc,()->{
+                var level=ship.getLevel();var orbit=io.github.astelev.around_planet.space.SpaceOrbitData.get(level.getServer());var planet=new io.github.astelev.around_planet.space.PlanetGeometry(65536,65536);var frame=planet.frame(cell.originX(),cell.originZ());
+                orbit.navigate(cell.id(),new io.github.astelev.around_planet.space.SpaceNavigation(planet,frame));double mu=9.81*planet.radius()*planet.radius(),r=planet.radius()+770;
+                orbit.put(cell.id(),new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(planet.position(cell.originX(),770,cell.originZ()),frame.toCosmic(new io.github.astelev.around_planet.space.SpaceVector(Math.sqrt(mu/r),0,0))),mu));
+            });
+        }else if(phase==25 && ticks-started>20 && io.github.astelev.around_planet.client.SpaceHud.current().mu()>0){
+            otherMap=new net.minecraft.client.KeyMapping("test.other_map",com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM,org.lwjgl.glfw.GLFW.GLFW_KEY_M,"test");
+            mapKey(mc);require(mc.screen instanceof io.github.astelev.around_planet.client.OrbitMapScreen,"M did not open orbital map");require(!mc.isPaused(),"Orbital map paused simulation");require(!otherMap.consumeClick() && ordinaryMapEvents==0,"M reached a competing map binding/event");phase=26;started=ticks;
+        }else if(phase==26 && ticks-started>20){
+            net.minecraft.client.Screenshot.grab(mc.gameDirectory,"orbital-map-fit-alpha4.png",mc.getMainRenderTarget(),message->{});
+            mc.screen.mouseScrolled(200,100,0,2);mc.screen.mouseDragged(200,120,0,80,35);mc.screen.mouseDragged(200,120,1,25,-10);phase=27;started=ticks;
+        }else if(phase==27 && ticks-started>20){
+            net.minecraft.client.Screenshot.grab(mc.gameDirectory,"orbital-map-rotated-alpha4.png",mc.getMainRenderTarget(),message->{});
+            mc.screen.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_R,0,0);mapKey(mc);require(mc.screen==null,"M failed to close orbital map");require(ordinaryMapEvents==0,"Close key reached a competing map event");mapKey(mc);require(mc.screen instanceof io.github.astelev.around_planet.client.OrbitMapScreen,"M failed to reopen map");
+            AroundPlanet.LOGGER.info("ORBIT_MAP PASS: priority M open/close, live circular orbit, zoom/rotation/pan/reset; simulation kept running");phase=28;started=ticks;
+        }else if(phase==28 && ticks-started>20){
             phase=3;started=ticks;server(mc,()->{
                 var level=ship.getLevel();var c=SubLevelContainer.getContainer(level);var pos=new BlockPos(43,280,43);level.setBlockAndUpdate(pos,Blocks.IRON_BLOCK.defaultBlockState());
                 freeShip=SubLevelAssemblyHelper.assembleBlocks(level,pos,List.of(pos),new BoundingBox3i(43,280,43,43,280,43));freeShip.setName("around_space_smoke");c.addForceLoadTicket(freeShip,SubLevelLoadingTicketType.COMMAND_FORCED,Unit.INSTANCE);
@@ -108,7 +126,7 @@ public final class SpaceEntrySmoke {
                 orbit.put(cell.id(),new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(planet.position(80,737,60),planet.frame(80,60).toCosmic(new io.github.astelev.around_planet.space.SpaceVector(10,-20,2))),0));
             });
         }else if(phase==3 && ticks-started>60 && !SpaceCells.contains(mc.player) && mc.player.getY()<PlanetConfig.SPACE_ENTRY.getAsInt()) {
-            require(mc.player.isPassenger(),"Return detached passenger");require(client(mc)==clientIdentity && client(mc).getRenderData()==mesh,"Return recreated ship");
+            require(mc.screen==null,"Map did not close on automatic reentry");require(mc.player.isPassenger(),"Return detached passenger");require(client(mc)==clientIdentity && client(mc).getRenderData()==mesh,"Return recreated ship");
             require(Math.abs(mc.player.getX()-80)<100 && Math.abs(mc.player.getZ()-60)<100,"Return lost surface location");
             require((Boolean)reflect("io.github.astelev.cruising.client.ClientFlightView","isActive",new Class<?>[]{net.minecraft.client.multiplayer.ClientLevel.class},mc.level),"Cruising height mode did not resume outside space");
             server(mc,()->require(freeShip.logicalPose().position().y<1100,"Free construction stayed in the space cell"));
@@ -116,8 +134,9 @@ public final class SpaceEntrySmoke {
             AroundPlanet.LOGGER.info("SPACE_SMOKE_RETURN PASS: automatic spherical reentry, free construction, original ship/plot/seat/passenger retained");
             mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
             phase=4;started=ticks;live=false;server(mc,()->{var p=ship.getLevel().players().getFirst();p.stopRiding();require(Sable.HELPER.getContaining(p)==null,"Dismount leaked plot position");p.teleportTo(0,280,0);p.getAbilities().flying=true;p.onUpdateAbilities();seat.discard();var c=SubLevelContainer.getContainer(ship.getLevel());c.removeForceLoadTicket(ship,SubLevelLoadingTicketType.COMMAND_FORCED,Unit.INSTANCE);c.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);if(freeShip!=null){c.removeForceLoadTicket(freeShip,SubLevelLoadingTicketType.COMMAND_FORCED,Unit.INSTANCE);c.removeSubLevel(freeShip,SubLevelRemovalReason.REMOVED);}c.physicsSystem().setPaused(false);});
-        }else if(phase==4 && ticks-started>40)mc.stop();
+        }else if(phase==4 && ticks-started>40){mapKey(mc);require(!(mc.screen instanceof io.github.astelev.around_planet.client.OrbitMapScreen) && otherMap.consumeClick() && ordinaryMapEvents>0,"Surface map binding was swallowed outside space");AroundPlanet.LOGGER.info("ORBIT_MAP_SURFACE PASS: ordinary M binding/events restored outside space");mc.stop();}
     }
+    private static void mapKey(Minecraft mc){mc.keyboardHandler.keyPress(mc.getWindow().getWindow(),org.lwjgl.glfw.GLFW.GLFW_KEY_M,0,org.lwjgl.glfw.GLFW.GLFW_PRESS,0);mc.keyboardHandler.keyPress(mc.getWindow().getWindow(),org.lwjgl.glfw.GLFW.GLFW_KEY_M,0,org.lwjgl.glfw.GLFW.GLFW_RELEASE,0);}
     private static Object reflect(String name,String method,Class<?>[] types,Object...args) {try{return Class.forName(name).getMethod(method,types).invoke(null,args);}catch(ReflectiveOperationException e){throw new AssertionError(e);}}
     private static ClientSubLevel client(Minecraft mc){return id==null?null:(ClientSubLevel)SubLevelContainer.getContainer(mc.level).getSubLevel(id);}
     @FunctionalInterface private interface Action{void run()throws Exception;}

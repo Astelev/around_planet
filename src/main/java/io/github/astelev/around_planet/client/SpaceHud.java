@@ -12,7 +12,7 @@ import java.util.*;
 public final class SpaceHud {
     private static SpaceStatusPayload sample;private static net.minecraft.client.multiplayer.ClientLevel sampledLevel;
     public static void accept(SpaceStatusPayload p){sample=p;sampledLevel=Minecraft.getInstance().level;}
-    public static SpaceStatusPayload current(){return sample;}
+    public static SpaceStatusPayload current(){return Minecraft.getInstance().level==sampledLevel?sample:null;}
     @SubscribeEvent public static void render(RenderGuiEvent.Post event){
         var mc=Minecraft.getInstance();var p=sample;
         if(mc.options.hideGui || mc.player==null || mc.level!=sampledLevel || p==null || !p.active() || !SpaceCells.contains(mc.player))return;

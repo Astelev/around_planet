@@ -13,12 +13,12 @@ import java.util.*;
 
 /** Small server-authoritative HUD sample, four times per second, only for occupied space cells. */
 @EventBusSubscriber(modid="around_planet")
-public record SpaceStatusPayload(boolean active,double x,double y,double z,double vx,double vy,double vz,double altitude,boolean returning) implements CustomPacketPayload {
+public record SpaceStatusPayload(boolean active,double x,double y,double z,double vx,double vy,double vz,double altitude,boolean returning,double radius,double mu,double returnAltitude) implements CustomPacketPayload {
     public static final Type<SpaceStatusPayload> TYPE=new Type<>(ResourceLocation.fromNamespaceAndPath("around_planet","space_status"));
-    public static final StreamCodec<RegistryFriendlyByteBuf,SpaceStatusPayload> CODEC=StreamCodec.of((b,p)->{b.writeBoolean(p.active);for(double n:new double[]{p.x,p.y,p.z,p.vx,p.vy,p.vz,p.altitude})b.writeDouble(n);b.writeBoolean(p.returning);},b->new SpaceStatusPayload(b.readBoolean(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readBoolean()));
+    public static final StreamCodec<RegistryFriendlyByteBuf,SpaceStatusPayload> CODEC=StreamCodec.of((b,p)->{b.writeBoolean(p.active);for(double n:new double[]{p.x,p.y,p.z,p.vx,p.vy,p.vz,p.altitude})b.writeDouble(n);b.writeBoolean(p.returning);b.writeDouble(p.radius);b.writeDouble(p.mu);b.writeDouble(p.returnAltitude);},b->new SpaceStatusPayload(b.readBoolean(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readDouble(),b.readBoolean(),b.readDouble(),b.readDouble(),b.readDouble()));
     private static final Set<ServerPlayer> SENT=Collections.newSetFromMap(new WeakHashMap<>());
     @Override public Type<SpaceStatusPayload> type(){return TYPE;}
-    public static void register(RegisterPayloadHandlersEvent e){e.registrar("1").optional().playToClient(TYPE,CODEC,(p,c)->c.enqueueWork(()->io.github.astelev.around_planet.client.SpaceHud.accept(p)));}
+    public static void register(RegisterPayloadHandlersEvent e){e.registrar("2").optional().playToClient(TYPE,CODEC,(p,c)->c.enqueueWork(()->io.github.astelev.around_planet.client.SpaceHud.accept(p)));}
     @SubscribeEvent public static void tick(LevelTickEvent.Post event){
         if(!(event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) || !level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD) || level.getGameTime()%5!=0 || !net.neoforged.fml.ModList.get().isLoaded("sable"))return;
         for(var player:level.players())if(player.connection.hasChannel(TYPE)) {

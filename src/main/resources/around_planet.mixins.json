@@ -93,6 +93,7 @@
     "SpaceCloudDhRenderMixin",
     "SpaceFogMixin",
     "SpaceShipRenderMonitorMixin",
-    "SpaceBlockEntityRenderMixin"
+    "SpaceBlockEntityRenderMixin",
+    "OrbitMapKeyboardMixin"
   ]
 }
