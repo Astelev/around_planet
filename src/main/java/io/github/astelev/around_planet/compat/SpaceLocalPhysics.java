@@ -45,6 +45,14 @@ public final class SpaceLocalPhysics {
         SpaceReentry.entered(level,cell.id(),data.sample(cell.id(),level.getGameTime()).position());
         for(var s:group.ships)c.physicsSystem().getPipeline().addLinearAndAngularVelocity(s,new Vector3d(group.velocity).negate(),new Vector3d());
     }
+    /** An external force on the owner frame creates the opposite relative impulse for free bodies. */
+    public static void externalImpulse(ServerLevel level,SpaceCells.Cell cell,SpaceVector localDelta) {
+        var c=SubLevelContainer.getContainer(level);var pipeline=c.physicsSystem().getPipeline();
+        for(var ship:c.getAllSubLevels())if(!ship.isRemoved() && inCell(ship,cell) && !cell.ships().contains(ship.getUniqueId()) && c.physicsSystem().getPhysicsHandle(ship).isValid())
+            pipeline.addLinearAndAngularVelocity(ship,new Vector3d(-localDelta.x(),-localDelta.y(),-localDelta.z()),new Vector3d());
+        for(var entity:level.getAllEntities())if(!entity.isPassenger() && cell.contains(entity.getX(),entity.getY(),entity.getZ()) && SablePassengers.ship(entity)==null)
+            entity.setDeltaMovement(entity.getDeltaMovement().add(-localDelta.x()/20,-localDelta.y()/20,-localDelta.z()/20));
+    }
     /** Called immediately before native integration, AFTER queued engine/other forces have been applied. */
     public static void before(SubLevelPhysicsSystem system,double dt) {
         SpaceDormant.before(system,dt);

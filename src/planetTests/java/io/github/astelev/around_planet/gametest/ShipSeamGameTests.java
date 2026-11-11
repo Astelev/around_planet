@@ -240,11 +240,12 @@ public final class ShipSeamGameTests {
             cell=new io.github.astelev.around_planet.space.SpaceCells.Cell(java.util.UUID.randomUUID(),40,101,1536,80,0,736,0,java.util.List.of(a.getUniqueId(),b.getUniqueId()));cells.add(level,cell);
             var planet=new io.github.astelev.around_planet.space.PlanetGeometry(256,256);var frame=io.github.astelev.around_planet.space.SpaceFrame.IDENTITY;
             orbits.navigate(cell.id(),new io.github.astelev.around_planet.space.SpaceNavigation(planet,frame));
+            double returnY=io.github.astelev.around_planet.compat.SpaceAtmosphere.returnAltitude();
             var velocity=planet.frame(90,50).toCosmic(new io.github.astelev.around_planet.space.SpaceVector(30,-1000000,2));
             // A full-shell step followed by a maneuver has already rebased the trajectory epoch.
             // Its latest point is outside and outbound; only the previous observed position detects entry.
-            io.github.astelev.around_planet.compat.SpaceReentry.entered(level,cell.id(),planet.position(90,737,50));
-            orbits.put(cell.id(),new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(planet.position(90,737,50).scale(-2),velocity),0));
+            io.github.astelev.around_planet.compat.SpaceReentry.entered(level,cell.id(),planet.position(90,returnY+1,50));
+            orbits.put(cell.id(),new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(planet.position(90,returnY+1,50).scale(-2),velocity),0));
             pipeline.addLinearAndAngularVelocity(free,new Vector3d(3,1,2),new Vector3d(.1,.2,.3));
             var before=new Vector3d(free.logicalPose().position());var oldOmega=pipeline.getAngularVelocity(free,new Vector3d());
             var request=new java.util.HashSet<java.util.UUID>();var cooldown=new java.util.HashMap<java.util.UUID,Long>();
@@ -257,7 +258,8 @@ public final class ShipSeamGameTests {
             }
             h.assertTrue(cells.forShip(a.getUniqueId())==null && orbits.get(cell.id()).isEmpty(),"Automatic radial reentry did not complete");
             var actualCenter=a.logicalPose().transformPosition(new Vector3d(a.getSelfMassTracker().getCenterOfMass())).add(b.logicalPose().transformPosition(new Vector3d(b.getSelfMassTracker().getCenterOfMass()))).mul(.5);
-            h.assertTrue(Math.abs(actualCenter.y-736)<.01,"Reentry altitude is wrong");
+            h.assertTrue(Math.abs(actualCenter.y-returnY)<.01,"Reentry altitude is wrong");
+            h.assertTrue(pipeline.getLinearVelocity(a,new Vector3d()).length()<=20.001,"Unsafe owner velocity passed into native reentry");
             var destination=planet.frame(actualCenter.x,actualCenter.z);var q=io.github.astelev.around_planet.compat.SpaceRotation.between(frame,destination);var boost=destination.toLocal(velocity);
             var expectedV=q.transform(new Vector3d(3,1,2)).add(boost.x(),boost.y(),boost.z());// Rapier stores velocity with float precision: one ULP at this deliberately extreme speed.
             h.assertTrue(pipeline.getLinearVelocity(free,new Vector3d()).distance(expectedV)<=Math.max(1e-6,Math.ulp((float)expectedV.length())),"Free body velocity: actual="+pipeline.getLinearVelocity(free,new Vector3d())+" expected="+expectedV+" error="+pipeline.getLinearVelocity(free,new Vector3d()).distance(expectedV));
@@ -328,11 +330,12 @@ public final class ShipSeamGameTests {
         var id=java.util.UUID.randomUUID();var missingBody=java.util.UUID.randomUUID();var planet=new io.github.astelev.around_planet.space.PlanetGeometry(65536,65536);
         var cell=new io.github.astelev.around_planet.space.SpaceCells.Cell(id,40,0,1536,0,13000,736,24000,java.util.List.of(missingBody));var column=new net.minecraft.world.level.ChunkPos(13000>>4,24000>>4);
         h.assertTrue(level.getChunkSource().getChunkNow(column.x,column.z)==null,"Dormant destination was already loaded");
+        double returnY=io.github.astelev.around_planet.compat.SpaceAtmosphere.returnAltitude();
         try {cells.add(level,cell);var velocity=planet.frame(13000,24000).up().scale(-20);
             data.navigate(id,new io.github.astelev.around_planet.space.SpaceNavigation(planet,planet.frame(13000,24000)));
-            data.put(id,new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(planet.position(13000,735,24000),velocity),0));
+            data.put(id,new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(planet.position(13000,returnY-1,24000),velocity),0));
             io.github.astelev.around_planet.compat.SpaceReentry.check(level,c,new java.util.HashSet<>(),new java.util.HashMap<>());
-            h.assertTrue(data.reentry(id).isPresent() && Math.abs(data.sample(id,level.getGameTime()).position().length()-planet.radius()-736)<1e-6,"Unloaded inbound record did not latch the surface contact");
+            h.assertTrue(data.reentry(id).isPresent() && Math.abs(data.sample(id,level.getGameTime()).position().length()-planet.radius()-returnY)<1e-6,"Unloaded inbound record did not latch the surface contact");
             h.assertTrue(level.getChunkSource().getChunkNow(column.x,column.z)==null && c.getSubLevel(missingBody)==null,"Dormant return forced destination chunks or a native body to load");
             h.assertTrue(cells.forShip(missingBody).equals(cell) && data.sample(id,level.getGameTime()+200).velocity().equals(velocity),"Current dormant return unexpectedly relocated/removed its storage frame or lost velocity");h.succeed();
         }finally{data.remove(id);cells.remove(level,cell);io.github.astelev.around_planet.compat.SpaceReentry.clear(level);}

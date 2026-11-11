@@ -1,16 +1,15 @@
-# First playable space transfer — 0.11.0-alpha.6
+# First playable space transfer — 0.11.0-alpha.8
 
 This alpha adds a fixed, nonrotating local frame to high-altitude Overworld
 cells. The owner's common translational velocity is stored in a persistent
 virtual trajectory; native rotation, bearings and relative body motion remain
 active. Automatic spherical reentry and a server-authoritative navigation HUD are now
-active. A planet visual and strict per-cell entity/interaction isolation remain
-subsequent stages.
+active. A fixed Sun/star sky and shaded planet are rendered in space. Strict per-cell entity/interaction isolation remains a subsequent stage.
 
 ## Try it
 
 Install the same around_planet JAR on server and client; keep Sable/Aeronautics
-and the existing Cruising JAR. No patched library and no new dimension are needed.
+and Cruising 1.1.5 or later. No patched library and no new dimension are needed.
 In `<world>/serverconfig/around_planet-server.toml`:
 
 ```toml
@@ -22,14 +21,14 @@ enabled = true
 
 [space]
 enabled = true
-entryY = 768
+entryY = 3000
 cellY = 1536
 ```
 
 `space.enabled` defaults to true; the existing top-level experimental activation
 `eastWest.enabled` is still required for new arrivals. Restart after changing
 settings. Raise an **unanchored** assembly's combined center of mass through
-Y=768. Its entire hull must clear ordinary terrain plus a safety margin. A real
+Y=3000. Its entire hull must clear ordinary terrain plus a safety margin. A real
 external/world constraint or rope prevents a partial transfer, as at the X seam.
 
 A destination is prepared asynchronously with ordinary, fully lit chunks. The
@@ -44,7 +43,7 @@ Cells have a 256-block half extent and 1024-block spacing. Up to 81 physical
 addresses are considered near world origin, restricted by the current border.
 Large assemblies that do not fit are not transferred. Cell membership, return
 location and native ship IDs are saved in `data/around_planet_space_cells.dat`.
-The physical return destination is the original X/Z, at `entryY-32`, so it does
+The physical return destination is the spherical contact projected to world X/Z, at the current `entryY-32`, so it does
 not immediately trigger another ascent.
 
 ## Local physics
@@ -182,3 +181,5 @@ multiple simultaneously occupied cells and latency-injected UDP transfers have
 not been verified in this alpha. Reliable transfer packets rebase logical/render
 history and normalize old-coordinate snapshots; this retains the existing seam
 approach rather than promising zero visual discontinuity under all latency.
+
+See [atmospheric reentry](atmospheric-reentry.md) for the 6000-block inbound shell, progressive drag and safe handoff.

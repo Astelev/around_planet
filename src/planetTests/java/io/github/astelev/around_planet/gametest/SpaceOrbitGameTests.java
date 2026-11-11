@@ -79,6 +79,18 @@ public final class SpaceOrbitGameTests {
         c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("eastWest.boundaryX",65536);c.set("planet.circumferenceBlocks",262144);new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);h.assertTrue(((Number)c.get("planet.circumferenceBlocks")).intValue()==262144,"Legacy field overrode explicitly selected planet size");
         c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("eastWest.boundaryX",256);new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);h.assertTrue(((Number)c.get("planet.circumferenceBlocks")).intValue()==512,"Custom test-world size was not preserved");h.succeed();
     }
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
+    public static void oldSpaceDefaultMovesAboveAeroworksButCustomSettingsRemain(GameTestHelper h) {
+        var c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("space.entryY",768);
+        new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);
+        h.assertTrue(((Number)c.get("space.entryY")).intValue()==3000 && ((Number)c.get("space.atmosphereTop")).intValue()==6000,"Old default was not upgraded with atmosphere settings");
+        c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("space.entryY",900);
+        new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);
+        h.assertTrue(((Number)c.get("space.entryY")).intValue()==900,"Custom entry threshold was overwritten");
+        c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("space.entryY",768);c.set("space.atmosphereTop",5000);
+        new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);
+        h.assertTrue(((Number)c.get("space.entryY")).intValue()==768,"Already migrated custom setting changed on reload");h.succeed();
+    }
     private static void reject(GameTestHelper h,CompoundTag tag) {
         try{SpaceOrbitData.load(tag,h.getLevel().registryAccess());throw new AssertionError("Invalid save accepted");}
         catch(IllegalArgumentException expected){}
