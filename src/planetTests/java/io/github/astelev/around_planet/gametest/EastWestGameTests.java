@@ -121,6 +121,32 @@ public final class EastWestGameTests {
         } finally {saved.forEach(level::setBlockAndUpdate);}
     }
 
+    @GameTest(template="empty",timeoutTicks=100)
+    public static void northSouthWallsPreserveEastWestSeam(GameTestHelper h) {
+        var border=new net.minecraft.world.level.border.WorldBorder();
+        double originalSize=border.getSize();
+        PlanetBorders.bind(border,new EastWestTopology(512),128);
+        try {
+            h.assertTrue(border.getMinZ()==-128 && border.getMaxZ()==128,"Solid north/south bounds missing");
+            h.assertTrue(border.isWithinBounds(256.75,0) && border.isWithinBounds(-256.75,0),"North/south border blocked the east/west crossing corridor");
+            h.assertTrue(!border.isWithinBounds(0,128.5) && !border.isWithinBounds(0,-128.5),"North/south wall is traversable");
+            for(double z:new double[]{128,-129})
+                h.assertTrue(Shapes.joinIsNotEmpty(border.getCollisionShape(),Shapes.box(0,190,z,1,191,z+1),BooleanOp.AND),"North/south wall has no collision");
+            h.assertTrue(!Shapes.joinIsNotEmpty(border.getCollisionShape(),Shapes.box(0,190,-127,1,191,127),BooleanOp.AND),"Border obstructs the interior");
+            var probe=new ItemEntity(h.getLevel(),0,200,127,new ItemStack(Items.STICK));
+            h.assertTrue(PlanetBorders.warningDistance(border,probe)==1,"South wall danger warning missing");
+            probe.setPos(0,200,-127);h.assertTrue(PlanetBorders.warningDistance(border,probe)==1,"North wall danger warning missing");
+            probe.setPos(256.75,200,0);h.assertTrue(PlanetBorders.warningDistance(border,probe)==128,"Invisible east/west guard triggers danger warning");
+            border.setSize(100);
+            h.assertTrue(border.getMinZ()==-50 && border.getMaxZ()==50 && border.getMinX()==-50,"Tighter vanilla border ignored");
+            border.setSize(originalSize);PlanetBorders.unbind(border);
+            h.assertTrue(border.getMaxZ()>1000000,"Disabling planet border did not restore vanilla bounds");
+            PlanetBorders.bind(border,new EastWestTopology(512),128);border.setCenter(0,1000);border.setSize(20);
+            h.assertTrue(border.getMinZ()==990 && border.getMaxZ()==1010,"Disjoint vanilla Z border inverted");
+            h.succeed();
+        } finally {PlanetBorders.unbind(border);}
+    }
+
     @GameTest(template="empty",timeoutTicks=400)
     public static void realChunksEntitiesVehiclesAndDirectionalBorder(GameTestHelper h) {
         var level=h.getLevel(); var border=level.getWorldBorder();

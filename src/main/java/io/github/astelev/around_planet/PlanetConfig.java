@@ -5,7 +5,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS,PROGRESSIVE;
-    public static final ModConfigSpec.IntValue BOUNDARY, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
+    public static final ModConfigSpec.IntValue BOUNDARY,BOUNDARY_Z, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
     static {
         var b = new ModConfigSpec.Builder();
         b.push("eastWest");
@@ -15,6 +15,9 @@ public final class PlanetConfig {
         BOUNDARY = b.comment("Absolute X of each seam: +boundaryX wraps to -boundaryX, not to zero.",
                 "Multiple of 16; total circumference is twice this value. Replaces the old widthBlocks setting.")
                 .defineInRange("boundaryX", 65536, 128, 29500000);
+        BOUNDARY_Z=b.comment("Absolute Z of the solid north/south world border, centered at Z=0. No north/south wrapping.",
+                "Applies only when eastWest.enabled is true. A tighter vanilla border remains in effect. Restart required.")
+                .defineInRange("boundaryZ",65536,128,29500000);
         ACTIVATION = b.comment("Distance from either seam at which destination preloading begins; limited to one quarter of width.")
                 .defineInRange("activationDistance", 128, 16, 1024);
         RADIUS = b.comment("Destination chunk radius. Bounded transient tickets; no synchronous generation in the entity tick.")

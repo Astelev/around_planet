@@ -66,7 +66,7 @@ public final class SeamDiagnostics {
         AroundPlanet.LOGGER.info("[AP-DIAG] session={} side={} summary={} epochMs={} windowMs={} {} counts={} timings={}",SESSION,side,++b.seq,System.currentTimeMillis(),windowMs,state,counts,timings);
     }
     public static String config() {
-        return "config{enabled="+PlanetConfig.ENABLED.getAsBoolean()+",boundary="+PlanetConfig.BOUNDARY.getAsInt()+",radius="+PlanetConfig.RADIUS.getAsInt()+",activation="+PlanetConfig.ACTIVATION.getAsInt()
+        return "config{enabled="+PlanetConfig.ENABLED.getAsBoolean()+",boundary="+PlanetConfig.BOUNDARY.getAsInt()+",boundaryZ="+PlanetConfig.BOUNDARY_Z.getAsInt()+",radius="+PlanetConfig.RADIUS.getAsInt()+",activation="+PlanetConfig.ACTIVATION.getAsInt()
                 +",snapTicks="+PlanetConfig.SNAPSHOT_INTERVAL.getAsInt()+",snapBudget="+PlanetConfig.SNAPSHOT_BUDGET.getAsInt()+",retain="+PlanetConfig.RETAIN_MESHES.getAsBoolean()+",meshMiB="+PlanetConfig.MESH_MIB.getAsInt()+",meshSections="+PlanetConfig.MESH_SECTIONS.getAsInt()
                 +",dhSeam="+PlanetConfig.DH_SEAM.getAsBoolean()+",dhPreview="+PlanetConfig.DH_PREVIEW.getAsInt()+",terrainBlend="+PlanetConfig.TERRAIN_BLEND.getAsBoolean()+",progressive="+PlanetConfig.PROGRESSIVE.getAsBoolean()+",progressiveDetail="+PlanetConfig.PROGRESSIVE_DETAIL.getAsInt()+",progressiveRadius="+PlanetConfig.PROGRESSIVE_RADIUS.getAsInt()+",progressivePending="+PlanetConfig.PROGRESSIVE_PENDING.getAsInt()+"}";
     }

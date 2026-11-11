@@ -15,7 +15,7 @@ public final class EastWestClientSmoke {
     private static volatile Throwable serverFailure;
     private static double flightVelocity;
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
-        if(Boolean.getBoolean("around_planet.seatTransferSmoke") || Boolean.getBoolean("around_planet.progressiveSmoke") || Boolean.getBoolean("around_planet.generationSmoke") || Boolean.getBoolean("around_planet.shipTransferSmoke") || Boolean.getBoolean("around_planet.shipSmoke") || Boolean.getBoolean("around_planet.collisionSmoke") || Boolean.getBoolean("around_planet.arrivalSmoke") || Boolean.getBoolean("around_planet.lightSmoke") || Boolean.getBoolean("around_planet.visualSmoke") || Boolean.getBoolean("around_planet.entitySmoke")) return;
+        if(Boolean.getBoolean("around_planet.northSouthBorderSmoke") || Boolean.getBoolean("around_planet.seatTransferSmoke") || Boolean.getBoolean("around_planet.progressiveSmoke") || Boolean.getBoolean("around_planet.generationSmoke") || Boolean.getBoolean("around_planet.shipTransferSmoke") || Boolean.getBoolean("around_planet.shipSmoke") || Boolean.getBoolean("around_planet.collisionSmoke") || Boolean.getBoolean("around_planet.arrivalSmoke") || Boolean.getBoolean("around_planet.lightSmoke") || Boolean.getBoolean("around_planet.visualSmoke") || Boolean.getBoolean("around_planet.entitySmoke")) return;
         var mc=Minecraft.getInstance(); ticks++;
         if(serverFailure!=null) throw new AssertionError("AROUND_EW_SMOKE server packet regression",serverFailure);
         if(ticks>2600) throw new AssertionError("AROUND_EW_SMOKE timeout: phase="+phase+" x="+(mc.player==null?"none":mc.player.getX()));
@@ -35,7 +35,7 @@ public final class EastWestClientSmoke {
         }
         if(phase==0) {
             require(mc.level.getWorldBorder().getMinX()==-256-io.github.astelev.around_planet.border.PlanetBorders.guardMargin() && mc.level.getWorldBorder().getMaxX()==256+io.github.astelev.around_planet.border.PlanetBorders.guardMargin(),"Client border/config sync failed");
-            require(mc.level.getWorldBorder().getMaxZ()>1000000,"Unexpected north/south limit");
+            require(mc.level.getWorldBorder().getMaxZ()==io.github.astelev.around_planet.PlanetConfig.BOUNDARY_Z.getAsInt(),"North/south border/config sync failed");
             phase=1; started=ticks;
             mc.getSingleplayerServer().execute(()->{
                 var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
