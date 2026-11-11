@@ -11,5 +11,5 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class SeamShipTransferMixin {
     @Shadow @Final private ServerLevel level;
     @Inject(method="tick",at=@At("RETURN"))
-    private void around_planet$transfer(SubLevelContainer container,CallbackInfo ci){ShipTransferService.check(level,(ServerSubLevelContainer)container);}
+    private void around_planet$transfer(SubLevelContainer container,CallbackInfo ci){io.github.astelev.around_planet.compat.SpaceShipTransfers.check(level,(ServerSubLevelContainer)container);ShipTransferService.check(level,(ServerSubLevelContainer)container);}
 }

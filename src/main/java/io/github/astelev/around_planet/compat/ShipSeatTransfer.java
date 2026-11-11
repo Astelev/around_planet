@@ -8,16 +8,17 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 
 /** A native seat remains in its plot; only world-space passengers follow the rebased pose. */
-final class ShipSeatTransfer {
+public final class ShipSeatTransfer {
     private record Rider(Entity entity, Vec3 position, Vec3 velocity) {}
 
-    static Runnable prepare(Entity root,double dx) {
+    static Runnable prepare(Entity root,double dx) {return prepare(root,dx,0,0);}
+    public static Runnable prepare(Entity root,double dx,double dy,double dz) {
         List<Rider> riders=root.getSelfAndPassengers()
                 .filter(e->Sable.HELPER.getContaining(e)==null)
                 .map(e->new Rider(e,e.position(),e.getDeltaMovement())).toList();
         return ()->{
             for(var rider:riders) {
-                var entity=rider.entity();var target=rider.position().add(dx,0,0);
+                var entity=rider.entity();var target=rider.position().add(dx,dy,dz);
                 // ServerPlayer.teleportTo invokes Sable's mounted-player conversion and sends
                 // plot coordinates to its matching client hook. A vanilla vehicle packet would
                 // instead put the player/seat into the reserved plot in world space.

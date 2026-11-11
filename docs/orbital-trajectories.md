@@ -1,9 +1,9 @@
 # Orbital motion foundation: first implementation stage (0.11.0-dev)
 
-This branch adds the mathematical and persistent data layer. It does **not yet**
-activate space cells, automatic ascent/reentry, engine interception, native
-unload hooks, chunk-loader activation or orbital rendering. Existing gameplay
-remains the 0.10.3 behavior. No new installable gameplay release is claimed here.
+The original 0.11.0-dev stage added the mathematical and persistent data layer.
+The branch now includes the first [playable cell transport](space-entry.md) in
+0.11.0-alpha.1. Virtual engine interception, orbital reentry, dormant native
+unload/activation hooks and orbital rendering remain subsequent integrations.
 
 ## Agreed world arrangement
 

@@ -23,6 +23,7 @@ public final class ShipTransferService {
         if(!pipeline.getClass().getName().equals("dev.ryanhcode.sable.physics.impl.rapier.RapierPhysicsPipeline"))return;
         for(var group:ShipAssemblies.groups(level,container.getAllSubLevels())) {
             if(group.anchored() || group.ships().size()>SeamShipTransferPayload.MAX_SHIPS)continue;
+            if(group.ships().stream().anyMatch(s->io.github.astelev.around_planet.space.SpaceCells.containsShip(level,s.getUniqueId())))continue;
             double mass=0,x=0;boolean valid=true;
             for(var ship:group.ships()) {
                 var data=ship.getSelfMassTracker();double m=data.getMass();var center=data.getCenterOfMass();

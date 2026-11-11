@@ -41,7 +41,9 @@
     "SeamServerChunkDiagnosticsMixin",
     "ProgressiveTaskRankMixin",
     "ProgressiveQueueMixin",
-    "ProgressiveProviderMixin"
+    "ProgressiveProviderMixin",
+    "SpaceCruisingFlightMixin",
+    "SpaceCruisingAssemblyMixin"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -78,6 +80,9 @@
     "SeamEntityLightMixin",
     "SeamChunkDiagnosticsMixin",
     "SeamRendererDiagnosticsMixin",
-    "SeamAlternativeDiagnosticsMixin"
+    "SeamAlternativeDiagnosticsMixin",
+    "SpaceCruisingClientViewMixin",
+    "SpaceCruisingDhMixin",
+    "SpaceCruisingFallbackMixin"
   ]
 }

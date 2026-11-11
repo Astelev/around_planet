@@ -135,6 +135,49 @@ public final class ShipSeamGameTests {
         }
     }
 
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=200)
+    public static void threeAxisSpaceTranslationPreservesJointMomentumAndNativeSeat(GameTestHelper h) throws Exception {
+        if(!net.neoforged.fml.ModList.get().isLoaded("create")){h.succeed();return;}
+        var level=h.getLevel();var container=SubLevelContainer.getContainer(level);var pipeline=container.physicsSystem().getPipeline();
+        var ships=new ArrayList<ServerSubLevel>();net.minecraft.world.entity.Entity seat=null,pig=null;
+        dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle joint=null;
+        io.github.astelev.around_planet.space.SpaceCells.Cell cell=null;
+        try {
+            for(int i=0;i<2;i++) {
+                var block=h.absolutePos(new BlockPos(1+4*i,2,1));level.setBlockAndUpdate(block,Blocks.IRON_BLOCK.defaultBlockState());
+                var ship=SubLevelAssemblyHelper.assembleBlocks(level,block,java.util.List.of(block),new BoundingBox3i(block.getX(),block.getY(),block.getZ(),block.getX(),block.getY(),block.getZ()));ships.add(ship);
+                pipeline.teleport(ship,new Vector3d(20+2*i,200,20),ship.logicalPose().orientation());ship.updateBoundingBox();ship.updateLastPose();
+                pipeline.addLinearAndAngularVelocity(ship,new Vector3d(2,.5,-1),new Vector3d(.01,.02,.03));
+            }
+            var a=ships.getFirst();var b=ships.getLast();
+            joint=pipeline.addConstraint(a,b,new dev.ryanhcode.sable.api.physics.constraint.RotaryConstraintConfiguration(new Vector3d(a.getSelfMassTracker().getCenterOfMass()),new Vector3d(b.getSelfMassTracker().getCenterOfMass()),new Vector3d(0,1,0),new Vector3d(0,1,0)));
+            var box=a.getPlot().getBoundingBox();seat=(net.minecraft.world.entity.Entity)Class.forName("com.simibubi.create.content.contraptions.actors.seat.SeatEntity").getConstructor(net.minecraft.world.level.Level.class).newInstance(level);
+            seat.setPos(box.minX()+.5,box.minY()+1,box.minZ()+.5);level.addFreshEntity(seat);
+            pig=net.minecraft.world.entity.EntityType.PIG.create(level);pig.setPos(20,201,20);level.addFreshEntity(pig);pig.startRiding(seat,true);seat.positionRider(pig);
+            var seatPos=seat.position();var before=pig.position();var linear=pipeline.getLinearVelocity(a,new Vector3d());var angular=pipeline.getAngularVelocity(a,new Vector3d());
+            var delta=new Vector3d(80,1336,60);cell=new io.github.astelev.around_planet.space.SpaceCells.Cell(java.util.UUID.randomUUID(),40,100,1536,80,20,736,20,ships.stream().map(ServerSubLevel::getUniqueId).toList());
+            io.github.astelev.around_planet.space.SpaceCells.get(level).add(level,cell);
+            io.github.astelev.around_planet.compat.SpaceShipTransfers.move(level,container,ships,java.util.Set.of(seat),delta,java.util.List.of(cell));
+            h.assertTrue(a.logicalPose().position().distance(new Vector3d(100,1536,80))<1e-8 && b.logicalPose().position().distance(new Vector3d(102,1536,80))<1e-8,"Space translation broke joint layout");
+            h.assertTrue(joint.isValid() && pipeline.getLinearVelocity(a,new Vector3d()).distance(linear)<1e-8 && pipeline.getAngularVelocity(a,new Vector3d()).distance(angular)<1e-8,"Space transfer changed momentum or removed joint");
+            h.assertTrue(seat.position().equals(seatPos) && pig.getVehicle()==seat && pig.position().distanceTo(before.add(80,1336,60))<1e-6,"Space transfer corrupted native seat coordinates");
+            if(net.neoforged.fml.ModList.get().isLoaded("cruising")) {
+                var policy=Class.forName("io.github.astelev.cruising.flight.ConnectedFlightAssembly").getMethod("currentMinY",dev.ryanhcode.sable.sublevel.SubLevel.class);
+                h.assertTrue((Double)policy.invoke(null,a)==Double.NEGATIVE_INFINITY,"Space assembly still qualifies for Cruising height optimization");
+            }
+            var saved=io.github.astelev.around_planet.space.SpaceCells.get(level).save(new net.minecraft.nbt.CompoundTag(),level.registryAccess());
+            var restored=io.github.astelev.around_planet.space.SpaceCells.load(saved,level.registryAccess());
+            h.assertTrue(restored.forShip(a.getUniqueId()).id().equals(cell.id()),"Cell membership lost across save/reload");
+            io.github.astelev.around_planet.compat.SpaceShipTransfers.move(level,container,ships,java.util.Set.of(seat),new Vector3d(delta).negate(),java.util.List.of());
+            h.assertTrue(pig.position().distanceTo(before)<1e-6 && joint.isValid() && seat.position().equals(seatPos),"Reverse space translation did not preserve seat/joint");
+            h.succeed();
+        } finally {
+            if(pig!=null)pig.discard();if(seat!=null)seat.discard();if(joint!=null && joint.isValid())joint.remove();
+            if(cell!=null)io.github.astelev.around_planet.space.SpaceCells.get(level).remove(level,cell);
+            for(var ship:ships)container.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);
+        }
+    }
+
     private static dev.ryanhcode.sable.sublevel.SubLevel SableTracking(net.minecraft.world.entity.Entity entity) {
         return dev.ryanhcode.sable.Sable.HELPER.getTrackingSubLevel(entity);
     }

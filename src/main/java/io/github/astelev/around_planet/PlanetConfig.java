@@ -4,8 +4,8 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
-    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS,PROGRESSIVE;
-    public static final ModConfigSpec.IntValue BOUNDARY,BOUNDARY_Z, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
+    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS,PROGRESSIVE,SPACE;
+    public static final ModConfigSpec.IntValue SPACE_ENTRY,SPACE_Y,BOUNDARY,BOUNDARY_Z, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
     static {
         var b = new ModConfigSpec.Builder();
         b.push("eastWest");
@@ -53,6 +53,10 @@ public final class PlanetConfig {
         PROGRESSIVE_DETAIL=b.comment("Initial surface cell exponent: 3 means 8-block cells, refined through 4/2/1 blocks.").defineInRange("initialDataDetail",3,1,4);
         PROGRESSIVE_RADIUS=b.comment("Radius around generation target where preview stages get priority, in blocks.").defineInRange("previewRadiusBlocks",1024,128,4096);
         PROGRESSIVE_PENDING=b.comment("Bound on deferred logical requests per DH provider; shared preview stages are bounded separately.").defineInRange("maxDeferredRequests",128,16,512);
+        b.pop();b.push("space");
+        SPACE=b.comment("Experimental same-Overworld Sable assembly transfer to high-altitude cells. Requires eastWest.enabled and matching client. Restart required.").define("enabled",true);
+        SPACE_ENTRY=b.comment("Assembly center-of-mass ascent threshold. The whole assembly must clear normal terrain.").defineInRange("entryY",768,400,1100);
+        SPACE_Y=b.comment("Local space-cell center Y. Keep ship and passengers within signed BlockPos Y range.").defineInRange("cellY",1536,1400,1700);
         b.pop(); SPEC = b.build();
     }
     private PlanetConfig() {}

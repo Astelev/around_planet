@@ -8,5 +8,5 @@ import org.spongepowered.asm.mixin.*;
 public abstract class SeamShipHistoryMixin implements ShipPoseHistory {
     @Shadow @Final protected Pose3d lastPose;
     @Shadow @Final protected BoundingBox3d lastGlobalBounds;
-    @Override public void around_planet$shiftHistory(double dx){lastPose.position().add(dx,0,0);lastGlobalBounds.move(dx,0,0);}
+    @Override public void around_planet$shiftHistory(double dx,double dy,double dz){lastPose.position().add(dx,dy,dz);lastGlobalBounds.move(dx,dy,dz);}
 }
