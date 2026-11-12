@@ -118,6 +118,7 @@ if (providers.gradleProperty('planetTests').isPresent()) {
 if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     sourceSets {
         planetClientSmoke {
+            if (project.providers.gradleProperty('planetSurfaceSmoke').isPresent()) java.include('**/SurfaceVisualSmoke.java')
             compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
             runtimeClasspath += output + sourceSets.main.output + sourceSets.main.runtimeClasspath
         }
@@ -130,6 +131,7 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
         if (providers.gradleProperty('planetProgressiveSmoke').isPresent() || providers.gradleProperty('planetProgressiveTerrainSmoke').isPresent()) jvmArguments.add('-Daround_planet.progressiveSmoke=true')
         if (providers.gradleProperty('planetDiagnosticSmoke').isPresent()) jvmArguments.add('-Daround_planet.diagnosticSmoke=true')
         if (providers.gradleProperty('planetGenerationSmoke').isPresent()) jvmArguments.add('-Daround_planet.generationSmoke=true')
+        if (providers.gradleProperty('planetSurfaceSmoke').isPresent()) jvmArguments.add('-Daround_planet.surfaceSmoke=true')
         if (providers.gradleProperty('planetSpaceEntrySmoke').isPresent()) jvmArguments.add('-Daround_planet.spaceEntrySmoke=true')
         if (providers.gradleProperty('planetNorthSouthBorderSmoke').isPresent()) jvmArguments.add('-Daround_planet.northSouthBorderSmoke=true')
         if (providers.gradleProperty('planetSeatTransferSmoke').isPresent()) jvmArguments.addAll('-Daround_planet.seatTransferSmoke=true','-Daround_planet.traceShipTransfers=true')

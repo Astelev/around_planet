@@ -24,6 +24,7 @@ public final class SpaceSkyRenderer {
             RenderSystem.disableBlend();RenderSystem.enableCull();draw(planet,model,projection);AtmosphereRenderer.render(sky,projection,observer,p.radius(),p.atmosphereTop());RenderSystem.setShader(GameRenderer::getPositionColorShader);frames++;planetFrames++;
         } finally {VertexBuffer.unbind();RenderSystem.depthMask(true);RenderSystem.enableDepthTest();RenderSystem.enableCull();RenderSystem.disableBlend();RenderSystem.setShaderColor(1,1,1,1);RenderSystem.setShaderFogStart(fogStart);RenderSystem.setShaderFogEnd(fogEnd);}
     }
+    static void stars(Matrix4f view,Matrix4f projection,float brightness){ensureMeshes();RenderSystem.setShaderColor(brightness,brightness,brightness,brightness);draw(stars,view,projection);RenderSystem.setShaderColor(1,1,1,1);}
     private static void draw(VertexBuffer b,Matrix4f view,Matrix4f projection){b.bind();b.drawWithShader(view,projection,GameRenderer.getPositionColorShader());}
     private static VertexBuffer upload(BufferBuilder b){var result=new VertexBuffer(VertexBuffer.Usage.STATIC);result.bind();result.upload(b.buildOrThrow());VertexBuffer.unbind();return result;}
     private static void vertex(BufferBuilder b,SpaceVector v,int color){b.addVertex((float)v.x(),(float)v.y(),(float)v.z()).setColor(color);}

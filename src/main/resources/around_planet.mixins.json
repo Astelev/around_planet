@@ -52,6 +52,12 @@
     "defaultRequire": 1
   },
   "client": [
+    "SurfaceVeilSourceMixin",
+    "SurfaceVeilUniformMixin",
+    "SurfaceProgramMixin",
+    "SurfaceShaderMixin",
+    "SurfaceSodiumSourceMixin",
+    "SurfaceSodiumUniformMixin",
     "BorderVignetteMixin",
     "SeamRenderRegionMixin",
     "SeamRenderLightMixin",

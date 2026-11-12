@@ -16,5 +16,5 @@ public abstract class SpaceTerrainRenderMixin {
     @Inject(method={"renderClouds","renderSnowAndRain","renderWorldBorder"},at=@At("HEAD"),cancellable=true)
     private void space$noClouds(CallbackInfo ci){if(SpaceRenderView.active()){SpaceRenderView.cloudSkips++;ci.cancel();}}
     @Inject(method="renderSky",at=@At("HEAD"),cancellable=true)
-    private void space$noSky(org.joml.Matrix4f view,org.joml.Matrix4f projection,float partial,net.minecraft.client.Camera camera,boolean foggy,Runnable fog,CallbackInfo ci){if(SpaceRenderView.active()){SpaceRenderView.skySkips++;io.github.astelev.around_planet.client.SpaceSkyRenderer.render(view,projection,partial,camera);ci.cancel();}}
+    private void space$noSky(org.joml.Matrix4f view,org.joml.Matrix4f projection,float partial,net.minecraft.client.Camera camera,boolean foggy,Runnable fog,CallbackInfo ci){if(SpaceRenderView.active()){SpaceRenderView.skySkips++;io.github.astelev.around_planet.client.SpaceSkyRenderer.render(view,projection,partial,camera);ci.cancel();}else if(io.github.astelev.around_planet.client.SurfaceSkyRenderer.render(view,projection,partial,camera,foggy,fog))ci.cancel();}
 }
