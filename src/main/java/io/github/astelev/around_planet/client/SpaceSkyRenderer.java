@@ -21,7 +21,7 @@ public final class SpaceSkyRenderer {
             RenderSystem.setShaderFogStart(Float.MAX_VALUE/2);RenderSystem.setShaderFogEnd(Float.MAX_VALUE);RenderSystem.setShaderColor(1,1,1,1);RenderSystem.depthMask(false);RenderSystem.disableDepthTest();RenderSystem.disableCull();RenderSystem.enableBlend();RenderSystem.defaultBlendFunc();RenderSystem.setShader(GameRenderer::getPositionColorShader);
             var sky=new Matrix4f(view).mul(inverse);draw(stars,sky,projection);draw(sun,sky,projection);
             var center=basis.toLocal(observer.scale(-100/distance));var model=new Matrix4f(view).translate((float)center.x(),(float)center.y(),(float)center.z()).mul(inverse).scale((float)(100*p.radius()/distance));
-            RenderSystem.disableBlend();RenderSystem.enableCull();draw(planet,model,projection);frames++;planetFrames++;
+            RenderSystem.disableBlend();RenderSystem.enableCull();draw(planet,model,projection);AtmosphereRenderer.render(sky,projection,observer,p.radius(),p.atmosphereTop());RenderSystem.setShader(GameRenderer::getPositionColorShader);frames++;planetFrames++;
         } finally {VertexBuffer.unbind();RenderSystem.depthMask(true);RenderSystem.enableDepthTest();RenderSystem.enableCull();RenderSystem.disableBlend();RenderSystem.setShaderColor(1,1,1,1);RenderSystem.setShaderFogStart(fogStart);RenderSystem.setShaderFogEnd(fogEnd);}
     }
     private static void draw(VertexBuffer b,Matrix4f view,Matrix4f projection){b.bind();b.drawWithShader(view,projection,GameRenderer.getPositionColorShader());}

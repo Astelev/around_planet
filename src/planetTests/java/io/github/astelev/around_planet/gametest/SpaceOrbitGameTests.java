@@ -83,7 +83,7 @@ public final class SpaceOrbitGameTests {
     public static void oldSpaceDefaultMovesAboveAeroworksButCustomSettingsRemain(GameTestHelper h) {
         var c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("space.entryY",768);
         new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);
-        h.assertTrue(((Number)c.get("space.entryY")).intValue()==2208 && ((Number)c.get("space.atmosphereTop")).intValue()==6000,"Old default was not upgraded with atmosphere settings");
+        h.assertTrue(((Number)c.get("space.entryY")).intValue()==2208 && ((Number)c.get("space.atmosphereTop")).intValue()==4000,"Old default was not upgraded with atmosphere settings");
         c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("space.entryY",3000);new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);h.assertTrue(((Number)c.get("space.entryY")).intValue()==2208,"Alpha.8 default was not lowered");
         c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("space.entryY",900);
         new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);
@@ -91,6 +91,14 @@ public final class SpaceOrbitGameTests {
         c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("space.entryY",768);c.set("space.atmosphereTop",5000);
         new io.github.astelev.around_planet.PlanetConfigMigration().correct(c);
         h.assertTrue(((Number)c.get("space.entryY")).intValue()==768,"Already migrated custom setting changed on reload");h.succeed();
+    }
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
+    public static void lateAtmosphereProfileMigratesDefaultsOnceAndRetainsCustomValues(GameTestHelper h){
+        var c=com.electronwill.nightconfig.core.CommentedConfig.inMemory();c.set("space.atmosphereTop",6000);c.set("space.atmosphereDrag",.02);c.set("space.reentryMaxSpeed",20.0);
+        var migration=new io.github.astelev.around_planet.PlanetConfigMigration();migration.correct(c);
+        h.assertTrue(((Number)c.get("space.atmosphereTop")).intValue()==4000 && ((Number)c.get("space.atmosphereBottom")).intValue()==2000 && ((Number)c.get("space.reentryMaxSpeed")).doubleValue()==50 && Math.abs(((Number)c.get("space.atmosphereDrag")).doubleValue()-.012)<1e-10,"Shipped atmospheric defaults did not migrate");
+        c.set("space.atmosphereTop",6000);c.set("space.atmosphereDrag",.02);c.set("space.reentryMaxSpeed",20.0);migration.correct(c);
+        h.assertTrue(((Number)c.get("space.atmosphereTop")).intValue()==6000 && ((Number)c.get("space.reentryMaxSpeed")).doubleValue()==20,"Profile migration was reapplied to explicit later settings");h.succeed();
     }
     private static void reject(GameTestHelper h,CompoundTag tag) {
         try{SpaceOrbitData.load(tag,h.getLevel().registryAccess());throw new AssertionError("Invalid save accepted");}

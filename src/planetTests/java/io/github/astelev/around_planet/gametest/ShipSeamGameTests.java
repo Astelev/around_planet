@@ -259,7 +259,7 @@ public final class ShipSeamGameTests {
             h.assertTrue(cells.forShip(a.getUniqueId())==null && orbits.get(cell.id()).isEmpty(),"Automatic radial reentry did not complete");
             var actualCenter=a.logicalPose().transformPosition(new Vector3d(a.getSelfMassTracker().getCenterOfMass())).add(b.logicalPose().transformPosition(new Vector3d(b.getSelfMassTracker().getCenterOfMass()))).mul(.5);
             h.assertTrue(Math.abs(actualCenter.y-returnY)<.01,"Reentry altitude is wrong");
-            h.assertTrue(pipeline.getLinearVelocity(a,new Vector3d()).length()<=20.001,"Unsafe owner velocity passed into native reentry");
+            h.assertTrue(pipeline.getLinearVelocity(a,new Vector3d()).length()<=io.github.astelev.around_planet.PlanetConfig.REENTRY_SPEED.get()+.001,"Unsafe owner velocity passed into native reentry");
             var destination=planet.frame(actualCenter.x,actualCenter.z);var q=io.github.astelev.around_planet.compat.SpaceRotation.between(frame,destination);var boost=destination.toLocal(velocity);
             var expectedV=q.transform(new Vector3d(3,1,2)).add(boost.x(),boost.y(),boost.z());// Rapier stores velocity with float precision: one ULP at this deliberately extreme speed.
             h.assertTrue(pipeline.getLinearVelocity(free,new Vector3d()).distance(expectedV)<=Math.max(1e-6,Math.ulp((float)expectedV.length())),"Free body velocity: actual="+pipeline.getLinearVelocity(free,new Vector3d())+" expected="+expectedV+" error="+pipeline.getLinearVelocity(free,new Vector3d()).distance(expectedV));

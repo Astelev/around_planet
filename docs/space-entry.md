@@ -1,4 +1,4 @@
-# First playable space transfer — 0.11.0-alpha.9
+# First playable space transfer — 0.11.0-alpha.10
 
 This alpha adds a fixed, nonrotating local frame to high-altitude Overworld
 cells. The owner's common translational velocity is stored in a persistent
@@ -43,7 +43,7 @@ Cells have a 256-block half extent and 1024-block spacing. Up to 81 physical
 addresses are considered near world origin, restricted by the current border.
 Large assemblies that do not fit are not transferred. Cell membership, return
 location and native ship IDs are saved in `data/around_planet_space_cells.dat`.
-The physical return destination is the spherical contact projected to world X/Z, at the current `entryY-32`, so it does
+The physical return destination is the spherical contact projected to world X/Z, at `min(atmosphereBottom, entryY-32)`, so it does
 not immediately trigger another ascent.
 
 ## Local physics
@@ -182,4 +182,4 @@ not been verified in this alpha. Reliable transfer packets rebase logical/render
 history and normalize old-coordinate snapshots; this retains the existing seam
 approach rather than promising zero visual discontinuity under all latency.
 
-See [atmospheric reentry](atmospheric-reentry.md) for the 6000-block inbound shell, progressive drag and safe handoff.
+See [atmospheric reentry](atmospheric-reentry.md) for the 4000-block inbound shell, progressive drag and safe handoff.

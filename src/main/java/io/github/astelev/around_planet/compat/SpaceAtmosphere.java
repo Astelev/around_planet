@@ -10,7 +10,7 @@ public final class SpaceAtmosphere {
     private static final Map<ServerLevel,Map<UUID,Long>> LAST=new WeakHashMap<>();
     public static void clear(ServerLevel level){LAST.remove(level);}
     public static void forget(ServerLevel level,UUID id){var m=LAST.get(level);if(m!=null)m.remove(id);}
-    public static double returnAltitude(){return PlanetConfig.SPACE_ENTRY.getAsInt()-32;}
+    public static double returnAltitude(){return Math.min(PlanetConfig.SPACE_ENTRY.getAsInt()-32,PlanetConfig.ATMOSPHERE_BOTTOM.getAsInt());}
     public static Atmosphere model(){double bottom=returnAltitude();return new Atmosphere(Math.max(bottom+512,PlanetConfig.ATMOSPHERE_TOP.getAsInt()),bottom,PlanetConfig.ATMOSPHERE_DRAG.get(),PlanetConfig.REENTRY_SPEED.get());}
     public static void advance(ServerLevel level,UUID id,SpaceCells.Cell cell){
         var data=SpaceOrbitData.get(level.getServer());var trajectory=data.get(id);var nav=data.navigation(id);if(trajectory.isEmpty() || nav.isEmpty())return;

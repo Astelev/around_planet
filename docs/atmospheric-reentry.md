@@ -74,3 +74,5 @@ Atmospheric observations do not create missing native bodies or force their
 holding chunks to load. Contact still waits for native observation as before.
 
 Alpha.9 lowers the shipped ascent threshold to 2208 and return shell to 2176 after inspecting the stock Simple Clouds ceiling. Other atmosphere defaults are unchanged. See [the cloud ceiling and unload fix](cloud-ceiling-and-occupied-unload.md).
+
+Alpha.10 replaces these historical defaults with the [4000–2000 profile, 50-block/s handoff and blue haze](late-atmosphere-and-haze.md).
