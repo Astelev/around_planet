@@ -6,5 +6,5 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(targets="foundry.veil.impl.client.render.shader.compiler.DirectShaderCompiler",remap=false)
 public abstract class SurfaceVeilSourceMixin {
     @ModifyExpressionValue(method="compile(ILfoundry/veil/api/client/render/shader/compiler/VeilShaderSource;)Lfoundry/veil/api/client/render/shader/compiler/CompiledShader;",at=@At(value="INVOKE",target="Lfoundry/veil/api/client/render/shader/compiler/VeilShaderSource;sourceCode()Ljava/lang/String;"))
-    private String surface$nativeShips(String source){return source.contains("_sable_unpack")?io.github.astelev.around_planet.client.CurvatureShaders.patch(source):source;}
+    private String surface$nativeShips(String source){return (source.contains("_sable_unpack") || source.contains("DhViewProjection") && source.contains("surfacePosition"))?io.github.astelev.around_planet.client.CurvatureShaders.patch(source):source;}
 }

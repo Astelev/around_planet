@@ -23,7 +23,7 @@ public abstract class SeamDhShaderUniformMixin {
             around_planet$mask=shader.getUniformLocation("apChunkMaskEnabled");
             around_planet$sampler=shader.getUniformLocation("apChunkMask");
         }
-        float radius=(float)io.github.astelev.around_planet.client.SurfaceRenderState.radius();
+        float radius=(float)io.github.astelev.around_planet.client.SurfaceRenderState.terrainRadius();
         shader.setUniform(shader.getUniformLocation("apCurveRadius"),radius);
         if(radius>0){shader.setUniform(shader.getUniformLocation("uEarthRadius"),0f);io.github.astelev.around_planet.client.SurfaceRenderState.dhDraws++;}
         shader.setUniform(around_planet$mask,false);

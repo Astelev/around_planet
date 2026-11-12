@@ -1,4 +1,4 @@
-# Curved surface and shared sky — 0.11.0-alpha.11
+# Curved surface and shared sky — 0.11.0-alpha.12
 
 ## World Curvature reference
 
@@ -31,6 +31,14 @@ projections.
   original fragment-space coordinates for chunk-ownership and seam masks. Its
   built-in independent earth bend is disabled only for our active pass, avoiding
   double curvature. DH settings files are not overwritten.
+- Cruising's cheap fallback surface uses the same camera-relative drop before its
+  DH projection. Original palette/coverage coordinates remain unchanged. The four
+  outer quads are tessellated at a target 512-block spacing, bounded to 64 cells
+  per axis; the existing central biome grid is retained. This adds no generator
+  requests and requires updating only Around Planet.
+- Veil's vanilla dynamic-buffer recompilation is patched too: it rereads resources
+  and would otherwise discard the original shader modification. Uniform locations
+  are invalidated when those programs are relinked.
 - Sable's dynamic Veil ship shaders receive the same operation and uniforms;
   plain native world shaders follow the stock route. Geometry is never copied
   or removed to produce curvature.
@@ -77,15 +85,18 @@ No additional shader-pack dependency is needed.
 
 ## Checks
 
-86 unit tests include radius scaling, rotational symmetry, altitude fade, Sun
+90 unit tests include radius scaling, rotational symmetry, altitude fade, Sun
 clock/horizon math and shader selection/patch idempotence. 21 native server tests
 and 10 standalone server tests retain prior seams, bearings, seats, atmospheres,
 orbit/persistence and migration coverage.
 
 Separate real clients exercise the stock renderer without optional mods and
 Sodium/DH/Simple Clouds/Sable. Captures include a clear round Sun, full Moon/stars,
-curved versus disabled curvature and dark high-altitude sky. Simple Clouds are
-hidden only for the clear Sun/Moon test captures, then restored for horizon
-captures. The stock-only harness isolates its subscriber so it does not load
+curved versus disabled curvature and dark high-altitude sky. The harness disables cloud options for captures and restores the Simple Clouds
+setting on exit; optional cloud compositing can still obscure distant terrain. The stock-only harness
+isolates its subscriber so it does not load
 optional Sable/DH test classes. Production artifacts exclude all smoke classes.
 The full space ascent/sky/map/seated-return smoke is retained as a regression.
+
+Alpha.12 additionally checks that the actual Cruising fallback GPU program receives
+active curvature with Sodium, DH, Sable/Veil and Simple Clouds installed.
