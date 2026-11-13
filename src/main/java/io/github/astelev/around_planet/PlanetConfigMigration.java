@@ -17,6 +17,7 @@ public final class PlanetConfigMigration implements IConfigSpec {
             if(config.get("space.reentryMaxSpeed") instanceof Number n && n.doubleValue()==20)config.set("space.reentryMaxSpeed",50.0);
             config.set("space.atmosphereProfileRevision",1);
         }
+        if(!config.contains("space.heightLayoutRevision")){if(config.get("space.cellY") instanceof Number n && n.intValue()==1536)config.set("space.cellY",6144);config.set("space.heightLayoutRevision",1);}
         if(!config.contains("planet.circumferenceBlocks")){
             Object old=config.get("eastWest.boundaryX");
             if(old instanceof Number n && n.longValue()>=128 && n.longValue()<=29_500_000){long size=(n.longValue()*2+16)/32*32;config.set("planet.circumferenceBlocks",(int)size);}

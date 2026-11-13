@@ -31,7 +31,7 @@ public final class SpaceShipTransfers {
         if(!level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD) || !PlanetConfig.SPEC.isLoaded()
                 )return;
         RECENT_RETURN.values().removeIf(until->until<level.getGameTime());
-        SpacePlanetScale.check(level);
+        SpaceCellHeight.relocate(level,container);SpacePlanetScale.check(level);
         var contactImpulses=SpaceOrbitData.get(level.getServer()).followContacts(PlanetDaylight.spin(level),level.getGameTime());
         for(var cell:SpaceCells.get(level).all()){var delta=contactImpulses.get(cell.id());if(delta!=null && delta.length()>1e-10)SpaceLocalPhysics.externalImpulse(level,cell,SpaceLocalPhysics.navigation(level,cell).frame().toLocal(delta));}
         SpaceDormant.check(level,container);SpaceReentry.check(level,container,RETURN,RECENT_RETURN);
@@ -93,7 +93,7 @@ public final class SpaceShipTransfers {
     static boolean fits(ServerLevel level,List<ServerSubLevel> ships,Vector3d delta,SpaceCells.Cell cell) {
         for(var s:ships) {
             var b=s.boundingBox();double lo=b.minY()+delta.y,hi=b.maxY()+delta.y;
-            if(lo<level.getMaxBuildHeight()+24 || hi>2000)return false;
+            if(lo<level.getMaxBuildHeight()+24 || hi>(cell==null?30256:cell.y()+256))return false;
             if(cell!=null && (b.minX()+delta.x<cell.x()-256 || b.maxX()+delta.x>cell.x()+256 || b.minZ()+delta.z<cell.z()-256 || b.maxZ()+delta.z>cell.z()+256 || lo<cell.y()-256 || hi>cell.y()+256))return false;
         }return true;
     }

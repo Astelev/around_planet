@@ -28,7 +28,7 @@ import java.util.ArrayList;
 @PrefixGameTestTemplate(false)
 @EventBusSubscriber(modid=AroundPlanet.MOD_ID,bus=EventBusSubscriber.Bus.MOD)
 public final class EastWestGameTests {
-    @SubscribeEvent public static void register(RegisterGameTestsEvent event) { event.register(EastWestGameTests.class);event.register(SeamInteractionGameTests.class);event.register(GenerationSeamGameTests.class);event.register(SpaceOrbitGameTests.class);event.register(PlanetRotationGameTests.class);if(net.neoforged.fml.ModList.get().isLoaded("sable"))event.register(ShipSeamGameTests.class); }
+    @SubscribeEvent public static void register(RegisterGameTestsEvent event) { event.register(EastWestGameTests.class);event.register(SeamInteractionGameTests.class);event.register(GenerationSeamGameTests.class);event.register(SpaceOrbitGameTests.class);event.register(PlanetRotationGameTests.class);if(net.neoforged.fml.ModList.get().isLoaded("sable")){event.register(ShipSeamGameTests.class);event.register(SpaceSensorGameTests.class);} }
 
     private static void playerPreloadCannotBeStarved(GameTestHelper h) {
         var level=h.getLevel();var stop=new net.neoforged.neoforge.event.server.ServerStoppingEvent(level.getServer());

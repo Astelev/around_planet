@@ -14,6 +14,8 @@ import java.util.UUID;
 @PrefixGameTestTemplate(false)
 public final class PlanetRotationGameTests {
     @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
+    public static void highCellConfigIsAcceptedAndOldDefaultMigratesOnce(GameTestHelper h){var config=com.electronwill.nightconfig.core.CommentedConfig.inMemory();config.set("space.cellY",9000);io.github.astelev.around_planet.PlanetConfigMigration.migrate(config);PlanetConfig.SPEC.correct(config);h.assertTrue(((Number)config.get("space.cellY")).intValue()==9000,"Spec rejected custom high cell Y");var legacy=com.electronwill.nightconfig.core.CommentedConfig.inMemory();legacy.set("space.cellY",1536);io.github.astelev.around_planet.PlanetConfigMigration.migrate(legacy);h.assertTrue(((Number)legacy.get("space.cellY")).intValue()==6144,"Legacy default did not migrate");legacy.set("space.cellY",7000);io.github.astelev.around_planet.PlanetConfigMigration.migrate(legacy);h.assertTrue(((Number)legacy.get("space.cellY")).intValue()==7000,"Migration overwrote a custom height");h.succeed();}
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
     public static void localNightBrightnessAndDaylightDetectorsFollowLongitude(GameTestHelper h)throws Exception{
         var level=h.getLevel();long clock=level.getDayTime();boolean enabled=PlanetConfig.ENABLED.getAsBoolean();int size=PlanetConfig.PLANET_SIZE.get();
         try{PlanetConfig.ENABLED.set(true);PlanetConfig.PLANET_SIZE.set(131072);level.setDayTime(6000);level.setWeatherParameters(60000,0,false,false);

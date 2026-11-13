@@ -14,5 +14,20 @@
   "key.categories.around_planet": "Around Planet",
   "around_planet.map.objects": "Другие объекты: %s",
   "around_planet.map.dormant": "выгружен",
-  "around_planet.map.global_axes": "Глобальные XYZ"
+  "around_planet.map.global_axes": "Глобальные XYZ",
+  "block.around_planet.orbital_sensor": "Космический датчик ориентации",
+  "around_planet.sensor.scale": "Полный сигнал: %s°",
+  "around_planet.sensor.error": "Рыскание %s° · Тангаж %s°",
+  "around_planet.sensor.inactive": "Нет орбитального направления",
+  "around_planet.sensor.ports.pitch": "Перед / зад: тангаж вверх / вниз",
+  "around_planet.sensor.ports.yaw": "Право / лево: поворот вправо / влево",
+  "around_planet.sensor.mode.prograde": "По скорости",
+  "around_planet.sensor.mode.retrograde": "Против скорости",
+  "around_planet.sensor.mode.radial_out": "Радиально наружу",
+  "around_planet.sensor.mode.radial_in": "Радиально внутрь",
+  "around_planet.sensor.mode.normal": "Нормаль орбиты",
+  "around_planet.sensor.mode.antinormal": "Против нормали",
+  "around_planet.sensor.mode.planet_out": "От планеты",
+  "around_planet.sensor.mode.planet_in": "К планете",
+  "around_planet.sensor.mode.sun": "К Солнцу"
 }

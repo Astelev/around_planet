@@ -18,7 +18,7 @@ public final class SpaceCells extends SavedData {
             Objects.requireNonNull(id);ships=List.copyOf(ships);
             if(slot<0 || slot>=81 || ships.isEmpty() || ships.size()>256 || new HashSet<>(ships).size()!=ships.size())throw new IllegalArgumentException("Cell slot/members");
             for(double n:new double[]{x,y,z,originX,originY,originZ})if(!Double.isFinite(n))throw new IllegalArgumentException("Nonfinite cell");
-            if(y<1400 || y>1700 || Math.abs(x)>29_500_000 || Math.abs(z)>29_500_000)throw new IllegalArgumentException("Cell bounds");
+            if(y<1400 || y>30000 || Math.abs(x)>29_500_000 || Math.abs(z)>29_500_000)throw new IllegalArgumentException("Cell bounds");
         }
         public boolean contains(double px,double py,double pz){return Math.abs(px-x)<=256 && Math.abs(pz-z)<=256 && Math.abs(py-y)<=256;}
     }

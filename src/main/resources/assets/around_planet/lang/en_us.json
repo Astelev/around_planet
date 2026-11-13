@@ -14,5 +14,20 @@
   "key.categories.around_planet": "Around Planet",
   "around_planet.map.objects": "Other objects: %s",
   "around_planet.map.dormant": "unloaded",
-  "around_planet.map.global_axes": "Global XYZ"
+  "around_planet.map.global_axes": "Global XYZ",
+  "block.around_planet.orbital_sensor": "Orbital Attitude Sensor",
+  "around_planet.sensor.scale": "Full signal: %s°",
+  "around_planet.sensor.error": "Yaw %s° · Pitch %s°",
+  "around_planet.sensor.inactive": "No orbital direction available",
+  "around_planet.sensor.ports.pitch": "Front / back: pitch up / down",
+  "around_planet.sensor.ports.yaw": "Right / left: yaw right / left",
+  "around_planet.sensor.mode.prograde": "Prograde",
+  "around_planet.sensor.mode.retrograde": "Retrograde",
+  "around_planet.sensor.mode.radial_out": "Radial out",
+  "around_planet.sensor.mode.radial_in": "Radial in",
+  "around_planet.sensor.mode.normal": "Orbit normal",
+  "around_planet.sensor.mode.antinormal": "Anti-normal",
+  "around_planet.sensor.mode.planet_out": "Away from planet",
+  "around_planet.sensor.mode.planet_in": "Toward planet",
+  "around_planet.sensor.mode.sun": "Toward Sun"
 }
