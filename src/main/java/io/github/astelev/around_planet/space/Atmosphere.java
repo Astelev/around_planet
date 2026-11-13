@@ -1,6 +1,6 @@
 package io.github.astelev.around_planet.space;
 
-/** Gameplay atmosphere in the nonrotating planet frame. Closed-form quadratic drag over one short step. */
+/** Gameplay atmosphere; the caller supplies velocity relative to the co-rotating air. Closed-form quadratic drag over one short step. */
 public record Atmosphere(double top,double bottom,double drag,double handoffSpeed) {
     public Atmosphere {
         if(!Double.isFinite(top) || !Double.isFinite(bottom) || top<=bottom || bottom<0 || !Double.isFinite(drag) || drag<0 || !Double.isFinite(handoffSpeed) || handoffSpeed<=0)throw new IllegalArgumentException("Atmosphere settings");

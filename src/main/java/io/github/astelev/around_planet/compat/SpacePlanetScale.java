@@ -8,6 +8,9 @@ public final class SpacePlanetScale {
     private static final Map<ServerLevel,Integer> APPLIED=new WeakHashMap<>();
     public static void check(ServerLevel level){int size=PlanetConfig.PLANET_SIZE.get();if(Objects.equals(APPLIED.get(level),size))return;APPLIED.put(level,size);
         var data=SpaceOrbitData.get(level.getServer());var planet=new PlanetScale(size).geometry();
+        double gravity=PlanetConfig.SPACE_GRAVITY.get(),spinRatio=PlanetSpin.circularToSpinRatio(planet.radius(),SpaceAtmosphere.model().top(),gravity);
+        io.github.astelev.around_planet.AroundPlanet.LOGGER.info("PLANET_SPIN periodSeconds={} radius={} equatorSpeed={} circularSpeed={} upperAtmosphereRatio={}",PlanetSpin.PERIOD_SECONDS,planet.radius(),PlanetSpin.OMEGA*planet.radius(),Math.sqrt(gravity*planet.radius()),spinRatio);
+        if(gravity>0 && spinRatio<3)io.github.astelev.around_planet.AroundPlanet.LOGGER.warn("Custom planet size/gravity gives circular-to-spin speed ratio below 3 at the atmosphere top: {}. Rotation period and configured gravity were retained.",spinRatio);
         for(var id:data.ids()){var old=data.navigation(id);if(old.isEmpty() || old.get().planet().equals(planet))continue;
             var nav=old.get();var state=data.sample(id,level.getGameTime());double distance=state.position().length(),altitude=distance-nav.planet().radius();
             if(distance<1e-9 || planet.radius()+altitude<=0)continue;

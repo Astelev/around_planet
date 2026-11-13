@@ -26,12 +26,12 @@ public final class SpaceLocalPhysics {
     public static SpaceNavigation navigation(ServerLevel level,SpaceCells.Cell cell) {
         var data=SpaceOrbitData.get(level.getServer());var old=data.navigation(cell.id());if(old.isPresent())return old.get();
         var planet=new PlanetScale(io.github.astelev.around_planet.PlanetConfig.PLANET_SIZE.get()).geometry();
-        var nav=new SpaceNavigation(planet,planet.frame(cell.originX(),cell.originZ()));
+        var nav=new SpaceNavigation(planet,PlanetDaylight.spin(level).frame(planet,cell.originX(),cell.originZ()));
         // Upgrade alpha.2's entry-relative linear chart without losing its displacement or velocity.
         var orbit=data.get(cell.id());if(orbit.isPresent()) {
             var state=orbit.get().at(level.getGameTime());
             data.put(cell.id(),new SpaceTrajectory("around_planet:overworld",level.getGameTime(),new SpaceState(
-                planet.position(cell.originX(),cell.originY()+32,cell.originZ()).add(nav.frame().toCosmic(state.position())),nav.frame().toCosmic(state.velocity())),mu(planet)));
+                PlanetDaylight.spin(level).position(planet,cell.originX(),cell.originY()+32,cell.originZ()).add(nav.frame().toCosmic(state.position())),nav.frame().toCosmic(state.velocity())),mu(planet)));
         }
         data.navigate(cell.id(),nav);return nav;
     }
@@ -40,8 +40,7 @@ public final class SpaceLocalPhysics {
     public static void enter(ServerLevel level,ServerSubLevelContainer c,SpaceCells.Cell cell,double altitude) {
         var group=owner(c,cell);if(group==null)return;
         var data=SpaceOrbitData.get(level.getServer());var nav=navigation(level,cell);
-        if(data.get(cell.id()).isEmpty())data.put(cell.id(),new SpaceTrajectory("around_planet:overworld",level.getGameTime(),new SpaceState(
-                nav.planet().position(cell.originX(),altitude,cell.originZ()),nav.frame().toCosmic(vector(group.velocity))),mu(nav.planet())));
+        if(data.get(cell.id()).isEmpty())data.put(cell.id(),new SpaceTrajectory("around_planet:overworld",level.getGameTime(),PlanetDaylight.spin(level).launch(nav.planet(),new SpaceVector(cell.originX(),altitude,cell.originZ()),vector(group.velocity)),mu(nav.planet())));
         SpaceReentry.entered(level,cell.id(),data.sample(cell.id(),level.getGameTime()).position());
         for(var s:group.ships)c.physicsSystem().getPipeline().addLinearAndAngularVelocity(s,new Vector3d(group.velocity).negate(),new Vector3d());
     }
@@ -63,7 +62,7 @@ public final class SpaceLocalPhysics {
             var group=owner(c,cell);var common=new Vector3d();
             if(group!=null) {
                 var orbits=SpaceOrbitData.get(level.getServer());var nav=navigation(level,cell);
-                if(orbits.get(cell.id()).isEmpty())orbits.put(cell.id(),new SpaceTrajectory("around_planet:overworld",level.getGameTime(),new SpaceState(nav.planet().position(cell.originX(),cell.originY()+32,cell.originZ()),nav.frame().toCosmic(vector(group.velocity))),mu(nav.planet())));
+                if(orbits.get(cell.id()).isEmpty())orbits.put(cell.id(),new SpaceTrajectory("around_planet:overworld",level.getGameTime(),PlanetDaylight.spin(level).launch(nav.planet(),new SpaceVector(cell.originX(),cell.originY()+32,cell.originZ()),vector(group.velocity)),mu(nav.planet())));
                 else if(group.velocity.lengthSquared()>1e-10)orbits.impulse(cell.id(),level.getGameTime(),nav.frame().toCosmic(vector(group.velocity)));
                 common.set(group.velocity);
             }

@@ -7,7 +7,11 @@ import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
 import java.util.Random;
 /** Cached inertial stars/sun and an opaque convex sphere; no terrain or world-generation access. */
+@net.neoforged.fml.common.EventBusSubscriber(modid="around_planet",value=net.neoforged.api.distmarker.Dist.CLIENT,bus=net.neoforged.fml.common.EventBusSubscriber.Bus.MOD)
 public final class SpaceSkyRenderer {
+    private static net.minecraft.client.renderer.ShaderInstance planetShader;
+    @net.neoforged.bus.api.SubscribeEvent public static void shaders(net.neoforged.neoforge.client.event.RegisterShadersEvent event)throws java.io.IOException{event.registerShader(new net.minecraft.client.renderer.ShaderInstance(event.getResourceProvider(),net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("around_planet","space_planet"),DefaultVertexFormat.POSITION_COLOR),shader->planetShader=shader);}
+    static Matrix4f inverse(SpaceFrame basis){return new Matrix4f().m00((float)basis.east().x()).m01((float)basis.up().x()).m02((float)basis.south().x()).m10((float)basis.east().y()).m11((float)basis.up().y()).m12((float)basis.south().y()).m20((float)basis.east().z()).m21((float)basis.up().z()).m22((float)basis.south().z());}
     private static VertexBuffer stars,sun,planet;public static long frames,planetFrames;
     public static void render(Matrix4f view,Matrix4f projection,float partial,Camera camera){
         var p=SpaceHud.current();if(p==null || !p.active() || p.radius()<=0)return;
@@ -15,13 +19,15 @@ public final class SpaceSkyRenderer {
         if(!p.returning())state=new SpaceTrajectory("around_planet:render",0,state,p.mu()).afterSeconds(SpaceHud.age(partial));
         var cam=camera.getPosition();var observer=SpaceEnvironment.observer(state,p.frame(),new SpaceVector(cam.x,cam.y,cam.z),p.anchor());double distance=observer.length();
         if(distance<=p.radius())return;
-        var basis=p.frame();var inverse=new Matrix4f().m00((float)basis.east().x()).m01((float)basis.up().x()).m02((float)basis.south().x()).m10((float)basis.east().y()).m11((float)basis.up().y()).m12((float)basis.south().y()).m20((float)basis.east().z()).m21((float)basis.up().z()).m22((float)basis.south().z());
+        var basis=p.frame();var inverse=inverse(basis);
         float fogStart=RenderSystem.getShaderFogStart(),fogEnd=RenderSystem.getShaderFogEnd();
         try {
             RenderSystem.setShaderFogStart(Float.MAX_VALUE/2);RenderSystem.setShaderFogEnd(Float.MAX_VALUE);RenderSystem.setShaderColor(1,1,1,1);RenderSystem.depthMask(false);RenderSystem.disableDepthTest();RenderSystem.disableCull();RenderSystem.enableBlend();RenderSystem.defaultBlendFunc();RenderSystem.setShader(GameRenderer::getPositionColorShader);
             var sky=new Matrix4f(view).mul(inverse);draw(stars,sky,projection);draw(sun,sky,projection);
             var center=basis.toLocal(observer.scale(-100/distance));var model=new Matrix4f(view).translate((float)center.x(),(float)center.y(),(float)center.z()).mul(inverse).scale((float)(100*p.radius()/distance));
-            RenderSystem.disableBlend();RenderSystem.enableCull();draw(planet,model,projection);AtmosphereRenderer.render(sky,projection,observer,p.radius(),p.atmosphereTop());RenderSystem.setShader(GameRenderer::getPositionColorShader);frames++;planetFrames++;
+            RenderSystem.disableBlend();RenderSystem.enableCull();
+            if(planetShader!=null){planetShader.safeGetUniform("PlanetSpin").set((float)PlanetDaylight.spin(net.minecraft.client.Minecraft.getInstance().level,partial).angle());var light=SpaceEnvironment.SUN_DIRECTION;planetShader.safeGetUniform("SunDirection").set((float)light.x(),(float)light.y(),(float)light.z());RenderSystem.setShader(()->planetShader);planet.bind();planet.drawWithShader(model,projection,planetShader);}
+            AtmosphereRenderer.render(sky,projection,observer,p.radius(),p.atmosphereTop());RenderSystem.setShader(GameRenderer::getPositionColorShader);frames++;planetFrames++;
         } finally {VertexBuffer.unbind();RenderSystem.depthMask(true);RenderSystem.enableDepthTest();RenderSystem.enableCull();RenderSystem.disableBlend();RenderSystem.setShaderColor(1,1,1,1);RenderSystem.setShaderFogStart(fogStart);RenderSystem.setShaderFogEnd(fogEnd);}
     }
     static void stars(Matrix4f view,Matrix4f projection,float brightness){ensureMeshes();RenderSystem.setShaderColor(brightness,brightness,brightness,brightness);draw(stars,view,projection);RenderSystem.setShaderColor(1,1,1,1);}
@@ -39,7 +45,7 @@ public final class SpaceSkyRenderer {
             vertex(b,center.add(qa.scale(1.2)),0x60FFD480);vertex(b,center.add(qc.scale(1.2)),0x60FFD480);vertex(b,center.add(qc.scale(4)),0x00FFD480);
             vertex(b,center.add(qa.scale(1.2)),0x60FFD480);vertex(b,center.add(qc.scale(4)),0x00FFD480);vertex(b,center.add(qa.scale(4)),0x00FFD480);
         }sun=upload(b);b=Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES,DefaultVertexFormat.POSITION_COLOR);
-        for(int y=0;y<64;y++)for(int x=0;x<128;x++){var a=normal(x,y);var c=normal(x+1,y);var d=normal(x+1,y+1);var e=normal(x,y+1);vertex(b,a,SpaceEnvironment.planetColor(a));vertex(b,d,SpaceEnvironment.planetColor(d));vertex(b,c,SpaceEnvironment.planetColor(c));vertex(b,a,SpaceEnvironment.planetColor(a));vertex(b,e,SpaceEnvironment.planetColor(e));vertex(b,d,SpaceEnvironment.planetColor(d));}planet=upload(b);
+        for(int y=0;y<64;y++)for(int x=0;x<128;x++){var a=normal(x,y);var c=normal(x+1,y);var d=normal(x+1,y+1);var e=normal(x,y+1);vertex(b,a,SpaceEnvironment.planetColor(a,1));vertex(b,d,SpaceEnvironment.planetColor(d,1));vertex(b,c,SpaceEnvironment.planetColor(c,1));vertex(b,a,SpaceEnvironment.planetColor(a,1));vertex(b,e,SpaceEnvironment.planetColor(e,1));vertex(b,d,SpaceEnvironment.planetColor(d,1));}planet=upload(b);
     }
     private static SpaceVector normal(int x,int y){double lon=x*2*Math.PI/128,lat=-Math.PI/2+y*Math.PI/64;return new SpaceVector(Math.sin(lon)*Math.cos(lat),Math.cos(lon)*Math.cos(lat),Math.sin(lat));}
     private SpaceSkyRenderer(){}

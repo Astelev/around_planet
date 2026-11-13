@@ -5,6 +5,14 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "WorldBorderMixin",
+    "PlanetTimeMixin",
+    "PlanetBrightnessMixin",
+    "PlanetDayStateMixin",
+    "PlanetEntityDayMixin",
+    "PlanetDetectorDayMixin",
+    "PlanetBedDayMixin",
+    "PlanetSleepTimeMixin",
+
     "PlayerMovementMixin",
     "SeamPlayerTicketsMixin",
     "SeamChunkSendingMixin",
@@ -52,6 +60,8 @@
     "defaultRequire": 1
   },
   "client": [
+    "PlanetClientTimeMixin",
+    "PlanetClientLightMixin",
     "SurfaceVeilSourceMixin",
     "SurfaceVeilVanillaSourceMixin",
     "SurfaceVeilRelinkMixin",

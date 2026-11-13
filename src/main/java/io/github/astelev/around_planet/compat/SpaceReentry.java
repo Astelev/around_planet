@@ -33,9 +33,9 @@ public final class SpaceReentry {
                     contact=state.position().scale((nav.planet().radius()+shell)/state.position().length());
                 else {var before=previous==null?trajectory.get().initial().position():previous;contact=nav.planet().inwardCrossing(before,state.position(),shell).orElse(null);}
                 if(contact==null)continue;
-                SpaceAtmosphere.handoff(level,cell.id(),cell);data.reenter(cell.id(),contact,now);
+                SpaceAtmosphere.handoff(level,cell.id(),cell);data.reenterRotating(cell.id(),contact,now,PlanetDaylight.spin(level));
             }
-            var world=nav.planet().surface(data.reentry(cell.id()).orElseThrow());var destinationFrame=nav.planet().frame(world.x(),world.z());
+            var world=PlanetDaylight.spin(level).surface(nav.planet(),data.reentry(cell.id()).orElseThrow());var destinationFrame=PlanetDaylight.spin(level).frame(nav.planet(),world.x(),world.z());
             var q=SpaceRotation.between(nav.frame(),destinationFrame);var old=new Vector3d(cell.x(),cell.y(),cell.z());var target=new Vector3d(world.x(),shell,world.z());
             var all=new ArrayList<ServerSubLevel>();boolean blocked=false;
             for(var group:ShipAssemblies.groups(level,c.getAllSubLevels())) {
@@ -51,7 +51,7 @@ public final class SpaceReentry {
             if(java.util.stream.StreamSupport.stream(level.getAllEntities().spliterator(),false).anyMatch(e->e instanceof net.minecraft.world.entity.Mob m && m.isLeashed() && moving.contains(m)!=moving.contains(m.getLeashHolder())))continue;
             if(!ready(level,all,roots,old,target,q))continue;
             SpaceAtmosphere.handoff(level,cell.id(),cell);
-            var velocity=destinationFrame.toLocal(data.sample(cell.id(),now).velocity());var boost=new Vector3d(velocity.x(),velocity.y(),velocity.z());
+            var velocity=PlanetDaylight.spin(level).landingVelocity(nav.planet(),data.reentry(cell.id()).orElseThrow(),data.sample(cell.id(),now).velocity());var boost=new Vector3d(velocity.x(),velocity.y(),velocity.z());
             var moves=all.stream().map(s->{var p=s.logicalPose().position();var n=SpaceRotation.point(p,old,target,q);return new SpaceTransferPayload.Move(s.getUniqueId(),p.x,p.y,p.z,n.x-p.x,n.y-p.y,n.z-p.z,q.x,q.y,q.z,q.w);}).toList();
             var packet=new SpaceTransferPayload(level.dimension().location(),cells.all().stream().filter(v->!v.id().equals(cell.id())).toList(),moves);
             for(var p:level.players())if(p.connection.hasChannel(SpaceTransferPayload.TYPE))PacketDistributor.sendToPlayer(p,packet);

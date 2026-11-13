@@ -16,11 +16,11 @@ public final class SpaceAtmosphere {
         var data=SpaceOrbitData.get(level.getServer());var trajectory=data.get(id);var nav=data.navigation(id);if(trajectory.isEmpty() || nav.isEmpty())return;
         long now=level.getGameTime();var times=LAST.computeIfAbsent(level,k->new HashMap<>());Long previous=times.put(id,now);
         if(data.reentry(id).isPresent())return;
-        double dt=Math.clamp((now-(previous==null?Math.max(trajectory.get().epochTick(),now-1):previous))/20.0,0,1);var state=data.sample(id,now);var next=model().damp(state,nav.get().planet().radius(),dt);var delta=next.subtract(state.velocity());
+        double dt=Math.clamp((now-(previous==null?Math.max(trajectory.get().epochTick(),now-1):previous))/20.0,0,1);var state=data.sample(id,now);var next=PlanetDaylight.spin(level).damp(model(),state,nav.get().planet().radius(),dt);var delta=next.subtract(state.velocity());
         if(delta.length()>1e-10){data.impulse(id,now,delta);if(cell!=null)SpaceLocalPhysics.externalImpulse(level,cell,nav.get().frame().toLocal(delta));}
         if(times.size()>256 && now%100==0)times.keySet().removeIf(key->data.get(key).isEmpty());
     }
-    public static void handoff(ServerLevel level,UUID id,SpaceCells.Cell cell){var data=SpaceOrbitData.get(level.getServer());var state=data.sample(id,level.getGameTime());var next=model().handoff(state.velocity());var delta=next.subtract(state.velocity());
+    public static void handoff(ServerLevel level,UUID id,SpaceCells.Cell cell){var data=SpaceOrbitData.get(level.getServer());var state=data.sample(id,level.getGameTime());var next=PlanetDaylight.spin(level).handoff(model(),state);var delta=next.subtract(state.velocity());
         if(delta.length()>1e-10){data.impulse(id,level.getGameTime(),delta);if(cell!=null)SpaceLocalPhysics.externalImpulse(level,cell,data.navigation(id).orElseThrow().frame().toLocal(delta));}
     }
     private SpaceAtmosphere(){}

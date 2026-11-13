@@ -4,7 +4,7 @@ import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import io.github.astelev.around_planet.PlanetConfig;
-import io.github.astelev.around_planet.space.SpaceCells;
+import io.github.astelev.around_planet.space.*;
 import io.github.astelev.around_planet.network.SpaceTransferPayload;
 import io.github.astelev.around_planet.transfer.TransferService;
 import net.minecraft.server.level.*;
@@ -31,7 +31,10 @@ public final class SpaceShipTransfers {
         if(!level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD) || !PlanetConfig.SPEC.isLoaded()
                 )return;
         RECENT_RETURN.values().removeIf(until->until<level.getGameTime());
-        SpacePlanetScale.check(level);SpaceDormant.check(level,container);SpaceReentry.check(level,container,RETURN,RECENT_RETURN);
+        SpacePlanetScale.check(level);
+        var contactImpulses=SpaceOrbitData.get(level.getServer()).followContacts(PlanetDaylight.spin(level),level.getGameTime());
+        for(var cell:SpaceCells.get(level).all()){var delta=contactImpulses.get(cell.id());if(delta!=null && delta.length()>1e-10)SpaceLocalPhysics.externalImpulse(level,cell,SpaceLocalPhysics.navigation(level,cell).frame().toLocal(delta));}
+        SpaceDormant.check(level,container);SpaceReentry.check(level,container,RETURN,RECENT_RETURN);
         SpaceDetachment.check(level,container);
         var data=SpaceCells.get(level);var pending=PENDING.computeIfAbsent(level,k->new HashMap<>());
         pending.values().removeIf(p->level.getGameTime()-p.created>200);

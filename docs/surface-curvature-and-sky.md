@@ -1,5 +1,8 @@
 # Curved surface and shared sky — 0.11.0-alpha.12
 
+The follow-up [alpha.13 rotation and local daylight](planet-rotation-and-local-day.md)
+connects this sky to rotating geography and position-aware surface time.
+
 ## World Curvature reference
 
 Inspected the user-supplied `World Curvature.zip` by Numpy_0 (MIT, 2026).

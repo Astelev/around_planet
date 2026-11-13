@@ -49,7 +49,7 @@ public final class OrbitMapScreen extends Screen {
             globalAxes(g,true);
             for(var other:others)arcs(g,other.plot,other.color,true,3);arcs(g,true);
         });
-        sphere.render(g,camera,sampled.radius(),left,top,right,bottom);
+        sphere.render(g,camera,sampled.radius(),left,top,right,bottom,PlanetDaylight.spin(minecraft.level,partial).angle());
         g.drawManaged(()->{globalAxes(g,false);for(var other:others)arcs(g,other.plot,other.color,false,3);arcs(g,false);
             for(var other:others){var p=new SpaceVector(other.body.x(),other.body.y(),other.body.z());var screen=project(p);boolean hover=Math.hypot(screen.x()-mx,screen.y()-my)<8;
                 marker(g,p,other.color,hover?other.body.name()+(other.body.loaded()?"":" · "+Component.translatable("around_planet.map.dormant").getString()):"");}

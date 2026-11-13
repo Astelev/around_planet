@@ -7,6 +7,7 @@ import dev.ryanhcode.sable.companion.math.BoundingBox3i;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.storage.SubLevelRemovalReason;
 import io.github.astelev.around_planet.border.PlanetBorders;
+import io.github.astelev.around_planet.space.*;
 import io.github.astelev.around_planet.topology.EastWestTopology;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
@@ -22,9 +23,13 @@ import java.util.HashMap;
 @PrefixGameTestTemplate(false)
 public final class ShipSeamGameTests {
     @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=200)
-    public static void centerOfMassMovesJointAndPassengersTogether(GameTestHelper h) {
+    public static void centerOfMassMovesJointAndPassengersTogether(GameTestHelper h) throws ReflectiveOperationException {
         var level=h.getLevel();var container=SubLevelContainer.getContainer(level);var system=container.physicsSystem();var pipeline=system.getPipeline();
         PlanetBorders.bind(level.getWorldBorder(),new EastWestTopology(512));
+        // Synchronous FULL chunks need not yet be entity-accessible in a playerless test server.
+        // Prepare the vanilla entity tracker explicitly before adding the passenger fixtures.
+        var managerField=net.minecraft.server.level.ServerLevel.class.getDeclaredField("entityManager");managerField.setAccessible(true);
+        var manager=(net.minecraft.world.level.entity.PersistentEntitySectionManager<?>)managerField.get(level);
         var bodies=new ArrayList<ServerSubLevel>();var entities=new ArrayList<net.minecraft.world.entity.Entity>();
         dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle joint=null;
         try {
@@ -39,6 +44,7 @@ public final class ShipSeamGameTests {
             joint=pipeline.addConstraint(a,b,new dev.ryanhcode.sable.api.physics.constraint.RotaryConstraintConfiguration(
                     new Vector3d(anchorA).add(1,0,0),new Vector3d(anchorB).add(-1,0,0),new Vector3d(0,1,0),new Vector3d(0,1,0)));
             h.assertTrue(joint!=null && joint.isValid(),"Rotary fixture was not created");
+            manager.updateChunkStatus(new net.minecraft.world.level.ChunkPos(16,6),net.minecraft.world.level.entity.Visibility.TRACKED);manager.updateChunkStatus(new net.minecraft.world.level.ChunkPos(-16,6),net.minecraft.world.level.entity.Visibility.TRACKED);
             var actor=net.minecraft.world.entity.EntityType.ZOMBIE.create(level);actor.setPos(256.7,201,100);actor.setNoGravity(true);level.addFreshEntity(actor);entities.add(actor);
             var movement=(dev.ryanhcode.sable.mixinterface.entity.entity_sublevel_collision.EntityMovementExtension)actor;movement.sable$setTrackingSubLevel(b);
             io.github.astelev.around_planet.transfer.TransferService.check(actor);
@@ -56,11 +62,12 @@ public final class ShipSeamGameTests {
             actor.setPos(actor.getX()+1,actor.getY(),actor.getZ());boat.setPos(boat.getX()+1,boat.getY(),boat.getZ());boat.positionRider(pig);
             var linear=pipeline.getLinearVelocity(a,new Vector3d());var angular=pipeline.getAngularVelocity(a,new Vector3d());
             double actorX=actor.getX(),boatX=boat.getX();
+            h.assertTrue(level.getEntity(actor.getId())==actor && level.getEntity(boat.getId())==boat,"Passenger fixture chunks are not entity-accessible yet");
             io.github.astelev.around_planet.compat.ShipTransferService.check(level,container);
             h.assertTrue(Math.abs(a.logicalPose().position().x+256.5)<1e-6 && Math.abs(b.logicalPose().position().x+254.5)<1e-6,"Group did not wrap by one common circumference");
             h.assertTrue(joint.isValid(),"Transfer broke the rotary constraint");
             h.assertTrue(pipeline.getLinearVelocity(a,new Vector3d()).distance(linear)<1e-8 && pipeline.getAngularVelocity(a,new Vector3d()).distance(angular)<1e-8,"Transfer changed rigid body velocity");
-            h.assertTrue(Math.abs(actor.getX()-actorX+512)<1e-6 && SableTracking(actor)==b,"Standing passenger did not follow its original sublevel");
+            h.assertTrue(Math.abs(actor.getX()-actorX+512)<1e-6 && SableTracking(actor)==b,"Standing passenger did not follow its original sublevel: x="+actor.getX()+" old="+actorX+" tracked="+SableTracking(actor)+" expected="+b+" removed="+actor.isRemoved());
             h.assertTrue(Math.abs(boat.getX()-boatX+512)<1e-6 && pig.getVehicle()==boat,"Riding group separated during carrier transfer");
             h.assertTrue(actor.getDeltaMovement().equals(new net.minecraft.world.phys.Vec3(0.3,0.2,0.1)) && boat.getDeltaMovement().x==0.6,"Passenger velocity changed");
             io.github.astelev.around_planet.compat.ShipTransferService.check(level,container);
@@ -91,7 +98,7 @@ public final class ShipSeamGameTests {
             h.assertTrue(a.logicalPose().position().x==257 && level.getChunkSource().getChunkNow(-16,1234567>>4)==null,"Transfer entered or synchronously generated a missing destination");
             h.succeed();
         } finally {
-            entities.forEach(net.minecraft.world.entity.Entity::discard);if(joint!=null && joint.isValid())joint.remove();
+            entities.forEach(net.minecraft.world.entity.Entity::discard);manager.updateChunkStatus(new net.minecraft.world.level.ChunkPos(16,6),net.minecraft.world.level.entity.Visibility.HIDDEN);manager.updateChunkStatus(new net.minecraft.world.level.ChunkPos(-16,6),net.minecraft.world.level.entity.Visibility.HIDDEN);if(joint!=null && joint.isValid())joint.remove();
             for(var ship:bodies)if(container.getSubLevel(ship.getUniqueId())!=null)container.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);
             PlanetBorders.unbind(level.getWorldBorder());
         }
@@ -107,6 +114,7 @@ public final class ShipSeamGameTests {
             var pos=h.absolutePos(new BlockPos(1,2,1));level.setBlockAndUpdate(pos,Blocks.IRON_BLOCK.defaultBlockState());
             ship=SubLevelAssemblyHelper.assembleBlocks(level,pos,java.util.List.of(pos),new BoundingBox3i(pos.getX(),pos.getY(),pos.getZ(),pos.getX(),pos.getY(),pos.getZ()));
             var local=ship.getPlot().getBoundingBox();
+            h.assertTrue(Math.abs(PlanetDaylight.worldX(level,new BlockPos(local.minX(),local.minY(),local.minZ()))-ship.logicalPose().transformPosition(new Vector3d(local.minX()+.5,local.minY()+.5,local.minZ()+.5)).x)<1e-6,"Daylight used the Sable storage address instead of geographic pose");
             seat=(net.minecraft.world.entity.Entity)Class.forName("com.simibubi.create.content.contraptions.actors.seat.SeatEntity")
                     .getConstructor(net.minecraft.world.level.Level.class).newInstance(level);
             seat.setPos(local.minX()+0.5,local.minY()+1,local.minZ()+0.5);level.addFreshEntity(seat);
@@ -200,6 +208,7 @@ public final class ShipSeamGameTests {
             io.github.astelev.around_planet.compat.SpaceLocalPhysics.enter(level,container,cell);
             var orbit=io.github.astelev.around_planet.space.SpaceOrbitData.get(level.getServer());
             h.assertTrue(Math.abs(orbit.navigation(cell.id()).orElseThrow().frame().toLocal(orbit.sample(cell.id(),level.getGameTime()).velocity()).y()+8)<1e-6,"Entry velocity was discarded instead of retained virtually");
+            double baselineVx=orbit.navigation(cell.id()).orElseThrow().frame().toLocal(orbit.sample(cell.id(),level.getGameTime()).velocity()).x();
             pipeline.prePhysicsTicks();
             for(int step=0;step<500;step++) {
                 if(step==50)for(var ship:java.util.List.of(a,b))pipeline.addLinearAndAngularVelocity(ship,new Vector3d(1,0,0),new Vector3d());
@@ -217,7 +226,7 @@ public final class ShipSeamGameTests {
             pipeline.postPhysicsTicks();
             var center=new Vector3d();double mass=0;for(var ship:java.util.List.of(a,b)){double m=ship.getSelfMassTracker().getMass();center.fma(m,ship.logicalPose().transformPosition(new Vector3d(ship.getSelfMassTracker().getCenterOfMass())));mass+=m;}center.div(mass);
             h.assertTrue(center.distance(new Vector3d(101,1536,80))<.01,"Owner drifted/fell out of its cell: "+center);
-            double vx=orbit.navigation(cell.id()).orElseThrow().frame().toLocal(orbit.sample(cell.id(),level.getGameTime()).velocity()).x();h.assertTrue(Math.abs(vx-5)<.02,"Owner thrust was not added exactly once to virtual motion: "+vx);
+            double vx=orbit.navigation(cell.id()).orElseThrow().frame().toLocal(orbit.sample(cell.id(),level.getGameTime()).velocity()).x();h.assertTrue(Math.abs(vx-baselineVx-1)<.02,"Owner thrust was not added exactly once to virtual motion: "+vx);
             h.assertTrue(joint.isValid(),"Frame controller broke the rotary group");
             h.assertTrue(free.logicalPose().position().x<129.9,"Free craft did not move opposite to owner thrust: "+free.logicalPose().position());
             h.assertTrue(Math.abs(pipeline.getLinearVelocity(free,new Vector3d()).y)<.02,"Free craft still experiences surface gravity");
@@ -241,11 +250,11 @@ public final class ShipSeamGameTests {
             var planet=new io.github.astelev.around_planet.space.PlanetGeometry(256,256);var frame=io.github.astelev.around_planet.space.SpaceFrame.IDENTITY;
             orbits.navigate(cell.id(),new io.github.astelev.around_planet.space.SpaceNavigation(planet,frame));
             double returnY=io.github.astelev.around_planet.compat.SpaceAtmosphere.returnAltitude();
-            var velocity=planet.frame(90,50).toCosmic(new io.github.astelev.around_planet.space.SpaceVector(30,-1000000,2));
+            var spin=PlanetDaylight.spin(level);var launch=spin.launch(planet,new SpaceVector(90,returnY+1,50),new SpaceVector(30,-1000000,2));var velocity=launch.velocity();
             // A full-shell step followed by a maneuver has already rebased the trajectory epoch.
             // Its latest point is outside and outbound; only the previous observed position detects entry.
-            io.github.astelev.around_planet.compat.SpaceReentry.entered(level,cell.id(),planet.position(90,returnY+1,50));
-            orbits.put(cell.id(),new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(planet.position(90,returnY+1,50).scale(-2),velocity),0));
+            io.github.astelev.around_planet.compat.SpaceReentry.entered(level,cell.id(),launch.position());
+            orbits.put(cell.id(),new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(launch.position().scale(-2),velocity),0));
             pipeline.addLinearAndAngularVelocity(free,new Vector3d(3,1,2),new Vector3d(.1,.2,.3));
             var before=new Vector3d(free.logicalPose().position());var oldOmega=pipeline.getAngularVelocity(free,new Vector3d());
             var request=new java.util.HashSet<java.util.UUID>();var cooldown=new java.util.HashMap<java.util.UUID,Long>();
@@ -260,7 +269,7 @@ public final class ShipSeamGameTests {
             var actualCenter=a.logicalPose().transformPosition(new Vector3d(a.getSelfMassTracker().getCenterOfMass())).add(b.logicalPose().transformPosition(new Vector3d(b.getSelfMassTracker().getCenterOfMass()))).mul(.5);
             h.assertTrue(Math.abs(actualCenter.y-returnY)<.01,"Reentry altitude is wrong");
             h.assertTrue(pipeline.getLinearVelocity(a,new Vector3d()).length()<=io.github.astelev.around_planet.PlanetConfig.REENTRY_SPEED.get()+.001,"Unsafe owner velocity passed into native reentry");
-            var destination=planet.frame(actualCenter.x,actualCenter.z);var q=io.github.astelev.around_planet.compat.SpaceRotation.between(frame,destination);var boost=destination.toLocal(velocity);
+            var destination=spin.frame(planet,actualCenter.x,actualCenter.z);var q=io.github.astelev.around_planet.compat.SpaceRotation.between(frame,destination);var boost=spin.landingVelocity(planet,spin.position(planet,actualCenter.x,returnY,actualCenter.z),velocity);
             var expectedV=q.transform(new Vector3d(3,1,2)).add(boost.x(),boost.y(),boost.z());// Rapier stores velocity with float precision: one ULP at this deliberately extreme speed.
             h.assertTrue(pipeline.getLinearVelocity(free,new Vector3d()).distance(expectedV)<=Math.max(1e-6,Math.ulp((float)expectedV.length())),"Free body velocity: actual="+pipeline.getLinearVelocity(free,new Vector3d())+" expected="+expectedV+" error="+pipeline.getLinearVelocity(free,new Vector3d()).distance(expectedV));
             h.assertTrue(pipeline.getAngularVelocity(free,new Vector3d()).distance(q.transform(oldOmega))<1e-6,"Reentry lost angular momentum direction");
@@ -331,9 +340,9 @@ public final class ShipSeamGameTests {
         var cell=new io.github.astelev.around_planet.space.SpaceCells.Cell(id,40,0,1536,0,13000,736,24000,java.util.List.of(missingBody));var column=new net.minecraft.world.level.ChunkPos(13000>>4,24000>>4);
         h.assertTrue(level.getChunkSource().getChunkNow(column.x,column.z)==null,"Dormant destination was already loaded");
         double returnY=io.github.astelev.around_planet.compat.SpaceAtmosphere.returnAltitude();
-        try {cells.add(level,cell);var velocity=planet.frame(13000,24000).up().scale(-20);
+        try {cells.add(level,cell);var spin=PlanetDaylight.spin(level);var inbound=spin.launch(planet,new SpaceVector(13000,returnY-1,24000),new SpaceVector(0,-20,0));var velocity=inbound.velocity();
             data.navigate(id,new io.github.astelev.around_planet.space.SpaceNavigation(planet,planet.frame(13000,24000)));
-            data.put(id,new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),new io.github.astelev.around_planet.space.SpaceState(planet.position(13000,returnY-1,24000),velocity),0));
+            data.put(id,new io.github.astelev.around_planet.space.SpaceTrajectory("around_planet:overworld",level.getGameTime(),inbound,0));
             io.github.astelev.around_planet.compat.SpaceReentry.check(level,c,new java.util.HashSet<>(),new java.util.HashMap<>());
             h.assertTrue(data.reentry(id).isPresent() && Math.abs(data.sample(id,level.getGameTime()).position().length()-planet.radius()-returnY)<1e-6,"Unloaded inbound record did not latch the surface contact");
             h.assertTrue(level.getChunkSource().getChunkNow(column.x,column.z)==null && c.getSubLevel(missingBody)==null,"Dormant return forced destination chunks or a native body to load");

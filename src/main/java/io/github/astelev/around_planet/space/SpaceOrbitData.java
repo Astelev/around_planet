@@ -17,8 +17,18 @@ public final class SpaceOrbitData extends SavedData {
     private final Map<UUID,SpaceTrajectory> objects=new HashMap<>();
     private final Map<UUID,SpaceNavigation> navigation=new HashMap<>();
     private final Map<UUID,SpaceVector> reentries=new HashMap<>();
+    private record SurfaceContact(SpaceVector world,SpaceVector relativeVelocity){}
+    private final Map<UUID,SurfaceContact> surfaceContacts=new HashMap<>();
+    public void reenterRotating(UUID id,SpaceVector contact,long tick,PlanetSpin spin){reenter(id,contact,tick);var planet=navigation.get(id).planet();surfaceContacts.put(id,new SurfaceContact(spin.surface(planet,contact),spin.landingVelocity(planet,contact,sample(id,tick).velocity())));setDirty();}
+    /** Only parked handoffs follow the ground while asynchronous chunks become ready. */
+    public Map<UUID,SpaceVector> followContacts(PlanetSpin spin,long tick){var impulses=new HashMap<UUID,SpaceVector>();
+        for(var id:List.copyOf(reentries.keySet())){var nav=navigation.get(id);if(nav==null)continue;
+            var old=sample(id,tick);var contact=surfaceContacts.computeIfAbsent(id,key->new SurfaceContact(spin.surface(nav.planet(),old.position()),spin.landingVelocity(nav.planet(),old.position(),old.velocity())));
+            var next=spin.launch(nav.planet(),contact.world(),contact.relativeVelocity());reentries.put(id,next.position());objects.put(id,new SpaceTrajectory(require(id).primary(),tick,next,0));impulses.put(id,next.velocity().subtract(old.velocity()));setDirty();
+        }return impulses;
+    }
     public Optional<SpaceVector> reentry(UUID id){return Optional.ofNullable(reentries.get(id));}
-    public void reenter(UUID id,SpaceVector contact,long tick){var state=sample(id,tick);reentries.put(id,contact);put(id,new SpaceTrajectory(require(id).primary(),tick,new SpaceState(contact,state.velocity()),0));setDirty();}
+    public void reenter(UUID id,SpaceVector contact,long tick){surfaceContacts.remove(id);var state=sample(id,tick);reentries.put(id,contact);put(id,new SpaceTrajectory(require(id).primary(),tick,new SpaceState(contact,state.velocity()),0));setDirty();}
     public Optional<SpaceNavigation> navigation(UUID id){return Optional.ofNullable(navigation.get(id));}
     public void navigate(UUID id,SpaceNavigation value){if(!value.equals(navigation.put(id,value)))setDirty();}
     public static SpaceOrbitData get(MinecraftServer server) {
@@ -39,8 +49,8 @@ public final class SpaceOrbitData extends SavedData {
         Objects.requireNonNull(id);Objects.requireNonNull(trajectory);
         if(!trajectory.equals(objects.put(id,trajectory)))setDirty();
     }
-    public void remove(UUID id){if(objects.remove(id)!=null | navigation.remove(id)!=null | reentries.remove(id)!=null)setDirty();}
-    public void impulse(UUID id,long gameTick,SpaceVector deltaVelocity){var state=sample(id,gameTick);put(id,new SpaceTrajectory(require(id).primary(),gameTick,new SpaceState(state.position(),state.velocity().add(deltaVelocity)),require(id).mu()));}
+    public void remove(UUID id){if(objects.remove(id)!=null | navigation.remove(id)!=null | reentries.remove(id)!=null | surfaceContacts.remove(id)!=null)setDirty();}
+    public void impulse(UUID id,long gameTick,SpaceVector deltaVelocity){var state=sample(id,gameTick);var parked=surfaceContacts.get(id);if(parked!=null){var p=navigation.get(id).planet();double phase=Math.atan2(state.position().x(),state.position().y())-parked.world().x()/p.radius();var frame=new PlanetSpin(phase,0).frame(p,parked.world().x(),parked.world().z());surfaceContacts.put(id,new SurfaceContact(parked.world(),parked.relativeVelocity().add(frame.toLocal(deltaVelocity))));}put(id,new SpaceTrajectory(require(id).primary(),gameTick,new SpaceState(state.position(),state.velocity().add(deltaVelocity)),require(id).mu()));}
     /** New object inherits origin velocity plus local relative velocity, once, in one inertial chart. */
     public SpaceTrajectory detach(UUID source,UUID detached,long gameTick,SpaceFrame frame,SpaceState local) {
         if(objects.containsKey(detached))throw new IllegalArgumentException("Detached object ID already exists");
@@ -65,6 +75,7 @@ public final class SpaceOrbitData extends SavedData {
                 var n=entry.getCompound("navigation");var frame=new SpaceFrame(readVector(n,"east"),readVector(n,"up"),readVector(n,"south"));
                 data.navigation.put(entry.getUUID("id"),new SpaceNavigation(new PlanetGeometry(n.getDouble("halfX"),n.getDouble("halfZ")),frame));
             }
+            if(entry.contains("surfaceContact",Tag.TAG_COMPOUND)){var n=entry.getCompound("surfaceContact");data.surfaceContacts.put(entry.getUUID("id"),new SurfaceContact(readVector(n,"world"),readVector(n,"velocity")));}
             if(data.objects.putIfAbsent(entry.getUUID("id"),trajectory)!=null)throw new IllegalArgumentException("Duplicate orbit object ID");
         }
         return data;
@@ -77,6 +88,7 @@ public final class SpaceOrbitData extends SavedData {
             var e=new CompoundTag();var trajectory=item.getValue();var p=trajectory.initial().position();var v=trajectory.initial().velocity();
             e.putUUID("id",item.getKey());e.putString("primary",trajectory.primary());e.putLong("epoch",trajectory.epochTick());e.putDouble("mu",trajectory.mu());
             e.putDouble("px",p.x());e.putDouble("py",p.y());e.putDouble("pz",p.z());e.putDouble("vx",v.x());e.putDouble("vy",v.y());e.putDouble("vz",v.z());
+            var parked=surfaceContacts.get(item.getKey());if(parked!=null){var n=new CompoundTag();writeVector(n,"world",parked.world());writeVector(n,"velocity",parked.relativeVelocity());e.put("surfaceContact",n);}
             var contact=reentries.get(item.getKey());if(contact!=null){var n=new CompoundTag();writeVector(n,"p",contact);e.put("reentry",n);}
             var nav=navigation.get(item.getKey());if(nav!=null){var n=new CompoundTag();n.putDouble("halfX",nav.planet().halfX());n.putDouble("halfZ",nav.planet().halfZ());writeVector(n,"east",nav.frame().east());writeVector(n,"up",nav.frame().up());writeVector(n,"south",nav.frame().south());e.put("navigation",n);}list.add(e);
         });tag.put("objects",list);return tag;
