@@ -29,5 +29,7 @@
   "around_planet.sensor.mode.antinormal": "Против нормали",
   "around_planet.sensor.mode.planet_out": "От планеты",
   "around_planet.sensor.mode.planet_in": "К планете",
-  "around_planet.sensor.mode.sun": "К Солнцу"
+  "around_planet.sensor.mode.sun": "К Солнцу",
+  "around_planet.sensor.behind": "Цель позади",
+  "around_planet.sensor.hud_inactive": "Нет сигнала"
 }

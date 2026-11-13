@@ -56,6 +56,7 @@ dependencies {
     compileOnly('maven.modrinth:sable:fg9dTRz9') { transitive = false }
     compileOnly files(extractSableApi.map { it.destinationDir }).asFileTree.matching { include '*.jar' }
     compileOnly('maven.modrinth:distanthorizons:9w34y8ai') { transitive = false } // DH 3.3.3 / 1.21.1
+    compileOnly('maven.modrinth:create:UjX6dr61') { transitive = false } // optional goggles API only
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

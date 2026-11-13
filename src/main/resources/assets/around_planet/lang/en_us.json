@@ -29,5 +29,7 @@
   "around_planet.sensor.mode.antinormal": "Anti-normal",
   "around_planet.sensor.mode.planet_out": "Away from planet",
   "around_planet.sensor.mode.planet_in": "Toward planet",
-  "around_planet.sensor.mode.sun": "Toward Sun"
+  "around_planet.sensor.mode.sun": "Toward Sun",
+  "around_planet.sensor.behind": "Target behind",
+  "around_planet.sensor.hud_inactive": "No signal"
 }

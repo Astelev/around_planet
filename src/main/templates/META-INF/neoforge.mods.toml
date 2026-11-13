@@ -40,3 +40,10 @@ type="optional"
 versionRange="[2.0.6]"
 ordering="AFTER"
 side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="aeroengineering"
+type="optional"
+versionRange="[1.0,2.0)"
+ordering="AFTER"
+side="BOTH"

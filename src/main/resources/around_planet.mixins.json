@@ -1,10 +1,12 @@
 {
   "required": true,
+  "plugin": "io.github.astelev.around_planet.mixin.PlanetMixinPlugin",
   "minVersion": "0.8",
   "package": "io.github.astelev.around_planet.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "WorldBorderMixin",
+    "SensorGogglesMixin",
     "PlanetTimeMixin",
     "PlanetBrightnessMixin",
     "PlanetDayStateMixin",
@@ -60,6 +62,7 @@
     "defaultRequire": 1
   },
   "client": [
+    "AeroOrbitalHudMixin",
     "PlanetClientTimeMixin",
     "PlanetClientLightMixin",
     "SurfaceVeilSourceMixin",
