@@ -12,14 +12,19 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
 public final class OrbitalSensorBlock extends BaseEntityBlock {
     public static final DirectionProperty FACING=net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING;
+    public static final net.minecraft.world.level.block.state.properties.IntegerProperty ROLL=net.minecraft.world.level.block.state.properties.IntegerProperty.create("roll",0,3);
     public static final MapCodec<OrbitalSensorBlock> CODEC=simpleCodec(OrbitalSensorBlock::new);
-    public OrbitalSensorBlock(Properties properties){super(properties);registerDefaultState(stateDefinition.any().setValue(FACING,Direction.UP));}
+    public OrbitalSensorBlock(Properties properties){super(properties);registerDefaultState(stateDefinition.any().setValue(FACING,Direction.UP).setValue(ROLL,0));}
     @Override protected MapCodec<? extends BaseEntityBlock> codec(){return CODEC;}
-    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> b){b.add(FACING);}
+    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> b){b.add(FACING,ROLL);}
     @Override public BlockState getStateForPlacement(BlockPlaceContext c){return defaultBlockState().setValue(FACING,c.getClickedFace());}
-    @Override protected BlockState rotate(BlockState s,Rotation r){return s.setValue(FACING,r.rotate(s.getValue(FACING)));}
+    @Override protected BlockState rotate(BlockState s,Rotation r){var f=frame(s);return oriented(s,r.rotate(direction(f.forward())),r.rotate(direction(f.right())));}
     @Override protected BlockState mirror(BlockState s,Mirror m){return s.rotate(m.getRotation(s.getValue(FACING)));}
-    public static io.github.astelev.around_planet.space.SensorFrame frame(BlockState state){var n=state.getValue(FACING).getNormal();return io.github.astelev.around_planet.space.SensorFrame.of(new io.github.astelev.around_planet.space.SpaceVector(n.getX(),n.getY(),n.getZ()));}
+    public static io.github.astelev.around_planet.space.SensorFrame frame(BlockState state){var n=state.getValue(FACING).getNormal();var f=io.github.astelev.around_planet.space.SensorFrame.of(new io.github.astelev.around_planet.space.SpaceVector(n.getX(),n.getY(),n.getZ()));return state.hasProperty(ROLL)?f.rolled(state.getValue(ROLL)):f;}
+    private static Direction direction(io.github.astelev.around_planet.space.SpaceVector v){return Direction.getNearest((float)v.x(),(float)v.y(),(float)v.z());}
+    private static BlockState oriented(BlockState s,Direction forward,Direction right){var n=forward.getNormal();var base=io.github.astelev.around_planet.space.SensorFrame.of(new io.github.astelev.around_planet.space.SpaceVector(n.getX(),n.getY(),n.getZ()));for(int roll=0;roll<4;roll++)if(direction(base.rolled(roll).right())==right)return s.setValue(FACING,forward).setValue(ROLL,roll);throw new IllegalArgumentException("Sensor frame");}
+    /** Rotate the entire instrument around the clicked world axis, including a roll on nose/base clicks. */
+    public static BlockState wrenched(BlockState s,Direction face){var f=frame(s);return oriented(s,direction(f.forward()).getClockWise(face.getAxis()),direction(f.right()).getClockWise(face.getAxis()));}
     private static final java.util.Map<Direction,net.minecraft.world.phys.shapes.VoxelShape> SHAPES=new java.util.EnumMap<>(Direction.class);
     static {for(var d:Direction.values()){var frame=io.github.astelev.around_planet.space.SensorFrame.of(new io.github.astelev.around_planet.space.SpaceVector(d.getStepX(),d.getStepY(),d.getStepZ()));var shape=net.minecraft.world.phys.shapes.Shapes.empty();for(var b:net.minecraft.world.phys.shapes.Shapes.or(Block.box(0,0,0,16,5,16),Block.box(1,4,1,15,13,15),Block.box(7,13,7,9,15,9)).toAabbs()){var a=frame.model(new io.github.astelev.around_planet.space.SpaceVector(b.minX-.5,b.minY-.5,b.minZ-.5));var z=frame.model(new io.github.astelev.around_planet.space.SpaceVector(b.maxX-.5,b.maxY-.5,b.maxZ-.5));shape=net.minecraft.world.phys.shapes.Shapes.or(shape,net.minecraft.world.phys.shapes.Shapes.box(Math.min(a.x(),z.x())+.5,Math.min(a.y(),z.y())+.5,Math.min(a.z(),z.z())+.5,Math.max(a.x(),z.x())+.5,Math.max(a.y(),z.y())+.5,Math.max(a.z(),z.z())+.5));}SHAPES.put(d,shape);}}
     @Override protected net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState s,BlockGetter l,BlockPos p,net.minecraft.world.phys.shapes.CollisionContext c){return SHAPES.get(s.getValue(FACING));}

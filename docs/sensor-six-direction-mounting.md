@@ -1,3 +1,5 @@
+В alpha.28 добавлен [крен ключом Create: четыре поворота вокруг носа](large-orbits-and-sensor-roll.md).
+
 # Six-direction orbital sensor (0.11.0-alpha.17)
 
 The sensor's physical top is now the ship's forward axis. A fixed white cap marks

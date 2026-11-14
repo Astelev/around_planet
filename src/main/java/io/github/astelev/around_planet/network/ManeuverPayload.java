@@ -40,7 +40,7 @@ public record ManeuverPayload(UUID focus,long now,SpaceTrajectory trajectory,Lis
         if(!net.neoforged.fml.ModList.get().isLoaded("sable"))return;var focus=ManeuverAccess.focus(p);if(focus==null)return;var s=valid(p,focus.id());
         if(s==null||!s.nonce.equals(packet.session)||packet.sequence<=s.sequence)return;
         EDITORS.put(p,new Session(s.nonce,s.focus,s.block,s.dimension,s.expires,packet.sequence));var data=SpaceOrbitData.get(p.getServer());
-        String error="";try{if(packet.delete)data.removeManeuver(focus.id(),packet.node.id());else{long delta=packet.node.tick()-p.level().getGameTime();if(delta<=0||delta>ManeuverNode.HORIZON)throw new IllegalArgumentException("time");if(data.reentry(focus.id()).isPresent())throw new IllegalArgumentException("reentry");data.maneuver(focus.id(),packet.node);}}catch(IllegalArgumentException ex){error="around_planet.maneuver.rejected";}
+        String error="";try{if(packet.delete)data.removeManeuver(focus.id(),packet.node.id());else{long delta=packet.node.tick()-p.level().getGameTime();if(delta<=0)throw new IllegalArgumentException("time");if(data.reentry(focus.id()).isPresent())throw new IllegalArgumentException("reentry");data.maneuver(focus.id(),packet.node);}}catch(IllegalArgumentException ex){error="around_planet.maneuver.rejected";}
         send(p,focus.id(),false,error);
     }
 }

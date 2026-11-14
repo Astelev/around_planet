@@ -58,7 +58,7 @@
   "around_planet.maneuver.rejected": "План не сохранён",
   "around_planet.maneuver.preview_failed": "Нет прогноза",
   "around_planet.maneuver.number": "Введите число ±10000",
-  "around_planet.maneuver.limit": "Предел: 16 узлов / 2 ч",
+  "around_planet.maneuver.limit": "Не больше 16 узлов",
   "around_planet.maneuver.readonly": "Только просмотр",
   "block.around_planet.maneuver_planner": "Планировщик манёвров",
   "around_planet.maneuver.help.0": "Плюс: по движению. Минус: против движения. м/с.",

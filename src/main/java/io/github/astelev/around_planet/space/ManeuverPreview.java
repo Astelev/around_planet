@@ -3,24 +3,29 @@ import java.util.*;
 /** Pure on-demand prediction. Never mutates an actual orbit or executes a burn. */
 public record ManeuverPreview(List<Segment> segments,List<Mark> nodes) {
     public record Point(long tick,SpaceVector position){}
-    public record Segment(List<Point> points,boolean planned){public Segment{points=List.copyOf(points);}}
+    public record Segment(List<Point> points,boolean planned,SpaceTrajectory trajectory){public Segment{points=List.copyOf(points);}}
     public record Mark(ManeuverNode node,SpaceVector position){}
     public ManeuverPreview {segments=List.copyOf(segments);nodes=List.copyOf(nodes);}
     public static ManeuverPreview create(SpaceTrajectory base,long now,List<ManeuverNode> plan,double radius,double entry){
         var segments=new ArrayList<Segment>();var marks=new ArrayList<Mark>();var trajectory=base;long from=now;boolean planned=false;
         for(var node:plan.stream().filter(n->n.tick()>now).sorted(Comparator.comparingLong(ManeuverNode::tick).thenComparing(ManeuverNode::id)).toList()){
-            var points=sample(trajectory,from,node.tick(),radius+entry,48);segments.add(new Segment(points,planned));
+            var points=sample(trajectory,from,node.tick(),radius+entry,48);segments.add(new Segment(points,planned,trajectory));
             if(points.isEmpty()||points.getLast().tick()!=node.tick())return new ManeuverPreview(segments,marks);
             var state=trajectory.at(node.tick());marks.add(new Mark(node,state.position()));trajectory=trajectory.impulse(node.tick(),node.delta(state));from=node.tick();planned=true;
         }
-        var state=trajectory.at(from);var curve=OrbitPlot.create(state,trajectory.mu(),radius,entry,false);
-        double seconds=curve.period()>0?curve.period():Math.max(120,Math.min(3600,Math.max(radius*20,state.position().length()*5)/Math.max(1,state.velocity().length())));
-        long end=from+Math.min(ManeuverNode.HORIZON,Math.max(20,(long)Math.ceil(seconds*20)));
-        segments.add(new Segment(sample(trajectory,from,end,radius+entry,256),planned));return new ManeuverPreview(segments,marks);
+        var state=trajectory.at(from);var ellipse=EllipticArc.of(state,trajectory.mu());
+        if(ellipse!=null)segments.add(new Segment(timed(ellipse.full(radius+entry,384),from),planned,trajectory));
+        else {double seconds=Math.max(120,Math.min(3600,Math.max(radius*20,state.position().length()*5)/Math.max(1,state.velocity().length())));segments.add(new Segment(sample(trajectory,from,tickAt(from,seconds),radius+entry,256),planned,trajectory));}
+        return new ManeuverPreview(segments,marks);
     }
+    public static long tickAt(long from,double seconds){double ticks=Math.max(0,seconds*20);return ticks>=Long.MAX_VALUE-from?Long.MAX_VALUE:from+Math.round(ticks);}
+    private static List<Point> timed(EllipticArc.Arc arc,long from){var result=new ArrayList<Point>();for(var v:arc.vertices())result.add(new Point(tickAt(from,v.seconds()),v.position()));return result;}
+
     private static List<Point> sample(SpaceTrajectory path,long from,long until,double shell,int count){
+        var ellipse=EllipticArc.of(path.at(from),path.mu());
+        if(ellipse!=null){long start=from;if((until-from)/20.0>ellipse.period()){start=Math.max(from,until-Math.min(until-from,(long)Math.ceil(ellipse.period()*20)));ellipse=EllipticArc.of(path.at(start),path.mu());}var arc=ellipse.until((until-start)/20.0,shell,384);var points=new ArrayList<>(timed(arc,start));if(!arc.reentry()&&!points.isEmpty())points.set(points.size()-1,new Point(until,path.at(until).position()));return points;}
         var points=new ArrayList<Point>();long last=Long.MIN_VALUE;
-        for(int i=0;i<=count;i++){long tick=from+(until-from)*i/count;if(tick==last)continue;var state=path.at(tick);if(state.position().length()<shell-1e-5&&i>0)break;points.add(new Point(tick,state.position()));last=tick;}
+        for(int i=0;i<=count;i++){long tick=from+(long)((until-from)*(i/(double)count));if(tick==last)continue;var state=path.at(tick);if(state.position().length()<shell-1e-5&&i>0)break;points.add(new Point(tick,state.position()));last=tick;}
         return points;
     }
 }

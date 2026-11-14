@@ -9,6 +9,7 @@ public record OrbitPlot(List<SpaceVector> points,SpaceVector periapsis,SpaceVect
         if(waiting || distance<1e-9)return new OrbitPlot(List.of(r),null,null,0,waiting,false);
         var h=r.cross(v);double h2=h.dot(h);double energy=v.dot(v)/2-(mu>0?mu/distance:0);
         if(mu<=0 || h2<mu*distance*1e-12)return radial(state,mu,radius,shell,energy);
+        if(energy<0){var ellipse=EllipticArc.of(state,mu);if(ellipse!=null){var arc=ellipse.full(shell,384);return new OrbitPlot(arc.vertices().stream().map(EllipticArc.Vertex::position).toList(),ellipse.periapsis(),ellipse.apoapsis(),ellipse.period(),arc.reentry(),false);}}
         var eccentric=v.cross(h).scale(1/mu).subtract(r.scale(1/distance));double e=eccentric.length(),p=h2/mu;
         var axis=e>1e-8?eccentric.scale(1/e):r.scale(1/distance);var tangent=h.scale(1/Math.sqrt(h2)).cross(axis);
         double start=Math.atan2(r.dot(tangent),r.dot(axis));boolean open=energy>=0;double end=open?Math.acos(Math.max(-1,Math.min(1,-1/e)))-1e-7:start+2*Math.PI;

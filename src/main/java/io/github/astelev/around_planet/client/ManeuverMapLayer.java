@@ -41,14 +41,17 @@ final class ManeuverMapLayer {
     void markers(GuiGraphics g,int mx,int my){if(preview==null)return;for(var mark:preview.nodes()){var p=map.project(mark.position());boolean hover=Math.hypot(p.x()-mx,p.y()-my)<9;String text=hover?String.format(Locale.ROOT,"%s · Δv %.1f m/s",time(mark.node().tick()),mark.node().magnitude()):mark.node().id().equals(selected)?"Δv":"";map.marker(g,mark.position(),0xffffac4d,text);}}
     boolean click(double mx,double my){if(!authorized()||preview==null)return false;
         for(var mark:preview.nodes()){var p=map.project(mark.position());if(Math.hypot(p.x()-mx,p.y()-my)<=9&&map.visible(mark.position())){select(mark.node());return true;}}
-        double best=8;long tick=-1;for(var segment:preview.segments())for(int i=1;i<segment.points().size();i++){
+        double best=8;long tick=-1,low=0,high=0;ManeuverPreview.Segment picked=null;for(var segment:preview.segments())for(int i=1;i<segment.points().size();i++){
             var a=segment.points().get(i-1);var b=segment.points().get(i);var aa=map.project(a.position());var bb=map.project(b.position());double dx=bb.x()-aa.x(),dy=bb.y()-aa.y(),length=dx*dx+dy*dy;if(length<1e-8)continue;
             double t=Math.clamp(((mx-aa.x())*dx+(my-aa.y())*dy)/length,0,1),distance=Math.hypot(aa.x()+t*dx-mx,aa.y()+t*dy-my);var point=a.position().add(b.position().subtract(a.position()).scale(t));
-            if(distance<best&&map.visible(point)){best=distance;tick=a.tick()+Math.round((b.tick()-a.tick())*t);}
+            if(distance<best&&map.visible(point)){best=distance;tick=a.tick()+Math.round((b.tick()-a.tick())*t);low=a.tick();high=b.tick();picked=segment;}
         }
-        if(tick<0)return false;tick=Math.max(tick,ManeuverClient.now()+20);if(tick-ManeuverClient.now()>ManeuverNode.HORIZON||nodes().size()>=ManeuverNode.MAX_NODES){error="around_planet.maneuver.limit";return true;}
+        if(tick<0)return false;
+        if(picked!=null&&high>low){var path=picked.trajectory();for(int i=0;i<28&&high-low>3;i++){long a=low+(high-low)/3,b=high-(high-low)/3;if(score(path,a,mx,my)<score(path,b,mx,my))high=b;else low=a;}tick=low;for(long candidate:new long[]{low,low+(high-low)/2,high})if(score(path,candidate,mx,my)<score(path,tick,mx,my))tick=candidate;}
+        tick=Math.max(tick,ManeuverClient.now()+20);if(nodes().size()>=ManeuverNode.MAX_NODES){error="around_planet.maneuver.limit";return true;}
         select(new ManeuverNode(UUID.randomUUID(),tick,0,0,0));submit(false);return true;
     }
+    private double score(SpaceTrajectory path,long tick,double x,double y){var p=map.project(path.at(tick).position());return Math.hypot(p.x()-x,p.y()-y);}
     private static String time(long tick){double seconds=(tick-ManeuverClient.now())/20.0;return String.format(Locale.ROOT,"T%s%.1f s",seconds>=0?"−":"+",Math.abs(seconds));}
     void panel(GuiGraphics g){if(!editor())return;g.fill(x-4,y-3,x+width,y+132,0xed101d30);var font=map.getMinecraft().font;
         g.drawString(font,Component.translatable("around_planet.maneuver.node",nodes().size()),x,y,0xffffb761,false);

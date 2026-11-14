@@ -58,7 +58,7 @@
   "around_planet.maneuver.rejected": "Plan not saved",
   "around_planet.maneuver.preview_failed": "Preview unavailable",
   "around_planet.maneuver.number": "Enter a number ±10000",
-  "around_planet.maneuver.limit": "Limit: 16 nodes / 2 h",
+  "around_planet.maneuver.limit": "Maximum 16 nodes",
   "around_planet.maneuver.readonly": "Read only",
   "block.around_planet.maneuver_planner": "Maneuver Planner",
   "around_planet.maneuver.help.0": "Positive: prograde. Negative: retrograde. m/s.",

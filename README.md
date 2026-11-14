@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.28: [полные большие орбиты, дальние узлы без временного ограничения и крен датчика ключом](docs/large-orbits-and-sensor-roll.md).
+
 Обновление 0.11.0-alpha.27: [блок планировщика манёвров, сохраняемые узлы Δv и прогноз орбиты](docs/maneuver-planner.md).
 
 Обновление 0.11.0-alpha.26: [сохранённый атлас биомов для обеих сфер и стабильный космический свет](docs/biome-atlas-and-space-light.md).
@@ -434,7 +436,7 @@ bash ./gradlew -PplanetTests runGameTestServer
 bash ./gradlew runClient
 ```
 
-JAR: `build/libs/around_planet-0.11.0-alpha.27.jar`.
+JAR: `build/libs/around_planet-0.11.0-alpha.28.jar`.
 `-PcompatModsDir=/absolute/path/to/test-mods` добавляет локальные JAR только в
 среду запуска; они не включаются в мод. Серверные и клиентские тестовые классы
 также не входят в итоговый JAR. Клиентский smoke-тест запускается с
