@@ -15,16 +15,18 @@ import java.util.List;
 @EventBusSubscriber(modid=AroundPlanet.MOD_ID,value=Dist.CLIENT)
 public final class SeamClientDiagnostics {
     public static int cacheX,cacheZ,cacheRadius;
-    private static double maxCruisingSpeed;
+    private static double maxCruisingSpeed;private static boolean lastSpace;
     private static Object world;private static double lastX=Double.NaN;private static long tickStart,lastTick;
     @SubscribeEvent public static void pre(ClientTickEvent.Pre e){tickStart=SeamDiagnostics.start();}
     @SubscribeEvent public static void tick(ClientTickEvent.Post e) {
         SeamDiagnostics.time("client","tick",tickStart);var mc=Minecraft.getInstance();if(mc.level==null || mc.player==null)return;
+        CpuLoadDiagnostics.poll();
         var topology=PlanetBorders.get(mc.level.getWorldBorder());if(topology==null)return;
         if(world!=mc.level) {
-            world=mc.level;lastX=Double.NaN;
+            world=mc.level;lastX=Double.NaN;lastSpace=false;
             SeamDiagnostics.event("client","session.start",()->"java="+System.getProperty("java.version")+" "+mods()+" "+SeamDiagnostics.config());
         }
+        boolean space=SpaceRenderView.active();if(space!=lastSpace){lastSpace=space;SeamDiagnostics.event("client",space?"space.enter":"space.exit",()->"xyz="+mc.player.position()+" cache="+cacheX+","+cacheZ+" loaded="+mc.level.getChunkSource().getLoadedChunksCount()+" view="+mc.options.getEffectiveRenderDistance());}
         double speed=CruisingDiagnostics.cameraSpeed();if(Double.isFinite(speed))maxCruisingSpeed=Math.max(maxCruisingSpeed,speed);
         double x=mc.player.getX();
         if(Double.isFinite(lastX) && Math.abs(x-lastX)>topology.width()/2.0) {
@@ -53,7 +55,7 @@ public final class SeamClientDiagnostics {
         catch(RuntimeException | LinkageError failure){dh="probe_error:"+failure.getClass().getSimpleName();}
         var runtime=Runtime.getRuntime();
         SeamDiagnostics.report("client","dim="+mc.level.dimension().location()+" level="+SeamDiagnostics.id(mc.level)+" xyz="+mc.player.position()+" seamDistance="+topology.distanceToSeam(x)
-                +" fps="+mc.getFps()+" paused="+mc.isPaused()+" view="+mc.options.getEffectiveRenderDistance()+" viewRequested="+mc.options.renderDistance().get()+" nativeCache="+cacheX+","+cacheZ+" radius="+cacheRadius
+                +" space="+SpaceRenderView.active()+" spaceAnchor="+(SpaceHud.current()==null?"none":SpaceHud.current().anchor())+" fps="+mc.getFps()+" paused="+mc.isPaused()+" view="+mc.options.getEffectiveRenderDistance()+" viewRequested="+mc.options.renderDistance().get()+" nativeCache="+cacheX+","+cacheZ+" radius="+cacheRadius
                 +" heapMiB="+(runtime.totalMemory()-runtime.freeMemory())/1048576+"/"+runtime.maxMemory()/1048576
                 +" height=["+mc.level.getMinBuildHeight()+","+mc.level.getMaxBuildHeight()+"] sections="+mc.level.getSectionsCount()+" loaded="+mc.level.getChunkSource().getLoadedChunksCount()+" local5x5[data/missing]="+data+"/"+missing+" nearFeetSections[ready/retained]="+ready+"/"+retained
                 +" surfaceSections[native/retained/missing]="+surfaceReady+"/"+surfaceRetained+"/"+surfaceMissing+" notReadySample="+holes+" images="+SeamImages.diagnostic()+" "+SeamMeshCache.diagnostic()+" clientGenQueues="+(mc.getSingleplayerServer()==null?SeamDiagnostics.queues():"see_server_summary")+" DH{"+dh+"} Cruising{maxCameraSpeed="+maxCruisingSpeed+" "+CruisingDiagnostics.snapshot()+"}");

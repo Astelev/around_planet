@@ -4,20 +4,24 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
-    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS,PROGRESSIVE;
-    public static final ModConfigSpec.IntValue BOUNDARY,BOUNDARY_Z, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
+    public static final ModConfigSpec.ConfigValue<Integer> PLANET_SIZE;
+    public static final java.util.function.IntSupplier BOUNDARY=()->PlanetConfig.PLANET_SIZE.get()/2,BOUNDARY_Z=BOUNDARY;
+    public static final ModConfigSpec.DoubleValue SPACE_GRAVITY,SPACE_UNLOAD_SPEED,ATMOSPHERE_DRAG,REENTRY_SPEED;
+    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS,PROGRESSIVE,SPACE,SURFACE_CURVE,SURFACE_SKY;
+    public static final ModConfigSpec.IntValue SPACE_ENTRY,SPACE_Y,SKY_DARKEN,ATMOSPHERE_TOP,ATMOSPHERE_BOTTOM, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
     static {
         var b = new ModConfigSpec.Builder();
-        b.push("eastWest");
+        b.push("planet");
+        PLANET_SIZE=b.comment("Equatorial circumference in blocks. Single source for both world borders (+/- half) and cosmic radius (circumference / 2pi).",
+                "Multiple of 32, from 256 to 59000000. Default preserves +/-65536 borders. Restart required.").define("circumferenceBlocks",131072,v->v instanceof Integer n && n>=256 && n<=59000000 && n%32==0);
+        b.pop();b.push("surfaceVisuals");
+        SURFACE_CURVE=b.comment("Render camera-relative world curvature using the configured planet radius. Physics and world coordinates remain flat.").define("curvature",true);
+        SURFACE_SKY=b.comment("Shared round Sun/Moon and stars with ordinary day/night cycle on the surface.").define("sky",true);
+        SKY_DARKEN=b.comment("Camera altitude at which surface sky starts fading toward space. Full darkening at space entry height.").defineInRange("darkenFromY",1600,320,3200);
+        b.pop();b.push("eastWest");
         ENABLED = b.comment("Experimental Overworld east/west transfer. Enable in a test world. Restart after changing these settings.",
                 "Renders loaded chunks, ordinary entities and optional Sable ships across the seam. Optional Sable assemblies transfer by their combined center of mass. Optional terrainSeamBlending smooths noise-based generation near the seam.")
                 .define("enabled", false);
-        BOUNDARY = b.comment("Absolute X of each seam: +boundaryX wraps to -boundaryX, not to zero.",
-                "Multiple of 16; total circumference is twice this value. Replaces the old widthBlocks setting.")
-                .defineInRange("boundaryX", 65536, 128, 29500000);
-        BOUNDARY_Z=b.comment("Absolute Z of the solid north/south world border, centered at Z=0. No north/south wrapping.",
-                "Applies only when eastWest.enabled is true. A tighter vanilla border remains in effect. Restart required.")
-                .defineInRange("boundaryZ",65536,128,29500000);
         ACTIVATION = b.comment("Distance from either seam at which destination preloading begins; limited to one quarter of width.")
                 .defineInRange("activationDistance", 128, 16, 1024);
         RADIUS = b.comment("Destination chunk radius. Bounded transient tickets; no synchronous generation in the entity tick.")
@@ -53,6 +57,19 @@ public final class PlanetConfig {
         PROGRESSIVE_DETAIL=b.comment("Initial surface cell exponent: 3 means 8-block cells, refined through 4/2/1 blocks.").defineInRange("initialDataDetail",3,1,4);
         PROGRESSIVE_RADIUS=b.comment("Radius around generation target where preview stages get priority, in blocks.").defineInRange("previewRadiusBlocks",1024,128,4096);
         PROGRESSIVE_PENDING=b.comment("Bound on deferred logical requests per DH provider; shared preview stages are bounded separately.").defineInRange("maxDeferredRequests",128,16,512);
+        b.pop();b.push("space");
+        SPACE=b.comment("Experimental same-Overworld Sable assembly transfer to high-altitude cells. Requires eastWest.enabled and matching client. Restart required.").define("enabled",true);
+        b.comment("Internal one-time migration marker for the stock cloud-ceiling default.").defineInRange("cloudCeilingRevision",1,1,1);
+        SPACE_ENTRY=b.comment("Assembly center-of-mass ascent threshold. Default clears Simple Clouds stock maximum: cloud base 128 + 256 noise units x 8 world scale + 32 margin. Adjust for custom cloud height/types. The whole assembly must clear normal terrain.").defineInRange("entryY",2208,400,3200);
+        b.comment("Internal one-time migration marker for late atmospheric braking.").defineInRange("atmosphereProfileRevision",1,1,1);
+        ATMOSPHERE_BOTTOM=b.comment("Nominal lower atmospheric shell and native return height. Capped at entryY - 32 to avoid repeated ascent.").defineInRange("atmosphereBottom",2000,368,30000);
+        ATMOSPHERE_TOP=b.comment("Atmosphere top above the planet radius, in blocks. Inbound virtual flight slows below it; effective minimum is 512 above the lower shell.").defineInRange("atmosphereTop",4000,400,1000000);
+        ATMOSPHERE_DRAG=b.comment("Inbound quadratic drag strength. The upper layer is weak; the dominant quadratic density ramp is in the final 500 blocks.").defineInRange("atmosphereDrag",0.012,0.0,1.0);
+        REENTRY_SPEED=b.comment("Maximum virtual center-of-mass speed in blocks/s passed to normal physics on reentry. Atmospheric drag also does not reduce a faster object below this speed. Internal relative/angular motion is retained.").defineInRange("reentryMaxSpeed",50.0,1.0,100.0);
+        SPACE_UNLOAD_SPEED=b.comment("Detach a free native group when it unloads with relative center-of-mass speed above this value, in blocks/s. Does not count orbital speed; owner and constrained groups are excluded.").defineInRange("unloadDetachSpeed",1.0,0.0,1000.0);
+        SPACE_GRAVITY=b.comment("Planet surface gravity in blocks/s^2 for virtual two-body trajectories; zero selects straight inertial motion. Captured on entry.").defineInRange("surfaceGravity",9.81,0.0,50.0);
+        SPACE_Y=b.comment("Physical space-cell center Y, independent of entryY and orbital altitude. Loaded cells safely relocate to this height; unloaded owners wait for activation. Restart recommended. Native ship blocks remain in Sable plots.").defineInRange("cellY",6144,3072,30000);
+        b.defineInRange("heightLayoutRevision",2,2,2);
         b.pop(); SPEC = b.build();
     }
     private PlanetConfig() {}

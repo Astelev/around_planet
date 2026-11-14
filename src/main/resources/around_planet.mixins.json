@@ -1,10 +1,20 @@
 {
   "required": true,
+  "plugin": "io.github.astelev.around_planet.mixin.PlanetMixinPlugin",
   "minVersion": "0.8",
   "package": "io.github.astelev.around_planet.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "WorldBorderMixin",
+    "SensorGogglesMixin",
+    "PlanetTimeMixin",
+    "PlanetBrightnessMixin",
+    "PlanetDayStateMixin",
+    "PlanetEntityDayMixin",
+    "PlanetDetectorDayMixin",
+    "PlanetBedDayMixin",
+    "PlanetSleepTimeMixin",
+
     "PlayerMovementMixin",
     "SeamPlayerTicketsMixin",
     "SeamChunkSendingMixin",
@@ -41,12 +51,30 @@
     "SeamServerChunkDiagnosticsMixin",
     "ProgressiveTaskRankMixin",
     "ProgressiveQueueMixin",
-    "ProgressiveProviderMixin"
+    "ProgressiveProviderMixin",
+    "SpaceCruisingFlightMixin",
+    "SpaceCruisingAssemblyMixin",
+    "SpacePhysicsStepMixin",
+    "SpaceEntityGravityMixin",
+    "SpaceUnloadCaptureMixin"
   ],
   "injectors": {
     "defaultRequire": 1
   },
   "client": [
+    "AeroOrbitalHudMixin",
+    "PlanetClientTimeMixin",
+    "PlanetClientLightMixin",
+    "SurfaceVeilSourceMixin",
+    "SurfaceVeilVanillaSourceMixin",
+    "SurfaceVeilRelinkMixin",
+    "SurfaceVeilUniformMixin",
+    "CruisingCurvatureMeshMixin",
+    "CruisingCurvatureScopeMixin",
+    "SurfaceProgramMixin",
+    "SurfaceShaderMixin",
+    "SurfaceSodiumSourceMixin",
+    "SurfaceSodiumUniformMixin",
     "BorderVignetteMixin",
     "SeamRenderRegionMixin",
     "SeamRenderLightMixin",
@@ -78,6 +106,18 @@
     "SeamEntityLightMixin",
     "SeamChunkDiagnosticsMixin",
     "SeamRendererDiagnosticsMixin",
-    "SeamAlternativeDiagnosticsMixin"
+    "SeamAlternativeDiagnosticsMixin",
+    "SpaceCruisingClientViewMixin",
+    "SpaceCruisingDhMixin",
+    "SpaceCruisingFallbackMixin",
+    "SpaceTerrainRenderMixin",
+    "SpaceSodiumTerrainMixin",
+    "SpaceDhRenderMixin",
+    "SpaceCloudRenderMixin",
+    "SpaceCloudDhRenderMixin",
+    "SpaceFogMixin",
+    "SpaceShipRenderMonitorMixin",
+    "SpaceBlockEntityRenderMixin",
+    "OrbitMapKeyboardMixin"
   ]
 }

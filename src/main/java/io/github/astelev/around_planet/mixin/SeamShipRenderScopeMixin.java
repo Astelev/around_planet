@@ -16,7 +16,7 @@ public abstract class SeamShipRenderScopeMixin {
     @WrapMethod(method="renderLevel")
     private void around_planet$renderScope(DeltaTracker delta,boolean outline,Camera camera,GameRenderer renderer,
             LightTexture light,Matrix4f modelView,Matrix4f projection,Operation<Void> original) {
-        ShipRenderScope.enter();
-        try{original.call(delta,outline,camera,renderer,light,modelView,projection);}finally{ShipRenderScope.exit();}
+        ShipRenderScope.enter();io.github.astelev.around_planet.client.SurfaceRenderState.enter(modelView,projection);
+        try{original.call(delta,outline,camera,renderer,light,modelView,projection);}finally{io.github.astelev.around_planet.client.SurfaceRenderState.exit();ShipRenderScope.exit();}
     }
 }

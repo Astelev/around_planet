@@ -56,6 +56,7 @@ dependencies {
     compileOnly('maven.modrinth:sable:fg9dTRz9') { transitive = false }
     compileOnly files(extractSableApi.map { it.destinationDir }).asFileTree.matching { include '*.jar' }
     compileOnly('maven.modrinth:distanthorizons:9w34y8ai') { transitive = false } // DH 3.3.3 / 1.21.1
+    compileOnly('maven.modrinth:create:UjX6dr61') { transitive = false } // optional goggles API only
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -118,6 +119,9 @@ if (providers.gradleProperty('planetTests').isPresent()) {
 if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     sourceSets {
         planetClientSmoke {
+            if (project.providers.gradleProperty('planetSensorMountSmoke').isPresent()) java.include('**/SensorMountSmoke.java')
+            else if (project.providers.gradleProperty('planetEmptyPerfSmoke').isPresent()) java.include('**/EmptyWorldPerformanceSmoke.java')
+            else if (project.providers.gradleProperty('planetSurfaceSmoke').isPresent()) java.include('**/SurfaceVisualSmoke.java')
             compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
             runtimeClasspath += output + sourceSets.main.output + sourceSets.main.runtimeClasspath
         }
@@ -126,10 +130,15 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     neoForge.runs.named('client') {
         programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('around-ew-smoke'))
         jvmArguments.add('-Xmx3G')
+        if (providers.gradleProperty('planetSensorMountSmoke').isPresent()) jvmArguments.add('-Daround_planet.sensorMountSmoke=true')
         if (providers.gradleProperty('planetProgressiveTerrainSmoke').isPresent()) jvmArguments.add('-Daround_planet.progressiveTerrainSmoke=true')
         if (providers.gradleProperty('planetProgressiveSmoke').isPresent() || providers.gradleProperty('planetProgressiveTerrainSmoke').isPresent()) jvmArguments.add('-Daround_planet.progressiveSmoke=true')
         if (providers.gradleProperty('planetDiagnosticSmoke').isPresent()) jvmArguments.add('-Daround_planet.diagnosticSmoke=true')
         if (providers.gradleProperty('planetGenerationSmoke').isPresent()) jvmArguments.add('-Daround_planet.generationSmoke=true')
+        if (providers.gradleProperty('planetEmptyPerfSmoke').isPresent()) jvmArguments.addAll('-Daround_planet.emptyPerfSmoke=true', "-XX:StartFlightRecording=settings=profile,filename=${layout.buildDirectory.file('empty-world-performance.jfr').get().asFile.absolutePath},dumponexit=true")
+        if (providers.gradleProperty('planetSurfaceSmoke').isPresent()) jvmArguments.add('-Daround_planet.surfaceSmoke=true')
+        if (providers.gradleProperty('planetBareSpaceSmoke').isPresent()) jvmArguments.add('-Daround_planet.bareSpaceSmoke=true')
+        if (providers.gradleProperty('planetSpaceEntrySmoke').isPresent()) jvmArguments.add('-Daround_planet.spaceEntrySmoke=true')
         if (providers.gradleProperty('planetNorthSouthBorderSmoke').isPresent()) jvmArguments.add('-Daround_planet.northSouthBorderSmoke=true')
         if (providers.gradleProperty('planetSeatTransferSmoke').isPresent()) jvmArguments.addAll('-Daround_planet.seatTransferSmoke=true','-Daround_planet.traceShipTransfers=true')
         if (providers.gradleProperty('planetShipTransferSmoke').isPresent()) jvmArguments.addAll('-Daround_planet.shipTransferSmoke=true','-Daround_planet.traceShipTransfers=true')

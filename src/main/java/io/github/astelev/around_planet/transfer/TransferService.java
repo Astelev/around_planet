@@ -202,12 +202,13 @@ public final class TransferService {
             }
         return true;
     }
-    public static void moveGroup(Entity root, double dx) {
+    public static void moveGroup(Entity root,double dx){moveGroup(root,dx,0,0);}
+    public static void moveGroup(Entity root, double dx,double dy,double dz) {
         var members=root.getSelfAndPassengers().toList();
         SeamDiagnostics.event("server","transfer.group",()->"dim="+root.level().dimension().location()+" root="+root.getId()+" type="+root.getType()+" xyz="+root.position()+" dx="+dx+" members="+members.size());
         var velocities=members.stream().map(Entity::getDeltaMovement).toList();
         // Relative position flags also preserve the client's creative/elytra movement and previous pose.
-        root.teleportRelative(dx,0,0);
+        root.teleportRelative(dx,dy,dz);
         if(root.getControllingPassenger() instanceof ServerPlayer controller) {
             var movement=(io.github.astelev.around_planet.mixin.VehicleMovementAccessor)controller.connection;
             movement.around_planet$vehicle(root);
