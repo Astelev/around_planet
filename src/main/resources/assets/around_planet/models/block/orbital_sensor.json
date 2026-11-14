@@ -8,7 +8,8 @@
     "back": "minecraft:block/redstone_block",
     "right": "minecraft:block/copper_block",
     "left": "minecraft:block/exposed_copper",
-    "particle": "minecraft:block/copper_block"
+    "particle": "minecraft:block/copper_block",
+    "nose": "minecraft:block/white_concrete"
   },
   "elements": [
     {
@@ -296,6 +297,38 @@
         },
         "down": {
           "texture": "#left"
+        }
+      }
+    },
+    {
+      "from": [
+        7,
+        13,
+        7
+      ],
+      "to": [
+        9,
+        15,
+        9
+      ],
+      "faces": {
+        "north": {
+          "texture": "#nose"
+        },
+        "south": {
+          "texture": "#nose"
+        },
+        "east": {
+          "texture": "#nose"
+        },
+        "west": {
+          "texture": "#nose"
+        },
+        "up": {
+          "texture": "#nose"
+        },
+        "down": {
+          "texture": "#nose"
         }
       }
     }

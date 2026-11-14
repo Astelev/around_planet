@@ -119,7 +119,8 @@ if (providers.gradleProperty('planetTests').isPresent()) {
 if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     sourceSets {
         planetClientSmoke {
-            if (project.providers.gradleProperty('planetEmptyPerfSmoke').isPresent()) java.include('**/EmptyWorldPerformanceSmoke.java')
+            if (project.providers.gradleProperty('planetSensorMountSmoke').isPresent()) java.include('**/SensorMountSmoke.java')
+            else if (project.providers.gradleProperty('planetEmptyPerfSmoke').isPresent()) java.include('**/EmptyWorldPerformanceSmoke.java')
             else if (project.providers.gradleProperty('planetSurfaceSmoke').isPresent()) java.include('**/SurfaceVisualSmoke.java')
             compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
             runtimeClasspath += output + sourceSets.main.output + sourceSets.main.runtimeClasspath
@@ -129,6 +130,7 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     neoForge.runs.named('client') {
         programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('around-ew-smoke'))
         jvmArguments.add('-Xmx3G')
+        if (providers.gradleProperty('planetSensorMountSmoke').isPresent()) jvmArguments.add('-Daround_planet.sensorMountSmoke=true')
         if (providers.gradleProperty('planetProgressiveTerrainSmoke').isPresent()) jvmArguments.add('-Daround_planet.progressiveTerrainSmoke=true')
         if (providers.gradleProperty('planetProgressiveSmoke').isPresent() || providers.gradleProperty('planetProgressiveTerrainSmoke').isPresent()) jvmArguments.add('-Daround_planet.progressiveSmoke=true')
         if (providers.gradleProperty('planetDiagnosticSmoke').isPresent()) jvmArguments.add('-Daround_planet.diagnosticSmoke=true')

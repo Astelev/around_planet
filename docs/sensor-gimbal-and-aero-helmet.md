@@ -1,3 +1,5 @@
+Updated in [alpha.17](sensor-six-direction-mounting.md): the physical top is ship forward, all six mounting faces are supported, and redstone reports nose deviation. Earlier front-tab descriptions below refer to alpha.15.
+
 # Gimbal model and AeroEngine helmet — 0.11.0-alpha.15
 
 The existing `around_planet:orbital_sensor` becomes an open gimbal instrument:

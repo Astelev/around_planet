@@ -1,19 +1,33 @@
 {
   "variants": {
+    "facing=up": {
+      "model": "around_planet:block/orbital_sensor",
+      "x": 0,
+      "y": 0
+    },
+    "facing=down": {
+      "model": "around_planet:block/orbital_sensor",
+      "x": 180,
+      "y": 0
+    },
     "facing=north": {
       "model": "around_planet:block/orbital_sensor",
+      "x": 90,
       "y": 0
     },
     "facing=east": {
       "model": "around_planet:block/orbital_sensor",
+      "x": 90,
       "y": 90
     },
     "facing=south": {
       "model": "around_planet:block/orbital_sensor",
+      "x": 90,
       "y": 180
     },
     "facing=west": {
       "model": "around_planet:block/orbital_sensor",
+      "x": 90,
       "y": 270
     }
   }
