@@ -1,5 +1,8 @@
 # Active core and expanding gas cone (0.11.0-alpha.21)
 
+[Alpha.22](large-flowing-exhaust.md) enlarges both sections and animates outward
+gas flow on their surfaces. Dimensions and material details below refer to alpha.21.
+
 Both creative thrusters and RSU nozzles now render an untextured gas plume.
 The previous fire/soul-fire atlas animation is removed. No particles or animated
 texture uploads are used.
