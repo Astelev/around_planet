@@ -15,25 +15,27 @@ public final class OrbitMapScreen extends Screen {
     private final OrbitSphereTexture sphere=new OrbitSphereTexture();
     private record Other(io.github.astelev.around_planet.network.SpaceMapPayload.Body body,OrbitPlot plot,int color){}
     private java.util.List<Other> others=java.util.List.of();private io.github.astelev.around_planet.network.SpaceMapPayload catalog;
-    private final OrbitCamera camera=new OrbitCamera();private SpaceStatusPayload sampled;private OrbitPlot plot;private boolean fitted;
+    private final OrbitCamera camera=new OrbitCamera();private SpaceStatusPayload sampled;private OrbitPlot plot;private boolean fitted;private boolean follow;private Button followButton;
     private int left=8,top=32,right,bottom;private static final int FUTURE=0xFF69E4DB;
     public OrbitMapScreen(){this(null);}
     public OrbitMapScreen(UUID session){super(Component.translatable(session==null?"around_planet.map.title":"around_planet.maneuver.title"));maneuvers=new ManeuverMapLayer(this,session);}
-    @Override protected void init(){right=width-(maneuvers.editor()?190:8);bottom=height-45;for(var widget:maneuvers.init(width-179,32,175))addRenderableWidget(widget);SpaceMapCatalog.subscribe(true);addRenderableWidget(Button.builder(Component.translatable("around_planet.map.reset"),b->reset()).bounds(width-79,8,70,20).build());}
+    @Override protected void init(){right=width-(maneuvers.editor()?190:8);bottom=height-45;for(var widget:maneuvers.init(width-179,32,175))addRenderableWidget(widget);SpaceMapCatalog.subscribe(true);followButton=addRenderableWidget(Button.builder(followLabel(),b->{follow=!follow;if(follow&&sampled!=null)camera.focus=state().position();b.setMessage(followLabel());}).bounds(width-187,8,104,20).build());addRenderableWidget(Button.builder(Component.translatable("around_planet.map.reset"),b->reset()).bounds(width-79,8,70,20).build());}
     @Override public void renderBackground(GuiGraphics g,int x,int y,float tick){}
     @Override public boolean isPauseScreen(){return false;}
     @Override public void tick(){if(minecraft.player==null || !SpaceCells.contains(minecraft.player)){onClose();return;}if(minecraft.level.getGameTime()%40==0)SpaceMapCatalog.subscribe(true);}
     @Override public void removed(){sphere.close();SpaceMapCatalog.subscribe(false);super.removed();}
     private void update(){var sample=SpaceHud.current();if(sample==null || !sample.active() || sample.radius()<=0)return;
         if(sample!=sampled){sampled=sample;plot=OrbitPlot.create(state(),sample.mu(),sample.radius(),sample.returnAltitude(),sample.returning());if(!fitted){reset();fitted=true;}}
+        if(follow)camera.focus=state().position();
         maneuvers.update(sample.radius(),sample.returnAltitude());
         var next=SpaceMapCatalog.current();if(next!=catalog){catalog=next;var list=new ArrayList<Other>();if(next!=null)for(var body:next.bodies()){
             var state=new SpaceState(new SpaceVector(body.x(),body.y(),body.z()),new SpaceVector(body.vx(),body.vy(),body.vz()));
             int[] colors={0xFFB59AFF,0xFFFFB775,0xFF92D98C,0xFFFF8BAF,0xFF80BFFF};int color=colors[Math.floorMod(body.id().hashCode(),colors.length)];
             list.add(new Other(body,OrbitPlot.create(state,body.mu(),sample.radius(),body.returnAltitude(),body.waiting()),color));}others=List.copyOf(list);}
     }
-    private SpaceState state(){return new SpaceState(new SpaceVector(sampled.x(),sampled.y(),sampled.z()),new SpaceVector(sampled.vx(),sampled.vy(),sampled.vz()));}
-    private void reset(){if(sampled!=null&&plot!=null){var focusState=state();var focusPlot=plot;var planned=ManeuverClient.current();if(maneuvers.authorized()&&planned!=null){focusState=planned.trajectory().at(ManeuverClient.now());focusPlot=OrbitPlot.create(focusState,planned.trajectory().mu(),sampled.radius(),sampled.returnAltitude(),sampled.returning());}double extent=focusPlot.extent(sampled.radius());for(var other:others)extent=Math.max(extent,other.plot.extent(sampled.radius()));camera.fit(focusState,extent*1.12);if(maneuvers.editor())camera.pitch=.45;}}
+    private SpaceState state(){var state=new SpaceState(new SpaceVector(sampled.x(),sampled.y(),sampled.z()),new SpaceVector(sampled.vx(),sampled.vy(),sampled.vz()));return sampled.returning()?state:new SpaceTrajectory("map",0,state,sampled.mu()).afterSeconds(SpaceHud.age(0));}
+    private Component followLabel(){return Component.translatable(follow?"around_planet.map.follow_on":"around_planet.map.follow_off");}
+    private void reset(){follow=false;if(followButton!=null)followButton.setMessage(followLabel());if(sampled!=null&&plot!=null){var focusState=state();var focusPlot=plot;var planned=ManeuverClient.current();if(maneuvers.authorized()&&planned!=null){focusState=planned.trajectory().at(ManeuverClient.now());focusPlot=OrbitPlot.create(focusState,planned.trajectory().mu(),sampled.radius(),sampled.returnAltitude(),sampled.returning());}double extent=focusPlot.extent(sampled.radius());for(var other:others)extent=Math.max(extent,other.plot.extent(sampled.radius()));camera.fit(focusState,extent*1.12);if(maneuvers.editor())camera.pitch=.45;}}
 
     private double size(){return Math.max(1,Math.min(right-left,bottom-top));}
     OrbitCamera.Point project(SpaceVector p){return camera.project(p,(left+right)/2.0,(top+bottom)/2.0,size());}
@@ -44,7 +46,7 @@ public final class OrbitMapScreen extends Screen {
         if(sampled==null || plot==null){g.drawCenteredString(font,Component.translatable("around_planet.map.waiting"),width/2,height/2,0xFFBAC9DC);super.render(g,mx,my,partial);return;}
         double speed=state().velocity().length();
         g.enableScissor(left,top,right,bottom);g.fill(left,top,right,bottom,0xFF0B1423);
-        double cx=(left+right)/2.0+camera.panX,cy=(top+bottom)/2.0+camera.panY,radius=sampled.radius()*camera.scale(size());
+        var planetCenter=project(SpaceVector.ZERO);double cx=planetCenter.x(),cy=planetCenter.y(),radius=sampled.radius()*camera.scale(size());
         g.drawManaged(()->{for(int i=1;i<=4;i++)circle(g,cx,cy,radius*i,0xFF19283C,false);
             globalAxes(g,true);
             for(var other:others)arcs(g,other.plot,other.color,true,3);arcs(g,true);maneuvers.paths(g,true);
@@ -88,7 +90,7 @@ public final class OrbitMapScreen extends Screen {
     private void arcs(GuiGraphics g,boolean behind){arcs(g,plot,FUTURE,behind,1);}
     private void arcs(GuiGraphics g,OrbitPlot curve,int color,boolean behind,int stride){var points=curve.points();for(int i=0;i<points.size()-1;i+=stride){var a=project(points.get(i));var b=project(points.get(Math.min(points.size()-1,i+stride)));int dim=0xFF000000|((color&0xFEFEFE)>>>1);if(((a.depth()+b.depth())/2<0)==behind)line(g,a.x(),a.y(),b.x(),b.y(),behind?dim:color);}}
     void marker(GuiGraphics g,SpaceVector v,int color,String text){if(v==null)return;var p=project(v);if(p.x()<left || p.x()>right || p.y()<top || p.y()>bottom)return;
-        double scale=camera.scale(size()),x=p.x()-(left+right)/2.0-camera.panX,y=p.y()-(top+bottom)/2.0-camera.panY;
+        var center=project(SpaceVector.ZERO);double scale=camera.scale(size()),x=p.x()-center.x(),y=p.y()-center.y();
         if(p.depth()<0 && x*x+y*y<Math.pow(sampled.radius()*scale,2))return;
         g.fill((int)p.x()-2,(int)p.y()-2,(int)p.x()+3,(int)p.y()+3,color);if(!text.isEmpty())g.drawString(font,text,(int)p.x()+6,(int)p.y()-4,color,true);
     }
@@ -98,10 +100,10 @@ public final class OrbitMapScreen extends Screen {
     }
     void line(GuiGraphics g,double ax,double ay,double bx,double by,int color){var c=OrbitCamera.clip(ax,ay,bx,by,left,top,right,bottom);if(c==null)return;double dx=c[2]-c[0],dy=c[3]-c[1],length=Math.hypot(dx,dy);if(length<.1)return;
         var pose=g.pose();pose.pushPose();pose.translate(c[0],c[1],0);pose.mulPose(Axis.ZP.rotation((float)Math.atan2(dy,dx)));g.fill(0,0,(int)Math.ceil(length),1,color);pose.popPose();}
-    boolean visible(SpaceVector v){var p=project(v);if(p.x()<left||p.x()>right||p.y()<top||p.y()>bottom)return false;double x=p.x()-(left+right)/2.0-camera.panX,y=p.y()-(top+bottom)/2.0-camera.panY;return p.depth()>=0||x*x+y*y>=Math.pow(sampled.radius()*camera.scale(size()),2);}
+    boolean visible(SpaceVector v){var p=project(v);if(p.x()<left||p.x()>right||p.y()<top||p.y()>bottom)return false;var center=project(SpaceVector.ZERO);double x=p.x()-center.x(),y=p.y()-center.y();return p.depth()>=0||x*x+y*y>=Math.pow(sampled.radius()*camera.scale(size()),2);}
     @Override public boolean mouseClicked(double x,double y,int button){if(super.mouseClicked(x,y,button))return true;if(button==0&&x>=left&&x<=right&&y>=top&&y<=bottom){if(getFocused()!=null)getFocused().setFocused(false);setFocused(null);pressX=x;pressY=y;mapPressed=true;return true;}return false;}
     @Override public boolean mouseReleased(double x,double y,int button){if(button==0&&mapPressed){mapPressed=false;if(Math.hypot(x-pressX,y-pressY)<4)maneuvers.click(x,y);return true;}return super.mouseReleased(x,y,button);}
-    @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){if(button==0&&mapPressed){camera.rotate(dx,dy);return true;}if((button==1 || button==2)&&x>=left&&x<=right&&y>=top&&y<=bottom){camera.panX=Math.max(-width*20,Math.min(width*20,camera.panX+dx));camera.panY=Math.max(-height*20,Math.min(height*20,camera.panY+dy));return true;}return super.mouseDragged(x,y,button,dx,dy);}
+    @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){if(button==0&&mapPressed){camera.rotate(dx,dy);return true;}if((button==1 || button==2)&&x>=left&&x<=right&&y>=top&&y<=bottom){follow=false;if(followButton!=null)followButton.setMessage(followLabel());camera.pan(dx,dy,size());return true;}return super.mouseDragged(x,y,button,dx,dy);}
     @Override public boolean mouseScrolled(double x,double y,double horizontal,double vertical){if(x>=left&&x<=right&&y>=top&&y<=bottom){camera.zoom(vertical);return true;}return super.mouseScrolled(x,y,horizontal,vertical);}
     @Override public boolean keyPressed(int key,int scan,int modifiers){if(getFocused() instanceof net.minecraft.client.gui.components.EditBox edit&&edit.isFocused()){return super.keyPressed(key,scan,modifiers);}if(OrbitMapKeys.MAP.matches(key,scan)){onClose();return true;}if(key==GLFW.GLFW_KEY_R){reset();return true;}if(key==GLFW.GLFW_KEY_EQUAL || key==GLFW.GLFW_KEY_KP_ADD){camera.zoom(1);return true;}if(key==GLFW.GLFW_KEY_MINUS || key==GLFW.GLFW_KEY_KP_SUBTRACT){camera.zoom(-1);return true;}return super.keyPressed(key,scan,modifiers);}
 }

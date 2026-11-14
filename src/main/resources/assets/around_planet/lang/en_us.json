@@ -77,5 +77,7 @@
   "around_planet.map.point_speed": "Speed: %s m/s",
   "around_planet.map.point_altitude": "Altitude: %s m",
   "around_planet.map.apsis": "Orbit: %s",
-  "around_planet.map.planned_apsis": "After maneuver: %s"
+  "around_planet.map.planned_apsis": "After maneuver: %s",
+  "around_planet.map.follow_on": "Follow craft: on",
+  "around_planet.map.follow_off": "Follow craft: off"
 }

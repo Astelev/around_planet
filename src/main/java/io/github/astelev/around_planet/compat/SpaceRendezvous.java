@@ -4,7 +4,6 @@ import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.ticket.SubLevelLoadingTicketType;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
-import dev.ryanhcode.sable.sublevel.storage.holding.GlobalSavedSubLevelPointer;
 import io.github.astelev.around_planet.PlanetConfig;
 import io.github.astelev.around_planet.space.*;
 import io.github.astelev.around_planet.network.SpaceTransferPayload;
@@ -58,7 +57,7 @@ public final class SpaceRendezvous {
         if(source.cell()!=null)for(var ship:c.getAllSubLevels())if(!ship.isRemoved()&&SpaceLocalPhysics.inCell(ship,source.cell()))ids.add(ship.getUniqueId());
         if(ids.size()>256)return false;
         // Resolve saved native addresses without generating terrain or allocating a third space.
-        for(var id:ids)if(c.getSubLevel(id)==null){var held=c.getHoldingChunkMap().getHoldingSubLevel(id);if(held!=null)c.getHoldingChunkMap().loadHoldingSubLevel(held);else{var record=cargo.all().stream().filter(r->r.ship().equals(id)).findFirst().orElse(null);if(record==null)return false;c.getHoldingChunkMap().snatchAndLoad(new GlobalSavedSubLevelPointer(new ChunkPos(record.chunk()),record.storage(),record.index()),id);}}
+        for(var id:ids)if(c.getSubLevel(id)==null){var record=cargo.all().stream().filter(r->r.ship().equals(id)).findFirst().orElse(null);if(!((SpaceHoldingAccess)c.getHoldingChunkMap()).around_planet$wake(id,record==null?null:new ChunkPos(record.chunk())))return false;}
         var awake=ids.stream().map(id->(ServerSubLevel)c.getSubLevel(id)).filter(Objects::nonNull).filter(s->!s.isRemoved()).toList();
         for(var ship:awake){c.addForceLoadTicket(ship,TICKET,host.id());WAKING.computeIfAbsent(level,k->new HashMap<>()).put(ship.getUniqueId(),new Wake(host.id(),level.getGameTime()+100));}
         if(!loaded(c,List.copyOf(ids)))return false;var ships=awake;

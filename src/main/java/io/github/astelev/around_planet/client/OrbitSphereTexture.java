@@ -12,10 +12,11 @@ public final class OrbitSphereTexture implements AutoCloseable {
     public void render(GuiGraphics g,OrbitCamera camera,double radius,int left,int top,int right,int bottom,double angle){
         int w=right-left,h=bottom-top;if(w<1 || h<1)return;double factor=Math.min(1,384.0/Math.max(w,h));int iw=Math.max(1,(int)(w*factor)),ih=Math.max(1,(int)(h*factor));
         angle=Math.floor(angle*2048/(2*Math.PI))*2*Math.PI/2048;var spin=new PlanetSpin(angle,PlanetSpin.OMEGA);
-        double[] next={PlanetAtlasTexture.revision,angle,camera.yaw,camera.pitch,camera.zoom,camera.panX,camera.panY,camera.basisVersion,radius,left,top,right,bottom};
+        var center=camera.project(SpaceVector.ZERO,w/2.0,h/2.0,Math.max(1,Math.min(w,h)));double cx=Math.rint(center.x()*2)/2,cy=Math.rint(center.y()*2)/2;
+        double[] next={PlanetAtlasTexture.revision,angle,camera.yaw,camera.pitch,camera.zoom,cx,cy,camera.basisVersion,radius,left,top,right,bottom};
         if(!Arrays.equals(key,next)){
             if(texture==null || texture.getPixels().getWidth()!=iw || texture.getPixels().getHeight()!=ih){close();texture=new DynamicTexture(new NativeImage(iw,ih,true));id=Minecraft.getInstance().getTextureManager().register("around_planet_orbit_sphere",texture);}
-            var image=texture.getPixels();double r=radius*camera.scale(Math.max(1,Math.min(w,h))),cx=w/2.0+camera.panX,cy=h/2.0+camera.panY;
+            var image=texture.getPixels();double r=radius*camera.scale(Math.max(1,Math.min(w,h)));
             var vx=camera.fromView(1,0,0);var vy=camera.fromView(0,1,0);var vz=camera.fromView(0,0,1);
             for(int y=0;y<ih;y++)for(int x=0;x<iw;x++){
                 double nx=((x+.5)*w/iw-cx)/r,ny=-((y+.5)*h/ih-cy)/r,d=1-nx*nx-ny*ny;int color=0;
