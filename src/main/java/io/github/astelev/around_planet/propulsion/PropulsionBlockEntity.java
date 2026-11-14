@@ -26,14 +26,17 @@ public final class PropulsionBlockEntity extends BlockEntity {
     public void configure(double value){if(!Double.isFinite(value))return;if(kind()==PropulsionRegistry.Kind.DAMPER)strength=Math.clamp(value,.1,20);else thrust=Math.clamp(value,0,10_000_000);setChanged();sync();}
     public void frequency(int index,ItemStack stack){if(index<0||index>=8)return;unlink();frequencies[index]=stack.copyWithCount(1);setChanged();ensureLinks();sync();}
     public void spend(int value){energy.spend(value);setChanged();}
-    public static void tick(Level l,BlockPos p,BlockState s,PropulsionBlockEntity be){PropulsionRuntime.add(be);be.redstone=l.getBestNeighborSignal(p);be.ensureLinks();if(l.getGameTime()%10==0){if(be.links!=null)io.github.astelev.around_planet.compat.RsuLinkBridge.refresh(be.links);be.syncIfChanged();}}
+    public static void tick(Level l,BlockPos p,BlockState s,PropulsionBlockEntity be){
+        PropulsionRuntime.add(be);be.redstone=l.getBestNeighborSignal(p);be.ensureLinks();boolean periodic=l.getGameTime()%10==0;
+        if(periodic&&be.links!=null)io.github.astelev.around_planet.compat.RsuLinkBridge.refresh(be.links);
+        if(be.sentSignal!=be.redstone||!java.util.Arrays.equals(be.sentSignals,be.signals)||periodic&&be.sentEnergy!=be.energy.getEnergyStored())be.sync();
+    }
     private void ensureLinks(){if(links==null&&level!=null&&!level.isClientSide&&kind()==PropulsionRegistry.Kind.RSU&&net.neoforged.fml.ModList.get().isLoaded("create"))links=io.github.astelev.around_planet.compat.RsuLinkBridge.attach(this);}
     public void stop(){unlink();}
     private void unlink(){if(links!=null){io.github.astelev.around_planet.compat.RsuLinkBridge.detach(links);links=null;}java.util.Arrays.fill(signals,0);}
     @Override public void onLoad(){super.onLoad();if(level!=null&&!level.isClientSide)PropulsionRuntime.add(this);}
     @Override public void setRemoved(){unlink();PropulsionRuntime.remove(this);super.setRemoved();}
     @Override public void onChunkUnloaded(){unlink();PropulsionRuntime.remove(this);super.onChunkUnloaded();}
-    private void syncIfChanged(){if(sentEnergy!=energy.getEnergyStored()||sentSignal!=redstone||!java.util.Arrays.equals(sentSignals,signals))sync();}
     private void sync(){if(level!=null&&!level.isClientSide){sentEnergy=energy.getEnergyStored();sentSignal=redstone;System.arraycopy(signals,0,sentSignals,0,4);level.sendBlockUpdated(worldPosition,getBlockState(),getBlockState(),2);}}
 
     @Override protected void saveAdditional(CompoundTag n,HolderLookup.Provider r){super.saveAdditional(n,r);n.putDouble("Thrust",thrust);n.putDouble("Damping",strength);n.putInt("Energy",energy.getEnergyStored());n.putInt("Signal",redstone);for(int i=0;i<8;i++)if(!frequencies[i].isEmpty())n.put("Frequency"+i,frequencies[i].save(r));for(int i=0;i<4;i++)n.putInt("Signal"+i,signals[i]);}

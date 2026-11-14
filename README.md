@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.20: [анимированный выхлоп без частиц и возврат авиагоризонта](docs/animated-exhaust.md).
+
 Обновление 0.11.0-alpha.19: [крен авиагоризонта, модель RSU и поворот ключом Create](docs/rsu-model-horizon-and-wrench.md).
 
 Обновление 0.11.0-alpha.18: [двигатель, RSU с частотами Create и гаситель вращения на FE](docs/propulsion-and-angular-damper.md).
@@ -418,7 +420,7 @@ bash ./gradlew -PplanetTests runGameTestServer
 bash ./gradlew runClient
 ```
 
-JAR: `build/libs/around_planet-0.11.0-alpha.19.jar`.
+JAR: `build/libs/around_planet-0.11.0-alpha.20.jar`.
 `-PcompatModsDir=/absolute/path/to/test-mods` добавляет локальные JAR только в
 среду запуска; они не включаются в мод. Серверные и клиентские тестовые классы
 также не входят в итоговый JAR. Клиентский smoke-тест запускается с

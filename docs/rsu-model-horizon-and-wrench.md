@@ -1,5 +1,8 @@
 # RSU model, horizon roll and wrench interaction (0.11.0-alpha.19)
 
+[Alpha.20](animated-exhaust.md) reverts the horizon reflection described below;
+the RSU model and wrench/empty-hand interaction remain.
+
 The artificial horizon in the AeroEngine helmet now mirrors its horizontal roll
 component. Pitch and the forward/back hemisphere remain unchanged. This is a
 visual correction to the sphere background: the selected target's bearing, the

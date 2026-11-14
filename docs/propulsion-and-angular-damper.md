@@ -65,8 +65,8 @@ The blocks also work on detached objects inside a space cell.
 
 Wireless receivers disconnect when reconfigured, removed or unloaded. Runtime
 registries clear on level unload. Idle blocks do not broadcast unchanged state;
-changed FE/signals are synchronized at most twice per second, and configuration
-changes synchronize immediately. Configuration packets require build permission,
+FE changes are synchronized at most twice per second, power changes synchronize
+on the next block tick (alpha.20), and configuration changes synchronize immediately. Configuration packets require build permission,
 a loaded block and actual-world proximity, including Sable plot transforms.
 Frequency changes identify a server inventory slot rather than accepting arbitrary
 client item data. Optional mod JARs and test classes are never bundled.
