@@ -27,6 +27,7 @@ public final class AroundPlanet {
         io.github.astelev.around_planet.propulsion.PropulsionRegistry.register(bus);
         bus.addListener(io.github.astelev.around_planet.network.PropulsionPayload::register);
         bus.addListener(io.github.astelev.around_planet.network.OrbitalSensorPayload::register);
+        if(net.neoforged.fml.ModList.get().isLoaded("sable"))io.github.astelev.around_planet.compat.SpaceRendezvous.init();
         container.registerConfig(ModConfig.Type.SERVER, new PlanetConfigMigration());
     }
 }

@@ -6,7 +6,7 @@ public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.ConfigValue<Integer> PLANET_SIZE;
     public static final java.util.function.IntSupplier BOUNDARY=()->PlanetConfig.PLANET_SIZE.get()/2,BOUNDARY_Z=BOUNDARY;
-    public static final ModConfigSpec.DoubleValue SPACE_GRAVITY,SPACE_UNLOAD_SPEED,ATMOSPHERE_DRAG,REENTRY_SPEED;
+    public static final ModConfigSpec.DoubleValue SPACE_GRAVITY,SPACE_UNLOAD_SPEED,RENDEZVOUS_DISTANCE,RENDEZVOUS_SPEED,ATMOSPHERE_DRAG,REENTRY_SPEED;
     public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS,PROGRESSIVE,SPACE,SURFACE_CURVE,SURFACE_SKY;
     public static final ModConfigSpec.IntValue SPACE_ENTRY,SPACE_Y,SKY_DARKEN,ATMOSPHERE_TOP,ATMOSPHERE_BOTTOM, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
     static {
@@ -66,6 +66,8 @@ public final class PlanetConfig {
         ATMOSPHERE_TOP=b.comment("Atmosphere top above the planet radius, in blocks. Inbound virtual flight slows below it; effective minimum is 512 above the lower shell.").defineInRange("atmosphereTop",4000,400,1000000);
         ATMOSPHERE_DRAG=b.comment("Inbound quadratic drag strength. The upper layer is weak; the dominant quadratic density ramp is in the final 500 blocks.").defineInRange("atmosphereDrag",0.012,0.0,1.0);
         REENTRY_SPEED=b.comment("Maximum virtual center-of-mass speed in blocks/s passed to normal physics on reentry. Atmospheric drag also does not reduce a faster object below this speed. Internal relative/angular motion is retained.").defineInRange("reentryMaxSpeed",50.0,1.0,100.0);
+        RENDEZVOUS_DISTANCE=b.comment("Merge nearby orbital frames within this distance in blocks, only if at least one owner is loaded. 0 disables rendezvous.").defineInRange("rendezvousDistance",96.0,0.0,160.0);
+        RENDEZVOUS_SPEED=b.comment("Strict upper relative orbital speed for frame merging, in blocks/s.").defineInRange("rendezvousSpeed",50.0,0.0,1000.0);
         SPACE_UNLOAD_SPEED=b.comment("Detach a free native group when it unloads with relative center-of-mass speed above this value, in blocks/s. Does not count orbital speed; owner and constrained groups are excluded.").defineInRange("unloadDetachSpeed",1.0,0.0,1000.0);
         SPACE_GRAVITY=b.comment("Planet surface gravity in blocks/s^2 for virtual two-body trajectories; zero selects straight inertial motion. Captured on entry.").defineInRange("surfaceGravity",9.81,0.0,50.0);
         SPACE_Y=b.comment("Physical space-cell center Y, independent of entryY and orbital altitude. Loaded cells safely relocate to this height; unloaded owners wait for activation. Restart recommended. Native ship blocks remain in Sable plots.").defineInRange("cellY",6144,3072,30000);

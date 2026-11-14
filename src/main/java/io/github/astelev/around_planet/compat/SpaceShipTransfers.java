@@ -21,7 +21,7 @@ public final class SpaceShipTransfers {
     private static final Set<UUID> RETURN=new HashSet<>();
     private static final Map<UUID,Long> RECENT_RETURN=new HashMap<>();
     private static final TicketType<ChunkPos> TICKET=TicketType.create("around_planet_space",Comparator.comparingLong(ChunkPos::toLong),100);
-    public static void clear(ServerLevel level){PENDING.remove(level);SpaceCellHeight.clear(level);RETURN.clear();RECENT_RETURN.clear();SpaceReentry.clear(level);SpacePlanetScale.clear(level);SpaceDetachment.clear(level);SpaceDormant.clear(level);}
+    public static void clear(ServerLevel level){PENDING.remove(level);SpaceCellHeight.clear(level);RETURN.clear();RECENT_RETURN.clear();SpaceReentry.clear(level);SpacePlanetScale.clear(level);SpaceDetachment.clear(level);SpaceDormant.clear(level);SpaceRendezvous.clear(level);}
     public static boolean requestReturn(ServerPlayer player) {
         var ship=SablePassengers.ship(player);if(ship==null)return false;
         var cell=SpaceCells.get(player.serverLevel()).forShip(ship.getUniqueId());if(cell==null)return false;
@@ -35,6 +35,7 @@ public final class SpaceShipTransfers {
         var contactImpulses=SpaceOrbitData.get(level.getServer()).followContacts(PlanetDaylight.spin(level),level.getGameTime());
         for(var cell:SpaceCells.get(level).all()){var delta=contactImpulses.get(cell.id());if(delta!=null && delta.length()>1e-10)SpaceLocalPhysics.externalImpulse(level,cell,SpaceLocalPhysics.navigation(level,cell).frame().toLocal(delta));}
         SpaceDormant.check(level,container);SpaceReentry.check(level,container,RETURN,RECENT_RETURN);
+        if(level.getGameTime()%5==0)SpaceRendezvous.check(level,container);
         SpaceDetachment.check(level,container);
         var data=SpaceCells.get(level);var pending=PENDING.computeIfAbsent(level,k->new HashMap<>());
         pending.values().removeIf(p->level.getGameTime()-p.created>200);

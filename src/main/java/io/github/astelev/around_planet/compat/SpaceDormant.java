@@ -13,6 +13,7 @@ public final class SpaceDormant {
     private static final Map<ServerLevel,Set<UUID>> STARTED=new WeakHashMap<>();
     private static final Map<ServerLevel,Map<UUID,SpaceVector>> LAST=new WeakHashMap<>();
     public static void clear(ServerLevel level){STARTED.remove(level);LAST.remove(level);}
+    public static void forget(ServerLevel level,UUID orbit){STARTED.getOrDefault(level,new HashSet<>()).remove(orbit);LAST.getOrDefault(level,new HashMap<>()).remove(orbit);}
     public static boolean bound(ServerSubLevel ship){return SpaceDormantData.get(ship.getLevel().getServer()).forShip(ship.getUniqueId())!=null;}
     public static void capture(ServerSubLevel ship,List<UUID> dependencies){
         var level=ship.getLevel();if(!level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD) || !PlanetConfig.SPEC.isLoaded() || !SpaceCells.hasCells(level))return;

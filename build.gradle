@@ -156,6 +156,8 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
         if (providers.gradleProperty('planetEmptyPerfSmoke').isPresent()) jvmArguments.addAll('-Daround_planet.emptyPerfSmoke=true', "-XX:StartFlightRecording=settings=profile,filename=${layout.buildDirectory.file('empty-world-performance.jfr').get().asFile.absolutePath},dumponexit=true")
         if (providers.gradleProperty('planetSurfaceSmoke').isPresent()) jvmArguments.add('-Daround_planet.surfaceSmoke=true')
         if (providers.gradleProperty('planetBareSpaceSmoke').isPresent()) jvmArguments.add('-Daround_planet.bareSpaceSmoke=true')
+        if (providers.gradleProperty('planetRendezvousReloadSmoke').isPresent()) jvmArguments.add('-Daround_planet.rendezvousReloadSmoke=true')
+        if (providers.gradleProperty('planetRendezvousSmoke').isPresent()) jvmArguments.add('-Daround_planet.rendezvousSmoke=true')
         if (providers.gradleProperty('planetManeuverSmoke').isPresent()) jvmArguments.add('-Daround_planet.maneuverSmoke=true')
         if (providers.gradleProperty('planetAtlasSmoke').isPresent()) jvmArguments.add('-Daround_planet.atlasSmoke=true')
         if (providers.gradleProperty('planetSpaceEntrySmoke').isPresent()) jvmArguments.add('-Daround_planet.spaceEntrySmoke=true')

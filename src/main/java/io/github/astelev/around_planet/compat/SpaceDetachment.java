@@ -13,6 +13,7 @@ import java.util.*;
 public final class SpaceDetachment {
     public static final double DISTANCE=192;
     private static final Map<ServerLevel,Map<UUID,UUID>> SOURCE=new WeakHashMap<>();
+    public static void clearSource(ServerLevel level,UUID source){SOURCE.getOrDefault(level,new HashMap<>()).values().removeIf(source::equals);}
     public static void clear(ServerLevel level){SOURCE.remove(level);}
     public static void observe(ServerLevel level,ServerSubLevel ship,SpaceCells.Cell cell){if(!SpaceCells.containsShip(level,ship.getUniqueId()))SOURCE.computeIfAbsent(level,k->new HashMap<>()).put(ship.getUniqueId(),cell.id());}
     public static boolean associated(ServerLevel level,UUID ship){return SOURCE.getOrDefault(level,Map.of()).containsKey(ship);}

@@ -16,7 +16,8 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import java.util.*;
 @PrefixGameTestTemplate(false)
 public final class PropulsionGameTests {
-    private static PropulsionBlockEntity machine(ServerSubLevel ship,PropulsionRegistry.Kind kind){return ship.getPlot().getLoadedChunks().stream().flatMap(h->h.getChunk().getBlockEntities().values().stream()).filter(PropulsionBlockEntity.class::isInstance).map(PropulsionBlockEntity.class::cast).filter(be->!be.isRemoved()&&be.getLevel().getBlockEntity(be.getBlockPos())==be).filter(be->be.kind()==kind).filter(be->{var b=ship.getPlot().getBoundingBox();var p=be.getBlockPos();return p.getX()>=b.minX()&&p.getX()<=b.maxX()&&p.getY()>=b.minY()&&p.getY()<=b.maxY()&&p.getZ()>=b.minZ()&&p.getZ()<=b.maxZ();}).findFirst().orElseThrow(()->new AssertionError("No propulsion BE in native plot"));}
+    private static PropulsionBlockEntity machine(ServerSubLevel ship,PropulsionRegistry.Kind kind){return java.util.stream.Stream.concat(PropulsionRuntime.loaded(ship.getLevel()).stream(),ship.getPlot().getLoadedChunks().stream().flatMap(h->h.getChunk().getBlockEntities().values().stream()).filter(PropulsionBlockEntity.class::isInstance).map(PropulsionBlockEntity.class::cast)).filter(be->!be.isRemoved()&&be.getLevel().getBlockEntity(be.getBlockPos())==be&&be.kind()==kind&&dev.ryanhcode.sable.Sable.HELPER.getContaining(ship.getLevel(),be.getBlockPos())==ship).findFirst().orElseThrow(()->new AssertionError("No propulsion BE in native plot"));}
+
     @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
     public static void thrusterAppliesNativeImpulseAndStopsWithoutSignal(GameTestHelper h){
         var level=h.getLevel();var c=SubLevelContainer.getContainer(level);var p=h.absolutePos(new BlockPos(1,2,1));level.setBlockAndUpdate(p,PropulsionRegistry.ENGINE.get().defaultBlockState());level.setBlockAndUpdate(p.below(),Blocks.REDSTONE_BLOCK.defaultBlockState());
