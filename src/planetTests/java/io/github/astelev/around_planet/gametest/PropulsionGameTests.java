@@ -16,7 +16,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import java.util.*;
 @PrefixGameTestTemplate(false)
 public final class PropulsionGameTests {
-    private static PropulsionBlockEntity machine(ServerSubLevel ship,PropulsionRegistry.Kind kind){return ship.getPlot().getLoadedChunks().stream().flatMap(h->h.getChunk().getBlockEntities().values().stream()).filter(PropulsionBlockEntity.class::isInstance).map(PropulsionBlockEntity.class::cast).filter(be->be.kind()==kind).findFirst().orElseThrow(()->new AssertionError("No propulsion BE in native plot"));}
+    private static PropulsionBlockEntity machine(ServerSubLevel ship,PropulsionRegistry.Kind kind){return ship.getPlot().getLoadedChunks().stream().flatMap(h->h.getChunk().getBlockEntities().values().stream()).filter(PropulsionBlockEntity.class::isInstance).map(PropulsionBlockEntity.class::cast).filter(be->be.kind()==kind).filter(be->{var b=ship.getPlot().getBoundingBox();var p=be.getBlockPos();return p.getX()>=b.minX()&&p.getX()<=b.maxX()&&p.getY()>=b.minY()&&p.getY()<=b.maxY()&&p.getZ()>=b.minZ()&&p.getZ()<=b.maxZ();}).findFirst().orElseThrow(()->new AssertionError("No propulsion BE in native plot"));}
     @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
     public static void thrusterAppliesNativeImpulseAndStopsWithoutSignal(GameTestHelper h){
         var level=h.getLevel();var c=SubLevelContainer.getContainer(level);var p=h.absolutePos(new BlockPos(1,2,1));level.setBlockAndUpdate(p,PropulsionRegistry.ENGINE.get().defaultBlockState());level.setBlockAndUpdate(p.below(),Blocks.REDSTONE_BLOCK.defaultBlockState());
@@ -60,6 +60,18 @@ public final class PropulsionGameTests {
         var level=h.getLevel();var c=SubLevelContainer.getContainer(level);var p=h.absolutePos(new BlockPos(1,2,1));level.setBlockAndUpdate(p,PropulsionRegistry.RSU.get().defaultBlockState());var ship=SubLevelAssemblyHelper.assembleBlocks(level,p,List.of(p),new BoundingBox3i(p.getX(),p.getY(),p.getZ(),p.getX(),p.getY(),p.getZ()));
         try{var be=machine(ship,PropulsionRegistry.Kind.RSU);PropulsionBlockEntity.tick(level,be.getBlockPos(),be.getBlockState(),be);be.configure(1000);h.assertTrue(be.thrust()==500,"RSU allowed thrust above 500 N");var saved=be.saveWithoutMetadata(level.registryAccess());saved.putDouble("Thrust",1000000);be.loadWithComponents(saved,level.registryAccess());h.assertTrue(be.thrust()==500,"Saved RSU exceeded 500 N");be.receiveSignal(0,15);be.receiveSignal(2,15);var pipe=c.physicsSystem().getPipeline();pipe.resetVelocity(ship);PropulsionPhysics.step(c.physicsSystem(),.05);h.assertTrue(pipe.getLinearVelocity(ship,new Vector3d()).length()<1e-8&&pipe.getAngularVelocity(ship,new Vector3d()).length()<1e-8,"Opposite RSU nozzles did not cancel");be.receiveSignal(2,0);PropulsionPhysics.step(c.physicsSystem(),.05);h.assertTrue(Math.abs(pipe.getLinearVelocity(ship,new Vector3d()).z-25/ship.getMassTracker().getMass())<1e-6,"Gold exhaust did not push away from its north side");h.succeed();}
         finally{c.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);}
+    }
+
+    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
+    public static void biomeAtlasResumesFromSavedDataWithoutLoadingChunks(GameTestHelper h){
+        var level=h.getLevel();var atlas=new io.github.astelev.around_planet.atlas.PlanetAtlasData();atlas.validate(level,131072);
+        int before=level.getChunkSource().getLoadedChunksCount();atlas.advance(level);
+        h.assertTrue(atlas.progress()>0&&atlas.progress()<=256,"Atlas ignored its per-tick sample budget");for(int i=0;i<atlas.progress();i++)h.assertTrue(atlas.pixels()[i]!=0,"Dedicated-server biome palette became black");
+        h.assertTrue(level.getChunkSource().getLoadedChunksCount()==before,"Biome atlas loaded terrain chunks");
+        var tag=atlas.save(new net.minecraft.nbt.CompoundTag(),level.registryAccess());
+        var resumed=io.github.astelev.around_planet.atlas.PlanetAtlasData.load(tag,level.registryAccess());resumed.validate(level,131072);
+        h.assertTrue(resumed.progress()==atlas.progress()&&java.util.Arrays.equals(resumed.pixels(),atlas.pixels()),"Atlas did not preserve its cache/progress");
+        resumed.validate(level,262144);h.assertTrue(resumed.progress()==0,"Planet resize retained stale biome geography");h.succeed();
     }
 
 }

@@ -119,6 +119,7 @@
     "SpaceShipRenderMonitorMixin",
     "SpaceBlockEntityRenderMixin",
     "OrbitMapKeyboardMixin",
-    "ExhaustCloudProjectionMixin"
+    "ExhaustCloudProjectionMixin",
+    "SpaceLightmapMixin"
   ]
 }

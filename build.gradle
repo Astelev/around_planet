@@ -123,6 +123,7 @@ if (providers.gradleProperty('planetTests').isPresent()) {
     neoForge.runs {
         gameTestServer {
             type = 'gameTestServer'
+            if (providers.gradleProperty('planetTestRunDir').isPresent()) gameDirectory = project.file(providers.gradleProperty('planetTestRunDir').get())
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
     }
@@ -155,6 +156,7 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
         if (providers.gradleProperty('planetEmptyPerfSmoke').isPresent()) jvmArguments.addAll('-Daround_planet.emptyPerfSmoke=true', "-XX:StartFlightRecording=settings=profile,filename=${layout.buildDirectory.file('empty-world-performance.jfr').get().asFile.absolutePath},dumponexit=true")
         if (providers.gradleProperty('planetSurfaceSmoke').isPresent()) jvmArguments.add('-Daround_planet.surfaceSmoke=true')
         if (providers.gradleProperty('planetBareSpaceSmoke').isPresent()) jvmArguments.add('-Daround_planet.bareSpaceSmoke=true')
+        if (providers.gradleProperty('planetAtlasSmoke').isPresent()) jvmArguments.add('-Daround_planet.atlasSmoke=true')
         if (providers.gradleProperty('planetSpaceEntrySmoke').isPresent()) jvmArguments.add('-Daround_planet.spaceEntrySmoke=true')
         if (providers.gradleProperty('planetNorthSouthBorderSmoke').isPresent()) jvmArguments.add('-Daround_planet.northSouthBorderSmoke=true')
         if (providers.gradleProperty('planetSeatTransferSmoke').isPresent()) jvmArguments.addAll('-Daround_planet.seatTransferSmoke=true','-Daround_planet.traceShipTransfers=true')

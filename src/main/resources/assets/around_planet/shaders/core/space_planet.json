@@ -5,7 +5,11 @@
     "Position",
     "Color"
   ],
-  "samplers": [],
+  "samplers": [
+    {
+      "name": "PlanetAtlas"
+    }
+  ],
   "uniforms": [
     {
       "name": "ModelViewMat",
@@ -68,6 +72,14 @@
       "values": [
         0,
         1,
+        0
+      ]
+    },
+    {
+      "name": "HasAtlas",
+      "type": "int",
+      "count": 1,
+      "values": [
         0
       ]
     }
