@@ -9,4 +9,14 @@ class ExhaustMathTest {
     @Test void smoothAnimationDoesNotChangeMinimumGasLength(){var a=ExhaustMath.jet(1000,15,true,0);var b=ExhaustMath.jet(1000,15,true,Math.PI/2);assertNotEquals(a.activeLength(),b.activeLength());assertEquals(a.coneLength(),b.coneLength());assertTrue(a.length()<ExhaustMath.jet(10000,15,false,0).length());}
     @Test void fullThrustIsSubstantiallyLargerThanThePreviousPlumes(){assertTrue(ExhaustMath.jet(10000,15,false,0).length()>5.8);assertTrue(ExhaustMath.jet(1000,15,true,0).length()>1.2);assertTrue(ExhaustMath.jet(10_000_000,15,false,0).length()>11.8);}
 
+    @Test void engineExpansionHasNoSlopeBreakAtActiveLength(){
+        for(double thrust:new double[]{.0001,100,10000,1e7}){
+            var jet=ExhaustMath.jet(thrust,15,false,0);float y=jet.activeLength(),h=.0001f;
+            assertEquals(jet.halfWidth(),ExhaustMath.engineRadius(jet,0),1e-6);
+            assertEquals((ExhaustMath.engineRadius(jet,y)-ExhaustMath.engineRadius(jet,y-h))/h,
+                (ExhaustMath.engineRadius(jet,y+h)-ExhaustMath.engineRadius(jet,y))/h,.004);
+            for(int k=0;k<=100;k++){float r=ExhaustMath.engineRadius(jet,jet.length()*k/100);assertTrue(Float.isFinite(r)&&r>0&&r<2);}
+        }
+    }
+
 }

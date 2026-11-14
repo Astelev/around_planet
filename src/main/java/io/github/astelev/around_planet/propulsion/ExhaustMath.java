@@ -14,5 +14,13 @@ public final class ExhaustMath {
         double pulse=.985+.015*Math.sin(phase),brightness=Math.min(1,intensity);
         return new Jet((float)((rsu?.54:2.6)*intensity*pulse),(float)Math.max(minimumCone(rsu),(rsu?.66:3.4)*intensity),rsu?.072f:.16f,(int)(60+90*brightness),(int)((28+70*brightness)*(.97+.03*Math.sin(phase+2))));
     }
+    /** Smooth pressure expansion: the active length is a transition centre, never a mesh seam. */
+    public static float engineRadius(Jet jet,float distance){
+        double y=Math.clamp(distance,0,jet.length()),length=jet.length();if(length<=0)return 0;
+        double blend=Math.max(.15,length*.12),d=y-jet.activeLength(),start=-jet.activeLength();
+        double expansion=.5*(d+Math.sqrt(d*d+blend*blend)-start-Math.sqrt(start*start+blend*blend));
+        double t=y/length,tail=Math.clamp((t-.72)/.28,0,1);tail=tail*tail*(3-2*tail);
+        return (float)((jet.halfWidth()+.14*expansion)*(1-.55*tail));
+    }
     private ExhaustMath(){}
 }

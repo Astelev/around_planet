@@ -7,12 +7,13 @@ import net.minecraft.client.renderer.blockentity.*;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.api.distmarker.Dist;
-/** Large two-section exhaust with GPU-advected gas; fixed geometry and no particles. */
+/** Smooth dense engine exhaust and two-section RSU exhaust with GPU-advected gas; fixed geometry and no particles. */
 @EventBusSubscriber(modid="around_planet",value=Dist.CLIENT,bus=EventBusSubscriber.Bus.MOD)
 public final class PropulsionExhaustRenderer implements BlockEntityRenderer<PropulsionBlockEntity> {
     public static long frames,quads;public static float lastFlowTime;
     public static ShaderInstance shader;
     private static final int SIDES=8;
+    private static final float[] ENGINE_RADII={.45f,.75f,1},ENGINE_DENSITIES={1.1f,.65f,.40f};
     private static final float[] X=new float[SIDES+1],Z=new float[SIDES+1];
     static {for(int i=0;i<=SIDES;i++){X[i]=(float)Math.cos(i*2*Math.PI/SIDES);Z[i]=(float)Math.sin(i*2*Math.PI/SIDES);}}
     public PropulsionExhaustRenderer(BlockEntityRendererProvider.Context context){}
@@ -29,15 +30,47 @@ public final class PropulsionExhaustRenderer implements BlockEntityRenderer<Prop
             pose.pushPose();var direction=new org.joml.Vector3f(0,-1,0);
             if(rsu){float x=0,z=0;switch(i){case 0->z=-1;case 1->x=1;case 2->z=1;default->x=-1;}pose.translate(x*(1+cos)/8,(1.75+2*sin)/16-.5,z*(1+cos)/8);direction.set((float)(x*cos),(float)sin,(float)(z*cos));}
             else pose.translate(0,-.505,0);
-            pose.mulPose(new org.joml.Quaternionf().rotationTo(new org.joml.Vector3f(0,1,0),direction));plume(pose,vertices,jet,rsu);quads+=2*SIDES;pose.popPose();
+            pose.mulPose(new org.joml.Quaternionf().rotationTo(new org.joml.Vector3f(0,1,0),direction));plume(pose,vertices,jet,rsu);quads+=rsu?2*SIDES:3*16*SIDES;pose.popPose();
         }
         pose.popPose();frames++;io.github.astelev.around_planet.diagnostics.SeamDiagnostics.time("client","propulsion.exhaust",start);
     }
     private static void plume(PoseStack pose,VertexConsumer v,ExhaustMath.Jet jet,boolean rsu){
+        if(!rsu){enginePlume(pose,v,jet);return;}
         float neck=jet.halfWidth()*1.3f;
         section(pose,v,0,jet.activeLength(),jet.halfWidth(),neck,rsu?0xEBFCFF:0xFFBA70,rsu?0xA2EDFF:0xE4F4FF,jet.alpha(),jet.alpha());
         section(pose,v,jet.activeLength(),jet.length(),neck,neck+jet.coneLength()*(rsu?.11f:.14f),rsu?0xA2EDFF:0xE4F4FF,rsu?0x4B6FC9:0x4864CE,jet.coneAlpha(),0);
     }
+    /** Nested, smoothly curved density shells; all are part of the same deferred mesh. */
+    private static void enginePlume(PoseStack pose,VertexConsumer v,ExhaustMath.Jet jet){
+        for(int shell=0;shell<3;shell++)for(int ring=0;ring<16;ring++){
+            float a=ring/16f,b=(ring+1)/16f;
+            for(int side=0;side<SIDES;side++){
+                engineVertex(pose,v,jet,a,side,ENGINE_RADII[shell],ENGINE_DENSITIES[shell]);
+                engineVertex(pose,v,jet,a,side+1,ENGINE_RADII[shell],ENGINE_DENSITIES[shell]);
+                engineVertex(pose,v,jet,b,side+1,ENGINE_RADII[shell],ENGINE_DENSITIES[shell]);
+                engineVertex(pose,v,jet,b,side,ENGINE_RADII[shell],ENGINE_DENSITIES[shell]);
+            }
+        }
+    }
+    private static void engineVertex(PoseStack pose,VertexConsumer v,ExhaustMath.Jet jet,float t,int side,float shell,float density){
+        float y=t*jet.length(),radius=ExhaustMath.engineRadius(jet,y)*shell;
+        var matrix=pose.last().pose();
+        float x=X[side]*radius,z=Z[side]*radius;
+        float px=matrix.m00()*x+matrix.m10()*y+matrix.m20()*z+matrix.m30();
+        float py=matrix.m01()*x+matrix.m11()*y+matrix.m21()*z+matrix.m31();
+        float pz=matrix.m02()*x+matrix.m12()*y+matrix.m22()*z+matrix.m32();
+        float nx=matrix.m00()*X[side]+matrix.m20()*Z[side],ny=matrix.m01()*X[side]+matrix.m21()*Z[side],nz=matrix.m02()*X[side]+matrix.m22()*Z[side];
+        float divisor=(float)Math.sqrt((nx*nx+ny*ny+nz*nz)*(px*px+py*py+pz*pz));
+        float facing=divisor>1e-8?Math.clamp(Math.abs(nx*px+ny*py+nz*pz)/divisor,0,1):1;
+        // Less light at the silhouette removes the hollow tube/rim appearance.
+        float fade=1-smooth(.36f,1,t),alpha=jet.alpha()*density*fade*(.22f+.78f*facing*facing);
+        float white=smooth(0,.30f,t),blue=smooth(.24f,1,t);
+        int r=(int)((255+(235-255)*white)*(1-blue)+82*blue);
+        int g=(int)((188+(248-188)*white)*(1-blue)+126*blue);
+        int b=(int)((116+(255-116)*white)*(1-blue)+234*blue);
+        v.addVertex(px,py,pz).setColor(r,g,b,Math.clamp((int)alpha,0,255)).setUv(2+side/(float)SIDES,y);
+    }
+    private static float smooth(float a,float b,float x){float t=Math.clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);}
     private static void section(PoseStack pose,VertexConsumer v,float start,float end,float r0,float r1,int color0,int color1,int alpha0,int alpha1){
         for(int i=0;i<SIDES;i++){
             vertex(pose,v,X[i]*r0,start,Z[i]*r0,color0,alpha0,i/(float)SIDES,start);
