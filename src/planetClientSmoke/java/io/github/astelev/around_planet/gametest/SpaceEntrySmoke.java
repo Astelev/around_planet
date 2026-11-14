@@ -45,6 +45,7 @@ public final class SpaceEntrySmoke {
         if(ticks>2200)throw new AssertionError("SPACE_SMOKE timeout phase="+phase);
         if(mc.player==null || mc.level==null || mc.getSingleplayerServer()==null || ticks<100)return;
         if(ticks%100==0)AroundPlanet.LOGGER.info("SPACE_SMOKE phase={} player={} cell={} shipY={} mounted={} seatClient={} seatRemoved={}",phase,mc.player.position(),SpaceCells.contains(mc.player),client(mc)==null?null:client(mc).logicalPose().position().y,mc.player.isPassenger(),seat==null?null:mc.level.getEntity(seat.getId()),seat==null?null:seat.isRemoved());
+        if(Boolean.getBoolean("around_planet.maneuverSmoke")&&phase==20){ManeuverClientSmoke.tick(mc,ship);return;}
         if(Boolean.getBoolean("around_planet.atlasSmoke")&&phase==20){SpaceAtlasSmoke.tick(mc,ship);return;}
         if(phase==1 && ticks-started>40 && ticks%20==0 && client(mc)!=null && seat!=null && !mc.player.isPassenger() ) {
             // A programmatically spawned seat may precede client plot tracking on a slow renderer.
@@ -73,7 +74,7 @@ public final class SpaceEntrySmoke {
         }else if(phase==1 && ticks-started>60 && client(mc)!=null && mc.player.isPassenger()) {
             mesh=client(mc).getRenderData();clientIdentity=client(mc);phase=2;started=ticks;
             server(mc,()->{var c=SubLevelContainer.getContainer(ship.getLevel());var center=ship.logicalPose().transformPosition(new Vector3d(ship.getSelfMassTracker().getCenterOfMass()));
-                if(!Boolean.getBoolean("around_planet.atlasSmoke"))try {var holding=c.getHoldingChunkMap();var column=new net.minecraft.world.level.ChunkPos((int)Math.floor(center.x/16),(int)Math.floor(center.z/16));
+                if(!Boolean.getBoolean("around_planet.atlasSmoke")&&!Boolean.getBoolean("around_planet.maneuverSmoke"))try {var holding=c.getHoldingChunkMap();var column=new net.minecraft.world.level.ChunkPos((int)Math.floor(center.x/16),(int)Math.floor(center.z/16));
                     var create=holding.getClass().getDeclaredMethod("getOrLoadHoldingChunk",net.minecraft.world.level.ChunkPos.class,boolean.class);create.setAccessible(true);create.invoke(holding,column,true);
                     var unload=holding.getClass().getDeclaredMethod("processUnload",net.minecraft.world.level.ChunkPos.class,java.util.Collection.class);unload.setAccessible(true);unload.invoke(holding,column,List.of());
                     require(c.getSubLevel(id)==ship && !ship.isRemoved() && ship.getLevel().players().getFirst().getVehicle()==seat,"Holding retirement removed a real seated player's ship");
@@ -85,7 +86,7 @@ public final class SpaceEntrySmoke {
             if(!(instrument instanceof io.github.astelev.around_planet.sensor.OrbitalSensorBlockEntity sensor))return;
             if(!sensorOpened){io.github.astelev.around_planet.client.OrbitalSensorScreen.open(sensor);var buttons=mc.screen.children().stream().filter(net.minecraft.client.gui.components.Button.class::isInstance).map(net.minecraft.client.gui.components.Button.class::cast).toList();buttons.get(4).onPress();buttons.get(9).onPress();sensorOpened=true;return;}
             if(!sensorConfigured){if(sensor.mode()!=OrbitalAttitude.Mode.NORMAL || sensor.scale()!=90 || !sensor.active())return;net.minecraft.client.Screenshot.grab(mc.gameDirectory,"orbital-sensor-alpha14.png",mc.getMainRenderTarget(),message->{});mc.setScreen(null);sensorConfigured=true;AroundPlanet.LOGGER.info("ORBITAL_SENSOR_UI PASS: native plot sensor, server-authorized mode/scale buttons and live orbital readout");}
-            }else if(!Boolean.getBoolean("around_planet.atlasSmoke"))require(io.github.astelev.around_planet.client.OrbitalHelmetHud.frames==0 && io.github.astelev.around_planet.client.OrbitalSensorRenderer.frames==0,"Bare-space smoke unexpectedly rendered a sensor or helmet");
+            }else if(!Boolean.getBoolean("around_planet.atlasSmoke")&&!Boolean.getBoolean("around_planet.maneuverSmoke"))require(io.github.astelev.around_planet.client.OrbitalHelmetHud.frames==0 && io.github.astelev.around_planet.client.OrbitalSensorRenderer.frames==0,"Bare-space smoke unexpectedly rendered a sensor or helmet");
             if(!heightRequested){heightRequested=true;server(mc,()->{PlanetConfig.SPACE_Y.set(9000);io.github.astelev.around_planet.compat.SpaceCellHeight.relocate(ship.getLevel(),SubLevelContainer.getContainer(ship.getLevel()));cell=SpaceCells.get(ship.getLevel()).forShip(ship.getUniqueId());require(cell.y()==9000,"Occupied cell ignored configured height");});return;}
             if(cell==null || cell.y()!=9000 || Math.abs(mc.player.getY()-9000)>2)return;
 

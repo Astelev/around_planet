@@ -104,4 +104,12 @@ public final class SpaceOrbitGameTests {
         try{SpaceOrbitData.load(tag,h.getLevel().registryAccess());throw new AssertionError("Invalid save accepted");}
         catch(IllegalArgumentException expected){}
     }
+    @net.minecraft.gametest.framework.GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
+    public static void maneuverPlansPersistWithoutApplyingImpulses(net.minecraft.gametest.framework.GameTestHelper h){
+        var data=new io.github.astelev.around_planet.space.SpaceOrbitData();var id=java.util.UUID.randomUUID();var state=new io.github.astelev.around_planet.space.SpaceState(new io.github.astelev.around_planet.space.SpaceVector(10000,0,0),new io.github.astelev.around_planet.space.SpaceVector(0,100,0));var orbit=new io.github.astelev.around_planet.space.SpaceTrajectory("planet",100,state,100000000);data.put(id,orbit);
+        var node=new io.github.astelev.around_planet.space.ManeuverNode(java.util.UUID.randomUUID(),200,20,-5,3);data.maneuver(id,node);h.assertTrue(data.sample(id,200).equals(orbit.at(200)),"Planning applied a real impulse");
+        var tag=data.save(new net.minecraft.nbt.CompoundTag(),h.getLevel().registryAccess());var loaded=io.github.astelev.around_planet.space.SpaceOrbitData.load(tag,h.getLevel().registryAccess());h.assertTrue(loaded.maneuvers(id).equals(java.util.List.of(node)),"Maneuver lost on save/load");
+        loaded.maneuver(id,new io.github.astelev.around_planet.space.ManeuverNode(node.id(),250,10,0,0));h.assertTrue(loaded.maneuvers(id).size()==1&&loaded.maneuvers(id).getFirst().tick()==250,"Edit duplicated node");loaded.removeManeuver(id,node.id());h.assertTrue(loaded.maneuvers(id).isEmpty(),"Node did not delete");data.remove(id);h.assertTrue(data.maneuvers(id).isEmpty(),"Orphan maneuvers retained after orbit removal");h.succeed();
+    }
+
 }

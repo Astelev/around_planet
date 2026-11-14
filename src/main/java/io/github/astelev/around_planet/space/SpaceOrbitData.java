@@ -15,6 +15,10 @@ import java.util.*;
 public final class SpaceOrbitData extends SavedData {
     public static final String STORAGE_ID="around_planet_space_orbits";
     private final Map<UUID,SpaceTrajectory> objects=new HashMap<>();
+    private final Map<UUID,List<ManeuverNode>> maneuvers=new HashMap<>();
+    public List<ManeuverNode> maneuvers(UUID id){return maneuvers.getOrDefault(id,List.of());}
+    public void maneuver(UUID orbit,ManeuverNode node){require(orbit);var nodes=new ArrayList<>(maneuvers(orbit));nodes.removeIf(n->n.id().equals(node.id()));if(nodes.size()>=ManeuverNode.MAX_NODES)throw new IllegalArgumentException("Too many maneuvers");nodes.add(node);nodes.sort(Comparator.comparingLong(ManeuverNode::tick).thenComparing(ManeuverNode::id));maneuvers.put(orbit,List.copyOf(nodes));setDirty();}
+    public void removeManeuver(UUID orbit,UUID node){var nodes=new ArrayList<>(maneuvers(orbit));if(nodes.removeIf(n->n.id().equals(node))){maneuvers.put(orbit,List.copyOf(nodes));setDirty();}}
     private final Map<UUID,SpaceNavigation> navigation=new HashMap<>();
     private final Map<UUID,SpaceVector> reentries=new HashMap<>();
     private record SurfaceContact(SpaceVector world,SpaceVector relativeVelocity){}
@@ -49,7 +53,7 @@ public final class SpaceOrbitData extends SavedData {
         Objects.requireNonNull(id);Objects.requireNonNull(trajectory);
         if(!trajectory.equals(objects.put(id,trajectory)))setDirty();
     }
-    public void remove(UUID id){if(objects.remove(id)!=null | navigation.remove(id)!=null | reentries.remove(id)!=null | surfaceContacts.remove(id)!=null)setDirty();}
+    public void remove(UUID id){if(maneuvers.remove(id)!=null | objects.remove(id)!=null | navigation.remove(id)!=null | reentries.remove(id)!=null | surfaceContacts.remove(id)!=null)setDirty();}
     public void impulse(UUID id,long gameTick,SpaceVector deltaVelocity){var state=sample(id,gameTick);var parked=surfaceContacts.get(id);if(parked!=null){var p=navigation.get(id).planet();double phase=Math.atan2(state.position().x(),state.position().y())-parked.world().x()/p.radius();var frame=new PlanetSpin(phase,0).frame(p,parked.world().x(),parked.world().z());surfaceContacts.put(id,new SurfaceContact(parked.world(),parked.relativeVelocity().add(frame.toLocal(deltaVelocity))));}put(id,new SpaceTrajectory(require(id).primary(),gameTick,new SpaceState(state.position(),state.velocity().add(deltaVelocity)),require(id).mu()));}
     /** New object inherits origin velocity plus local relative velocity, once, in one inertial chart. */
     public SpaceTrajectory detach(UUID source,UUID detached,long gameTick,SpaceFrame frame,SpaceState local) {
@@ -76,6 +80,7 @@ public final class SpaceOrbitData extends SavedData {
                 data.navigation.put(entry.getUUID("id"),new SpaceNavigation(new PlanetGeometry(n.getDouble("halfX"),n.getDouble("halfZ")),frame));
             }
             if(entry.contains("surfaceContact",Tag.TAG_COMPOUND)){var n=entry.getCompound("surfaceContact");data.surfaceContacts.put(entry.getUUID("id"),new SurfaceContact(readVector(n,"world"),readVector(n,"velocity")));}
+            if(entry.contains("maneuvers",Tag.TAG_LIST)){var nodes=entry.getList("maneuvers",Tag.TAG_COMPOUND);var saved=new ArrayList<ManeuverNode>();var ids=new HashSet<UUID>();for(var rawNode:nodes){try{var n=(CompoundTag)rawNode;if(saved.size()>=ManeuverNode.MAX_NODES||!n.hasUUID("id")||!ids.add(n.getUUID("id")))continue;saved.add(new ManeuverNode(n.getUUID("id"),n.getLong("tick"),n.getDouble("prograde"),n.getDouble("normal"),n.getDouble("radial")));}catch(IllegalArgumentException invalid){io.github.astelev.around_planet.AroundPlanet.LOGGER.warn("Skipping invalid saved maneuver for {}",entry.getUUID("id"));}}data.maneuvers.put(entry.getUUID("id"),List.copyOf(saved));}
             if(data.objects.putIfAbsent(entry.getUUID("id"),trajectory)!=null)throw new IllegalArgumentException("Duplicate orbit object ID");
         }
         return data;
@@ -88,6 +93,7 @@ public final class SpaceOrbitData extends SavedData {
             var e=new CompoundTag();var trajectory=item.getValue();var p=trajectory.initial().position();var v=trajectory.initial().velocity();
             e.putUUID("id",item.getKey());e.putString("primary",trajectory.primary());e.putLong("epoch",trajectory.epochTick());e.putDouble("mu",trajectory.mu());
             e.putDouble("px",p.x());e.putDouble("py",p.y());e.putDouble("pz",p.z());e.putDouble("vx",v.x());e.putDouble("vy",v.y());e.putDouble("vz",v.z());
+            var planned=new ListTag();for(var node:maneuvers(item.getKey())){var n=new CompoundTag();n.putUUID("id",node.id());n.putLong("tick",node.tick());n.putDouble("prograde",node.prograde());n.putDouble("normal",node.normal());n.putDouble("radial",node.radial());planned.add(n);}if(!planned.isEmpty())e.put("maneuvers",planned);
             var parked=surfaceContacts.get(item.getKey());if(parked!=null){var n=new CompoundTag();writeVector(n,"world",parked.world());writeVector(n,"velocity",parked.relativeVelocity());e.put("surfaceContact",n);}
             var contact=reentries.get(item.getKey());if(contact!=null){var n=new CompoundTag();writeVector(n,"p",contact);e.put("reentry",n);}
             var nav=navigation.get(item.getKey());if(nav!=null){var n=new CompoundTag();n.putDouble("halfX",nav.planet().halfX());n.putDouble("halfZ",nav.planet().halfZ());writeVector(n,"east",nav.frame().east());writeVector(n,"up",nav.frame().up());writeVector(n,"south",nav.frame().south());e.put("navigation",n);}list.add(e);
