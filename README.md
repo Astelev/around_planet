@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.23: [градиент выхлопа, глубина облаков и туман AeroWorks](docs/exhaust-clouds-and-fog.md).
+
 Обновление 0.11.0-alpha.22: [увеличенный выхлоп с быстрым движением газа](docs/large-flowing-exhaust.md).
 
 Обновление 0.11.0-alpha.21: [активное ядро и расширяющийся прозрачный конус выхлопа](docs/two-stage-exhaust.md).
@@ -424,7 +426,7 @@ bash ./gradlew -PplanetTests runGameTestServer
 bash ./gradlew runClient
 ```
 
-JAR: `build/libs/around_planet-0.11.0-alpha.22.jar`.
+JAR: `build/libs/around_planet-0.11.0-alpha.23.jar`.
 `-PcompatModsDir=/absolute/path/to/test-mods` добавляет локальные JAR только в
 среду запуска; они не включаются в мод. Серверные и клиентские тестовые классы
 также не входят в итоговый JAR. Клиентский smoke-тест запускается с

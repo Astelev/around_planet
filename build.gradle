@@ -144,6 +144,7 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     neoForge.runs.named('client') {
         programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('around-ew-smoke'))
         jvmArguments.add('-Xmx3G')
+        if (providers.gradleProperty('planetExhaustDepthSmoke').isPresent()) jvmArguments.add('-Daround_planet.exhaustDepthSmoke=true')
         if (providers.gradleProperty('planetExhaustSmoke').isPresent()) jvmArguments.add('-Daround_planet.exhaustSmoke=true')
         if (providers.gradleProperty('planetPropulsionSmoke').isPresent()) jvmArguments.add('-Daround_planet.propulsionSmoke=true')
         if (providers.gradleProperty('planetSensorMountSmoke').isPresent()) jvmArguments.add('-Daround_planet.sensorMountSmoke=true')

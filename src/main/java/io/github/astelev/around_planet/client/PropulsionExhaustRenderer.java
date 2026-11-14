@@ -12,7 +12,6 @@ import net.neoforged.api.distmarker.Dist;
 public final class PropulsionExhaustRenderer implements BlockEntityRenderer<PropulsionBlockEntity> {
     public static long frames,quads;public static float lastFlowTime;
     public static ShaderInstance shader;
-    private static final RenderType TYPE=ExhaustRenderType.TYPE;
     private static final int SIDES=8;
     private static final float[] X=new float[SIDES+1],Z=new float[SIDES+1];
     static {for(int i=0;i<=SIDES;i++){X[i]=(float)Math.cos(i*2*Math.PI/SIDES);Z[i]=(float)Math.sin(i*2*Math.PI/SIDES);}}
@@ -22,7 +21,7 @@ public final class PropulsionExhaustRenderer implements BlockEntityRenderer<Prop
     @Override public void render(PropulsionBlockEntity be,float partial,PoseStack pose,MultiBufferSource buffers,int light,int overlay){
         if(shader==null||be.getLevel()==null||be.kind()==PropulsionRegistry.Kind.DAMPER||be.thrust()<=0)return;
         boolean rsu=be.kind()==PropulsionRegistry.Kind.RSU;int count=rsu?4:1;boolean active=false;for(int i=0;i<count;i++)active|=be.signal(i)>0;if(!active)return;
-        long start=io.github.astelev.around_planet.diagnostics.SeamDiagnostics.start();var frame=OrbitalSensorBlock.frame(be.getBlockState());var r=frame.right();var f=frame.forward();var u=frame.up();var vertices=buffers.getBuffer(TYPE);
+        long start=io.github.astelev.around_planet.diagnostics.SeamDiagnostics.start();var frame=OrbitalSensorBlock.frame(be.getBlockState());var r=frame.right();var f=frame.forward();var u=frame.up();var vertices=DeferredExhaust.vertices();
         pose.pushPose();pose.translate(.5,.5,.5);pose.mulPose(new org.joml.Quaternionf().setFromNormalized(new org.joml.Matrix3f((float)r.x(),(float)r.y(),(float)r.z(),(float)f.x(),(float)f.y(),(float)f.z(),(float)u.x(),(float)u.y(),(float)u.z())));
         double time=be.getLevel().getGameTime()+partial;lastFlowTime=(float)((time%24000)/20.0);shader.safeGetUniform("FlowTime").set(lastFlowTime);double sin=Math.sin(Math.PI/8),cos=Math.cos(Math.PI/8);
         for(int i=0;i<count;i++){
@@ -36,8 +35,8 @@ public final class PropulsionExhaustRenderer implements BlockEntityRenderer<Prop
     }
     private static void plume(PoseStack pose,VertexConsumer v,ExhaustMath.Jet jet,boolean rsu){
         float neck=jet.halfWidth()*1.3f;
-        section(pose,v,0,jet.activeLength(),jet.halfWidth(),neck,0xE8FAFF,rsu?0x70E8FF:0x90BCFF,jet.alpha(),jet.alpha());
-        section(pose,v,jet.activeLength(),jet.length(),neck,neck+jet.coneLength()*(rsu?.11f:.14f),rsu?0x50C8F0:0x6498EB,rsu?0x307CC0:0x3C58A0,jet.coneAlpha(),0);
+        section(pose,v,0,jet.activeLength(),jet.halfWidth(),neck,rsu?0xEBFCFF:0xFFBA70,rsu?0xA2EDFF:0xE4F4FF,jet.alpha(),jet.alpha());
+        section(pose,v,jet.activeLength(),jet.length(),neck,neck+jet.coneLength()*(rsu?.11f:.14f),rsu?0xA2EDFF:0xE4F4FF,rsu?0x4B6FC9:0x4864CE,jet.coneAlpha(),0);
     }
     private static void section(PoseStack pose,VertexConsumer v,float start,float end,float r0,float r1,int color0,int color1,int alpha0,int alpha1){
         for(int i=0;i<SIDES;i++){

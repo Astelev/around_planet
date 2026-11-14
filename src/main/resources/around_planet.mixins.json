@@ -15,7 +15,6 @@
     "PlanetDetectorDayMixin",
     "PlanetBedDayMixin",
     "PlanetSleepTimeMixin",
-
     "PlayerMovementMixin",
     "SeamPlayerTicketsMixin",
     "SeamChunkSendingMixin",
@@ -119,6 +118,7 @@
     "SpaceFogMixin",
     "SpaceShipRenderMonitorMixin",
     "SpaceBlockEntityRenderMixin",
-    "OrbitMapKeyboardMixin"
+    "OrbitMapKeyboardMixin",
+    "ExhaustCloudProjectionMixin"
   ]
 }

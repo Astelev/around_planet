@@ -7,6 +7,7 @@ uniform float Horizon;
 uniform float MoonPhase;
 uniform float Visibility;
 uniform int Layer;
+uniform vec4 CloudFog;
 out vec4 fragColor;
 vec3 background(vec3 ray) {
     float band=exp(-abs(ray.y-Horizon)*7.0);
@@ -15,7 +16,7 @@ vec3 background(vec3 ray) {
     vec2 side=SunDirection.xz;side/=max(length(side),0.0001);
     vec2 look=ray.xz;look/=max(length(look),0.0001);
     color+=vec3(0.6,0.15,0.025)*band*sunset*pow(max(0.0,dot(side,look)),8.0)*Visibility;
-    return color*mix(1.0,0.008,Darkness);
+    return mix(color*mix(1.0,0.008,Darkness),CloudFog.rgb,CloudFog.a);
 }
 void main() {
     vec3 ray=normalize(rayDirection);

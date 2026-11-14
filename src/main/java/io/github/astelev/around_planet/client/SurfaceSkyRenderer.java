@@ -28,11 +28,12 @@ public final class SurfaceSkyRenderer {
             shader.safeGetUniform("InverseProjection").set(new Matrix4f(projection).invert());shader.safeGetUniform("RayTransform").set(new Matrix4f(view).invert());
             shader.safeGetUniform("SkyColor").set((float)sky.x,(float)sky.y,(float)sky.z);shader.safeGetUniform("SunDirection").set((float)sun.x(),(float)sun.y(),(float)sun.z());
             shader.safeGetUniform("Darkness").set((float)dark);shader.safeGetUniform("Horizon").set(PlanetConfig.SURFACE_CURVE.getAsBoolean()?(float)SurfaceVisualMath.horizon(camera.getPosition().y,new PlanetScale(PlanetConfig.PLANET_SIZE.get()).radius()):0);
-            shader.safeGetUniform("MoonPhase").set((float)mc.level.getMoonPhase());shader.safeGetUniform("Visibility").set(1-mc.level.getRainLevel(partial));
+            float legacyFog=AeroFogBridge.legacySkyStrength();float[] fogColor=RenderSystem.getShaderFogColor();shader.safeGetUniform("CloudFog").set(fogColor[0],fogColor[1],fogColor[2],legacyFog);
+            shader.safeGetUniform("MoonPhase").set((float)mc.level.getMoonPhase());shader.safeGetUniform("Visibility").set((1-mc.level.getRainLevel(partial))*(1-legacyFog));
             RenderSystem.setShaderFogStart(Float.MAX_VALUE/2);RenderSystem.setShaderFogEnd(Float.MAX_VALUE);RenderSystem.disableDepthTest();RenderSystem.depthMask(false);RenderSystem.disableCull();RenderSystem.enableBlend();RenderSystem.defaultBlendFunc();RenderSystem.setShaderColor(1,1,1,1);
             layer(0);
             float stars=(float)Math.max(mc.level.getStarBrightness(partial)*2,dark)*(1-mc.level.getRainLevel(partial));
-            if(stars>0.001)SpaceSkyRenderer.stars(new Matrix4f(view).mul(SpaceSkyRenderer.inverse(surfaceFrame)),projection,stars);
+            stars*=1-legacyFog;if(stars>0.001)SpaceSkyRenderer.stars(new Matrix4f(view).mul(SpaceSkyRenderer.inverse(surfaceFrame)),projection,stars);
             layer(1);SurfaceRenderState.skyFrames++;return true;
         }finally{VertexBuffer.unbind();RenderSystem.depthMask(true);RenderSystem.enableDepthTest();RenderSystem.enableCull();RenderSystem.disableBlend();RenderSystem.setShaderColor(1,1,1,1);RenderSystem.setShaderFogStart(fogStart);RenderSystem.setShaderFogEnd(fogEnd);RenderSystem.setShader(GameRenderer::getPositionColorShader);SurfaceRenderState.sky(false);}
     }
