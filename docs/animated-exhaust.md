@@ -1,5 +1,8 @@
 # Animated exhaust and horizon rollback (0.11.0-alpha.20)
 
+[Alpha.21](two-stage-exhaust.md) replaces the fire sprites below with a bright
+active core and an expanding, fading gas cone. The horizon rollback remains.
+
 The artificial horizon uses the original alpha.18 up-vector projection again.
 Alpha.19's horizontal reflection is removed. Target bearings, sensor axes and
 redstone control logic were not changed by this rollback.
