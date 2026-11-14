@@ -31,5 +31,20 @@
   "around_planet.sensor.mode.planet_in": "Toward planet",
   "around_planet.sensor.mode.sun": "Toward Sun",
   "around_planet.sensor.behind": "Target behind",
-  "around_planet.sensor.hud_inactive": "No signal"
+  "around_planet.sensor.hud_inactive": "No signal",
+  "block.around_planet.creative_thruster": "Creative Thruster",
+  "block.around_planet.rsu": "Four-way RSU",
+  "block.around_planet.inertia_damper": "Angular Inertia Damper",
+  "around_planet.propulsion.thrust": "Thrust: %s N",
+  "around_planet.propulsion.damping": "Damping: %s /s",
+  "around_planet.propulsion.clear": "Clear",
+  "around_planet.propulsion.side.gold": "Gold",
+  "around_planet.propulsion.side.copper": "Copper",
+  "around_planet.propulsion.side.red": "Red",
+  "around_planet.propulsion.side.green": "Green",
+  "around_planet.propulsion.frequency_help": "Select a frequency slot, then an item below",
+  "around_planet.propulsion.requires_create": "Create is required for frequencies",
+  "around_planet.propulsion.signal": "Redstone: %s / 15",
+  "around_planet.propulsion.rotation_only": "Damps rotation using FE",
+  "around_planet.propulsion.vacuum": "Works in vacuum without fuel"
 }

@@ -31,5 +31,20 @@
   "around_planet.sensor.mode.planet_in": "К планете",
   "around_planet.sensor.mode.sun": "К Солнцу",
   "around_planet.sensor.behind": "Цель позади",
-  "around_planet.sensor.hud_inactive": "Нет сигнала"
+  "around_planet.sensor.hud_inactive": "Нет сигнала",
+  "block.around_planet.creative_thruster": "Креативный двигатель",
+  "block.around_planet.rsu": "Четырёхнаправленный RSU",
+  "block.around_planet.inertia_damper": "Гаситель инерции вращения",
+  "around_planet.propulsion.thrust": "Тяга: %s Н",
+  "around_planet.propulsion.damping": "Гашение: %s /с",
+  "around_planet.propulsion.clear": "Очистить",
+  "around_planet.propulsion.side.gold": "Золотая",
+  "around_planet.propulsion.side.copper": "Медная",
+  "around_planet.propulsion.side.red": "Красная",
+  "around_planet.propulsion.side.green": "Зелёная",
+  "around_planet.propulsion.frequency_help": "Выбери слот частоты, затем предмет внизу",
+  "around_planet.propulsion.requires_create": "Для частот требуется Create",
+  "around_planet.propulsion.signal": "Редстоун: %s / 15",
+  "around_planet.propulsion.rotation_only": "Гасит вращение, расходуя FE",
+  "around_planet.propulsion.vacuum": "Работает в вакууме без топлива"
 }

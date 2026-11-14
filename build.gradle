@@ -40,6 +40,7 @@ neoForge {
 configurations {
     runtimeClasspath.extendsFrom localRuntime
     sableCompileBundle
+    createCompileBundle
 }
 // Exact optional API and its nested compile-time libraries; nothing is bundled in our JAR.
 var extractSableApi = tasks.register('extractSableApi', Sync) {
@@ -51,7 +52,18 @@ var extractSableApi = tasks.register('extractSableApi', Sync) {
     into layout.buildDirectory.dir('sable-compile-api')
 }
 
+var extractCreateApi = tasks.register('extractCreateApi', Sync) {
+    from({ zipTree(configurations.createCompileBundle.singleFile) }) {
+        include 'META-INF/jarjar/ponder-*.jar'
+        eachFile { path = name }
+        includeEmptyDirs = false
+    }
+    into layout.buildDirectory.dir('create-compile-api')
+}
+
 dependencies {
+    createCompileBundle('maven.modrinth:create:UjX6dr61') { transitive = false }
+    compileOnly files(extractCreateApi.map { it.destinationDir }).asFileTree.matching { include '*.jar' }
     sableCompileBundle('maven.modrinth:sable:fg9dTRz9') { transitive = false }
     compileOnly('maven.modrinth:sable:fg9dTRz9') { transitive = false }
     compileOnly files(extractSableApi.map { it.destinationDir }).asFileTree.matching { include '*.jar' }
@@ -119,7 +131,8 @@ if (providers.gradleProperty('planetTests').isPresent()) {
 if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     sourceSets {
         planetClientSmoke {
-            if (project.providers.gradleProperty('planetSensorMountSmoke').isPresent()) java.include('**/SensorMountSmoke.java')
+            if (project.providers.gradleProperty('planetPropulsionSmoke').isPresent()) java.include('**/PropulsionClientSmoke.java')
+            else if (project.providers.gradleProperty('planetSensorMountSmoke').isPresent()) java.include('**/SensorMountSmoke.java')
             else if (project.providers.gradleProperty('planetEmptyPerfSmoke').isPresent()) java.include('**/EmptyWorldPerformanceSmoke.java')
             else if (project.providers.gradleProperty('planetSurfaceSmoke').isPresent()) java.include('**/SurfaceVisualSmoke.java')
             compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
@@ -130,6 +143,7 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     neoForge.runs.named('client') {
         programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('around-ew-smoke'))
         jvmArguments.add('-Xmx3G')
+        if (providers.gradleProperty('planetPropulsionSmoke').isPresent()) jvmArguments.add('-Daround_planet.propulsionSmoke=true')
         if (providers.gradleProperty('planetSensorMountSmoke').isPresent()) jvmArguments.add('-Daround_planet.sensorMountSmoke=true')
         if (providers.gradleProperty('planetProgressiveTerrainSmoke').isPresent()) jvmArguments.add('-Daround_planet.progressiveTerrainSmoke=true')
         if (providers.gradleProperty('planetProgressiveSmoke').isPresent() || providers.gradleProperty('planetProgressiveTerrainSmoke').isPresent()) jvmArguments.add('-Daround_planet.progressiveSmoke=true')

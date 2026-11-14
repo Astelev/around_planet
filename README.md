@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.18: [двигатель, RSU с частотами Create и гаситель вращения на FE](docs/propulsion-and-angular-damper.md).
+
 Обновление 0.11.0-alpha.17: [верх датчика — нос корабля, установка на шесть сторон](docs/sensor-six-direction-mounting.md).
 
 Обновление 0.11.0-alpha.16: [миграция высоты космоса и диагностика CPU](docs/space-height-and-cpu-diagnostics.md).
@@ -414,7 +416,7 @@ bash ./gradlew -PplanetTests runGameTestServer
 bash ./gradlew runClient
 ```
 
-JAR: `build/libs/around_planet-0.11.0-alpha.17.jar`.
+JAR: `build/libs/around_planet-0.11.0-alpha.18.jar`.
 `-PcompatModsDir=/absolute/path/to/test-mods` добавляет локальные JAR только в
 среду запуска; они не включаются в мод. Серверные и клиентские тестовые классы
 также не входят в итоговый JAR. Клиентский smoke-тест запускается с
