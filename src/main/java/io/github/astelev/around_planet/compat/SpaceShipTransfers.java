@@ -21,7 +21,7 @@ public final class SpaceShipTransfers {
     private static final Set<UUID> RETURN=new HashSet<>();
     private static final Map<UUID,Long> RECENT_RETURN=new HashMap<>();
     private static final TicketType<ChunkPos> TICKET=TicketType.create("around_planet_space",Comparator.comparingLong(ChunkPos::toLong),100);
-    public static void clear(ServerLevel level){PENDING.remove(level);RETURN.clear();RECENT_RETURN.clear();SpaceReentry.clear(level);SpacePlanetScale.clear(level);SpaceDetachment.clear(level);SpaceDormant.clear(level);}
+    public static void clear(ServerLevel level){PENDING.remove(level);SpaceCellHeight.clear(level);RETURN.clear();RECENT_RETURN.clear();SpaceReentry.clear(level);SpacePlanetScale.clear(level);SpaceDetachment.clear(level);SpaceDormant.clear(level);}
     public static boolean requestReturn(ServerPlayer player) {
         var ship=SablePassengers.ship(player);if(ship==null)return false;
         var cell=SpaceCells.get(player.serverLevel()).forShip(ship.getUniqueId());if(cell==null)return false;

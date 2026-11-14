@@ -68,8 +68,8 @@ public final class PlanetConfig {
         REENTRY_SPEED=b.comment("Maximum virtual center-of-mass speed in blocks/s passed to normal physics on reentry. Atmospheric drag also does not reduce a faster object below this speed. Internal relative/angular motion is retained.").defineInRange("reentryMaxSpeed",50.0,1.0,100.0);
         SPACE_UNLOAD_SPEED=b.comment("Detach a free native group when it unloads with relative center-of-mass speed above this value, in blocks/s. Does not count orbital speed; owner and constrained groups are excluded.").defineInRange("unloadDetachSpeed",1.0,0.0,1000.0);
         SPACE_GRAVITY=b.comment("Planet surface gravity in blocks/s^2 for virtual two-body trajectories; zero selects straight inertial motion. Captured on entry.").defineInRange("surfaceGravity",9.81,0.0,50.0);
-        SPACE_Y=b.comment("Physical space-cell center Y, independent of entryY and orbital altitude. Loaded cells safely relocate to this height; unloaded owners wait for activation. Restart recommended. Native ship blocks remain in Sable plots.").defineInRange("cellY",6144,1400,30000);
-        b.defineInRange("heightLayoutRevision",1,1,1);
+        SPACE_Y=b.comment("Physical space-cell center Y, independent of entryY and orbital altitude. Loaded cells safely relocate to this height; unloaded owners wait for activation. Restart recommended. Native ship blocks remain in Sable plots.").defineInRange("cellY",6144,3072,30000);
+        b.defineInRange("heightLayoutRevision",2,2,2);
         b.pop(); SPEC = b.build();
     }
     private PlanetConfig() {}
