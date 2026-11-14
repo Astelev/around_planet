@@ -9,6 +9,7 @@ import java.util.*;
 /** Shared read-only preview; only a server-granted planner session creates edit controls. */
 final class ManeuverMapLayer {
     private final OrbitMapScreen map;private final UUID session;private final List<AbstractWidget> widgets=new ArrayList<>();
+    private EditBox warning;private OrbitPlot result;private java.util.List<OrbitInspection.Apsis> apsides=java.util.List.of();private double radius;
     private final EditBox[] fields=new EditBox[3];private ManeuverNode draft;private UUID selected;private boolean applying;private long sequence,at=Long.MIN_VALUE;private int x,y,width,step=10;
     private ManeuverPayload packet;private ManeuverPreview preview;private boolean dirty=true;private String error="";
     ManeuverMapLayer(OrbitMapScreen map,UUID session){this.map=map;this.session=session;}
@@ -21,13 +22,14 @@ final class ManeuverMapLayer {
         widgets.add(Button.builder(Component.literal("± "+step),b->{step=step==1?10:step==10?100:1;b.setMessage(Component.literal("± "+step));}).bounds(x,y+98,57,18).build());
         widgets.add(Button.builder(Component.translatable("around_planet.maneuver.delete"),b->delete()).bounds(x+59,y+98,64,18).build());
         widgets.add(Button.builder(Component.literal("<"),b->cycle(-1)).bounds(x+125,y+98,22,18).build());widgets.add(Button.builder(Component.literal(">"),b->cycle(1)).bounds(x+149,y+98,22,18).build());
+        warning=new EditBox(map.getMinecraft().font,x+109,y+158,62,18,Component.translatable("around_planet.maneuver.warning",0));warning.setMaxLength(10);warning.setFilter(v->v.matches("\\d*"));warning.setTooltip(Tooltip.create(Component.translatable("around_planet.maneuver.warning_help")));warning.setResponder(v->{if(applying||!authorized()||v.isEmpty())return;try{int seconds=Integer.parseInt(v);error="";PacketDistributor.sendToServer(new ManeuverPayload.Warning(session,seconds));}catch(NumberFormatException ignored){error="around_planet.maneuver.warning_range";}});widgets.add(warning);
         setFields();return List.copyOf(widgets);
     }
-    void update(double radius,double entry){var p=ManeuverClient.current();if(p==null)return;
-        if(p!=packet){packet=p;dirty=true;if(!p.error().isEmpty()&&p.ack()>=sequence){error=p.error();draft=p.nodes().stream().filter(n->n.id().equals(selected)).findFirst().orElse(null);setFields();}}
-        for(var widget:widgets)widget.active=authorized()&&(draft!=null||widget instanceof Button);
+    void update(double radius,double entry){this.radius=radius;var p=ManeuverClient.current();if(p==null)return;
+        if(p!=packet){packet=p;dirty=true;if(warning!=null&&!warning.isFocused()){applying=true;warning.setValue(Integer.toString(p.warningSeconds()));applying=false;}if(!p.error().isEmpty()&&p.ack()>=sequence){error=p.error();draft=p.nodes().stream().filter(n->n.id().equals(selected)).findFirst().orElse(null);setFields();}}
+        for(var widget:widgets)widget.active=authorized()&&(widget==warning||draft!=null||widget instanceof Button);
         long now=ManeuverClient.now();if(!dirty&&now-at<5)return;at=now;dirty=false;
-        try{preview=ManeuverPreview.create(p.trajectory(),now,nodes(),radius,entry);}catch(RuntimeException failure){preview=null;error="around_planet.maneuver.preview_failed";}
+        try{preview=ManeuverPreview.create(p.trajectory(),now,nodes(),radius,entry);var extrema=new ArrayList<>(OrbitInspection.apsides(p.trajectory(),now,radius,entry,false));var finalSegment=preview.segments().getLast();if(finalSegment.planned()&&!finalSegment.points().isEmpty())extrema.addAll(OrbitInspection.apsides(finalSegment.trajectory(),finalSegment.points().getFirst().tick(),radius,entry,true));apsides=List.copyOf(extrema);result=null;if(selected!=null)for(var mark:preview.nodes())if(mark.node().id().equals(selected)){result=OrbitPlot.create(mark.after().initial(),mark.after().mu(),radius,entry,false);break;}}catch(RuntimeException failure){preview=null;error="around_planet.maneuver.preview_failed";}
     }
     private List<ManeuverNode> nodes(){var result=new ArrayList<ManeuverNode>(packet==null?List.of():packet.nodes());if(draft!=null){result.removeIf(n->n.id().equals(draft.id()));result.add(draft);}result.sort(Comparator.comparingLong(ManeuverNode::tick).thenComparing(ManeuverNode::id));return result;}
     private void select(ManeuverNode node){selected=node.id();draft=node;error="";dirty=true;setFields();}
@@ -38,26 +40,40 @@ final class ManeuverMapLayer {
     private void delete(){if(draft==null)return;submit(true);selected=null;draft=null;dirty=true;setFields();}
     private void cycle(int direction){var nodes=nodes();if(nodes.isEmpty())return;int index=0;for(int i=0;i<nodes.size();i++)if(nodes.get(i).id().equals(selected))index=i;select(nodes.get(Math.floorMod(index+direction,nodes.size())));}
     void paths(GuiGraphics g,boolean behind){if(preview==null)return;for(var segment:preview.segments())if(segment.planned())for(int i=1;i<segment.points().size();i++){var a=map.project(segment.points().get(i-1).position());var b=map.project(segment.points().get(i).position());if(((a.depth()+b.depth())/2<0)==behind)map.line(g,a.x(),a.y(),b.x(),b.y(),behind?0xff795427:0xffffac4d);}}
-    void markers(GuiGraphics g,int mx,int my){if(preview==null)return;for(var mark:preview.nodes()){var p=map.project(mark.position());boolean hover=Math.hypot(p.x()-mx,p.y()-my)<9;String text=hover?String.format(Locale.ROOT,"%s · Δv %.1f m/s",time(mark.node().tick()),mark.node().magnitude()):mark.node().id().equals(selected)?"Δv":"";map.marker(g,mark.position(),0xffffac4d,text);}}
+    void markers(GuiGraphics g,int mx,int my){if(preview==null)return;for(var a:apsides)map.marker(g,a.position(),a.planned()?0xffffac4d:a.apo()?0xffaaa6ff:0xffff9cd1,(a.planned()?"Δv ":"")+(a.apo()?"Ap":"Pe"));for(var mark:preview.nodes()){var p=map.project(mark.position());boolean hover=Math.hypot(p.x()-mx,p.y()-my)<9;String text=hover?String.format(Locale.ROOT,"%s · Δv %.1f m/s",time(mark.node().tick()),mark.node().magnitude()):mark.node().id().equals(selected)?"Δv":"";map.marker(g,mark.position(),0xffffac4d,text);}}
     boolean click(double mx,double my){if(!authorized()||preview==null)return false;
         for(var mark:preview.nodes()){var p=map.project(mark.position());if(Math.hypot(p.x()-mx,p.y()-my)<=9&&map.visible(mark.position())){select(mark.node());return true;}}
+        var hit=pick(mx,my,true);if(hit==null)return false;long tick=hit.tick();
+        tick=Math.max(tick,ManeuverClient.now()+20);if(nodes().size()>=ManeuverNode.MAX_NODES){error="around_planet.maneuver.limit";return true;}
+        select(new ManeuverNode(UUID.randomUUID(),tick,0,0,0));submit(false);return true;
+    }
+    private record Hit(SpaceTrajectory path,long tick,SpaceVector position,boolean planned,OrbitInspection.Apsis apsis){}
+    private Hit pick(double mx,double my,boolean editing){
+        OrbitInspection.Apsis snapped=null;double snapDistance=10;for(var a:apsides){if(editing&&!a.planned()&&preview!=null&&!preview.nodes().isEmpty()&&a.tick()>=preview.nodes().getFirst().node().tick())continue;var point=map.project(a.position());double distance=Math.hypot(point.x()-mx,point.y()-my);if(distance<=snapDistance&&map.visible(a.position())){snapped=a;snapDistance=distance;}}if(snapped!=null)return new Hit(snapped.path(),snapped.tick(),snapped.position(),snapped.planned(),snapped);
+        if(preview==null)return null;
         double best=8;long tick=-1,low=0,high=0;ManeuverPreview.Segment picked=null;for(var segment:preview.segments())for(int i=1;i<segment.points().size();i++){
             var a=segment.points().get(i-1);var b=segment.points().get(i);var aa=map.project(a.position());var bb=map.project(b.position());double dx=bb.x()-aa.x(),dy=bb.y()-aa.y(),length=dx*dx+dy*dy;if(length<1e-8)continue;
             double t=Math.clamp(((mx-aa.x())*dx+(my-aa.y())*dy)/length,0,1),distance=Math.hypot(aa.x()+t*dx-mx,aa.y()+t*dy-my);var point=a.position().add(b.position().subtract(a.position()).scale(t));
             if(distance<best&&map.visible(point)){best=distance;tick=a.tick()+Math.round((b.tick()-a.tick())*t);low=a.tick();high=b.tick();picked=segment;}
         }
-        if(tick<0)return false;
+        if(tick<0)return null;
         if(picked!=null&&high>low){var path=picked.trajectory();for(int i=0;i<28&&high-low>3;i++){long a=low+(high-low)/3,b=high-(high-low)/3;if(score(path,a,mx,my)<score(path,b,mx,my))high=b;else low=a;}tick=low;for(long candidate:new long[]{low,low+(high-low)/2,high})if(score(path,candidate,mx,my)<score(path,tick,mx,my))tick=candidate;}
-        tick=Math.max(tick,ManeuverClient.now()+20);if(nodes().size()>=ManeuverNode.MAX_NODES){error="around_planet.maneuver.limit";return true;}
-        select(new ManeuverNode(UUID.randomUUID(),tick,0,0,0));submit(false);return true;
+        if(picked==null)return null;return new Hit(picked.trajectory(),tick,picked.trajectory().at(tick).position(),picked.planned(),null);
+    }
+    void tooltip(GuiGraphics g,int mx,int my){
+        if(map.getMinecraft().screen!=map||preview==null)return;var hit=pick(mx,my,false);if(hit==null)return;var state=hit.path().at(hit.tick());var lines=new ArrayList<Component>();
+        if(hit.apsis()!=null){var a=hit.apsis();lines.add(Component.translatable(a.planned()?"around_planet.map.planned_apsis":"around_planet.map.apsis",a.apo()?"Ap":"Pe"));var p=map.project(a.position());g.fill((int)p.x()-3,(int)p.y()-3,(int)p.x()+4,(int)p.y()+4,0xffffff99);}
+        lines.add(Component.translatable("around_planet.map.point_speed",String.format(Locale.ROOT,"%.2f",state.velocity().length())));lines.add(Component.translatable("around_planet.map.point_altitude",String.format(Locale.ROOT,"%.0f",hit.position().length()-radius)));g.renderComponentTooltip(map.getMinecraft().font,lines,mx,my);
     }
     private double score(SpaceTrajectory path,long tick,double x,double y){var p=map.project(path.at(tick).position());return Math.hypot(p.x()-x,p.y()-y);}
     private static String time(long tick){double seconds=(tick-ManeuverClient.now())/20.0;return String.format(Locale.ROOT,"T%s%.1f s",seconds>=0?"−":"+",Math.abs(seconds));}
-    void panel(GuiGraphics g){if(!editor())return;g.fill(x-4,y-3,x+width,y+132,0xed101d30);var font=map.getMinecraft().font;
+    private String altitude(SpaceVector p){return p==null?"—":String.format(Locale.ROOT,"%.0f m",p.length()-radius);}
+    void panel(GuiGraphics g){if(!editor())return;g.fill(x-4,y-3,x+width,y+182,0xed101d30);var font=map.getMinecraft().font;
         g.drawString(font,Component.translatable("around_planet.maneuver.node",nodes().size()),x,y,0xffffb761,false);
         if(draft!=null){double seconds=(draft.tick()-ManeuverClient.now())/20.0;g.drawString(font,time(draft.tick()),x,y+14,seconds>0?0xffc8d7e5:0xffff7777,false);}
         else g.drawString(font,Component.translatable("around_planet.maneuver.choose"),x,y+14,0xffc8d7e5,false);
         for(int i=0;i<3;i++)g.drawString(font,Component.translatable("around_planet.maneuver.axis."+i),x,y+34+i*22,0xffbcd2e3,false);
         var p=ManeuverClient.current();Component status=!authorized()?Component.translatable("around_planet.maneuver.readonly"):!error.isEmpty()?Component.translatable(error):Component.literal(draft==null?"Δv: m/s":String.format(Locale.ROOT,"Δv %.2f m/s %s",draft.magnitude(),p!=null&&p.ack()>=sequence?"✓":"…"));g.drawString(font,status,x,y+120,error.isEmpty()?0xffacd9cb:0xffff7777,false);
+        g.drawString(font,"Pe: "+altitude(result==null?null:result.periapsis()),x,y+134,0xffffb761,false);g.drawString(font,"Ap: "+(result!=null&&result.open()?"∞":altitude(result==null?null:result.apoapsis())),x,y+146,0xffffb761,false);g.drawString(font,Component.translatable("around_planet.maneuver.warning_short"),x,y+162,0xffbcd2e3,false);
     }
 }

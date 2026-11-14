@@ -16,10 +16,10 @@ public final class OrbitMapScreen extends Screen {
     private record Other(io.github.astelev.around_planet.network.SpaceMapPayload.Body body,OrbitPlot plot,int color){}
     private java.util.List<Other> others=java.util.List.of();private io.github.astelev.around_planet.network.SpaceMapPayload catalog;
     private final OrbitCamera camera=new OrbitCamera();private SpaceStatusPayload sampled;private OrbitPlot plot;private boolean fitted;
-    private int left=8,top=64,right,bottom;private static final int FUTURE=0xFF69E4DB;
+    private int left=8,top=32,right,bottom;private static final int FUTURE=0xFF69E4DB;
     public OrbitMapScreen(){this(null);}
     public OrbitMapScreen(UUID session){super(Component.translatable(session==null?"around_planet.map.title":"around_planet.maneuver.title"));maneuvers=new ManeuverMapLayer(this,session);}
-    @Override protected void init(){right=width-(maneuvers.editor()?190:8);bottom=height-45;for(var widget:maneuvers.init(width-179,64,175))addRenderableWidget(widget);SpaceMapCatalog.subscribe(true);addRenderableWidget(Button.builder(Component.translatable("around_planet.map.reset"),b->reset()).bounds(width-79,8,70,20).build());}
+    @Override protected void init(){right=width-(maneuvers.editor()?190:8);bottom=height-45;for(var widget:maneuvers.init(width-179,32,175))addRenderableWidget(widget);SpaceMapCatalog.subscribe(true);addRenderableWidget(Button.builder(Component.translatable("around_planet.map.reset"),b->reset()).bounds(width-79,8,70,20).build());}
     @Override public void renderBackground(GuiGraphics g,int x,int y,float tick){}
     @Override public boolean isPauseScreen(){return false;}
     @Override public void tick(){if(minecraft.player==null || !SpaceCells.contains(minecraft.player)){onClose();return;}if(minecraft.level.getGameTime()%40==0)SpaceMapCatalog.subscribe(true);}
@@ -39,14 +39,10 @@ public final class OrbitMapScreen extends Screen {
     OrbitCamera.Point project(SpaceVector p){return camera.project(p,(left+right)/2.0,(top+bottom)/2.0,size());}
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
         update();g.fill(0,0,width,height,0xFF070D19);g.drawString(font,title,12,13,0xFFF0F5FF,true);
-        g.drawWordWrap(font,Component.translatable("around_planet.map.controls"),12,height-37,width-24,0xFFBAC9DC);
+        g.drawWordWrap(font,Component.translatable("around_planet.map.controls"),12,height-37,maneuvers.editor()?right-left:width-24,0xFFBAC9DC);
         g.drawString(font,Component.translatable(maneuvers.hasPlan()?"around_planet.maneuver.legend":"around_planet.map.legend"),12,height-16,0xFF69E4DB,false);
         if(sampled==null || plot==null){g.drawCenteredString(font,Component.translatable("around_planet.map.waiting"),width/2,height/2,0xFFBAC9DC);super.render(g,mx,my,partial);return;}
-        double speed=state().velocity().length();String stats=String.format(Locale.ROOT,"h %.0f m    v %.2f m/s",sampled.altitude(),speed);
-        g.drawString(font,stats+"    "+Component.translatable("around_planet.map.objects",catalog!=null && catalog.total()>others.size()?others.size()+"/"+catalog.total():others.size()).getString(),12,35,0xFFD5E2F5,false);
-        String peri=plot.periapsis()==null?"—":String.format(Locale.ROOT,"%.0f m",plot.periapsis().length()-sampled.radius());
-        String apo=plot.apoapsis()==null?"—":String.format(Locale.ROOT,"%.0f m",plot.apoapsis().length()-sampled.radius());
-        g.drawString(font,Component.translatable("around_planet.map.extrema",peri,apo),12,48,0xFFBAC9DC,false);
+        double speed=state().velocity().length();
         g.enableScissor(left,top,right,bottom);g.fill(left,top,right,bottom,0xFF0B1423);
         double cx=(left+right)/2.0+camera.panX,cy=(top+bottom)/2.0+camera.panY,radius=sampled.radius()*camera.scale(size());
         g.drawManaged(()->{for(int i=1;i<=4;i++)circle(g,cx,cy,radius*i,0xFF19283C,false);
@@ -58,13 +54,11 @@ public final class OrbitMapScreen extends Screen {
             for(var other:others){var p=new SpaceVector(other.body.x(),other.body.y(),other.body.z());var screen=project(p);boolean hover=Math.hypot(screen.x()-mx,screen.y()-my)<8;
                 marker(g,p,other.color,hover?other.body.name()+(other.body.loaded()?"":" · "+Component.translatable("around_planet.map.dormant").getString()):"");}
         });
-        boolean circular=plot.periapsis()!=null && plot.apoapsis()!=null && Math.abs(plot.periapsis().length()-plot.apoapsis().length())<1e-6*plot.apoapsis().length();
-        if(!circular){marker(g,plot.periapsis(),0xFFFF9CD1,"Pe");marker(g,plot.apoapsis(),0xFFAAA6FF,"Ap");}
         if(plot.reentry() && plot.points().size()>1)marker(g,plot.points().getLast(),0xFFFFAE68,Component.translatable("around_planet.map.entry").getString());
         var current=project(state().position());g.fill((int)current.x()-4,(int)current.y()-4,(int)current.x()+5,(int)current.y()+5,0xFF101626);g.fill((int)current.x()-2,(int)current.y()-2,(int)current.x()+3,(int)current.y()+3,0xFFFFD85C);
         if(speed>1e-8){var arrow=project(state().position().add(state().velocity().scale(12/(camera.scale(size())*speed))));line(g,current.x(),current.y(),arrow.x(),arrow.y(),0xFFFFD85C);}
         maneuvers.markers(g,mx,my);axisCompass(g);g.disableScissor();maneuvers.panel(g);if(sampled.returning())g.drawCenteredString(font,Component.translatable("around_planet.space.returning"),width/2,top+9,0xFFFFAE68);
-        super.render(g,mx,my,partial);
+        super.render(g,mx,my,partial);maneuvers.tooltip(g,mx,my);
     }
     /** Signed inertial axes start at the planet surface so the opaque globe occludes their inner halves. */
     private void globalAxes(GuiGraphics g,boolean behind){

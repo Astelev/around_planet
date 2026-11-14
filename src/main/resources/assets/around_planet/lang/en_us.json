@@ -64,5 +64,18 @@
   "around_planet.maneuver.help.0": "Positive: prograde. Negative: retrograde. m/s.",
   "around_planet.maneuver.help.1": "Positive: orbit normal r × v. Negative: anti-normal. m/s.",
   "around_planet.maneuver.help.2": "Positive: outward, perpendicular to velocity in the orbit plane. Negative: inward. m/s.",
-  "around_planet.maneuver.legend": "Yellow: craft · Cyan: orbit · Orange: maneuver plan"
+  "around_planet.maneuver.legend": "Yellow: craft · Cyan: orbit · Orange: maneuver plan",
+  "around_planet.sensor.mode.maneuver": "Next maneuver",
+  "around_planet.maneuver.warning": "Warning %s s before burn",
+  "around_planet.maneuver.warning_short": "Warning, s",
+  "around_planet.maneuver.warning_help": "Signal 15 before the nearest maneuver. Enter seconds; 0 disables the warning.",
+  "around_planet.maneuver.warning_range": "Enter nonnegative seconds",
+  "around_planet.maneuver.countdown": "Maneuver in %s s",
+  "around_planet.maneuver.none": "No planned maneuver",
+  "around_planet.helmet.orbit_speed": "Orbital speed: %s m/s",
+  "around_planet.helmet.altitude": "Altitude: %s m",
+  "around_planet.map.point_speed": "Speed: %s m/s",
+  "around_planet.map.point_altitude": "Altitude: %s m",
+  "around_planet.map.apsis": "Orbit: %s",
+  "around_planet.map.planned_apsis": "After maneuver: %s"
 }

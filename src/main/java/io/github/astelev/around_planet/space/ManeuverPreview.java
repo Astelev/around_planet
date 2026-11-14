@@ -4,14 +4,14 @@ import java.util.*;
 public record ManeuverPreview(List<Segment> segments,List<Mark> nodes) {
     public record Point(long tick,SpaceVector position){}
     public record Segment(List<Point> points,boolean planned,SpaceTrajectory trajectory){public Segment{points=List.copyOf(points);}}
-    public record Mark(ManeuverNode node,SpaceVector position){}
+    public record Mark(ManeuverNode node,SpaceVector position,SpaceTrajectory after){}
     public ManeuverPreview {segments=List.copyOf(segments);nodes=List.copyOf(nodes);}
     public static ManeuverPreview create(SpaceTrajectory base,long now,List<ManeuverNode> plan,double radius,double entry){
         var segments=new ArrayList<Segment>();var marks=new ArrayList<Mark>();var trajectory=base;long from=now;boolean planned=false;
         for(var node:plan.stream().filter(n->n.tick()>now).sorted(Comparator.comparingLong(ManeuverNode::tick).thenComparing(ManeuverNode::id)).toList()){
             var points=sample(trajectory,from,node.tick(),radius+entry,48);segments.add(new Segment(points,planned,trajectory));
             if(points.isEmpty()||points.getLast().tick()!=node.tick())return new ManeuverPreview(segments,marks);
-            var state=trajectory.at(node.tick());marks.add(new Mark(node,state.position()));trajectory=trajectory.impulse(node.tick(),node.delta(state));from=node.tick();planned=true;
+            var state=trajectory.at(node.tick());trajectory=trajectory.impulse(node.tick(),node.delta(state));marks.add(new Mark(node,state.position(),trajectory));from=node.tick();planned=true;
         }
         var state=trajectory.at(from);var ellipse=EllipticArc.of(state,trajectory.mu());
         if(ellipse!=null)segments.add(new Segment(timed(ellipse.full(radius+entry,384),from),planned,trajectory));

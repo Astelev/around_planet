@@ -56,7 +56,8 @@
     "SpaceCruisingAssemblyMixin",
     "SpacePhysicsStepMixin",
     "SpaceEntityGravityMixin",
-    "SpaceUnloadCaptureMixin"
+    "SpaceUnloadCaptureMixin",
+    "PlannerGogglesMixin"
   ],
   "injectors": {
     "defaultRequire": 1

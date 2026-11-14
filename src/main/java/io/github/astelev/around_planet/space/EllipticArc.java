@@ -15,6 +15,7 @@ public final class EllipticArc {
         double peri=p/(1+e),b=Math.sqrt(a)*Math.sqrt(p),start=Math.atan2(r.dot(tangent)/b,1+(r.dot(axis)-peri)/a),motion=Math.sqrt(mu/a)/a;
         if(!(motion>0)||!Double.isFinite(2*Math.PI/motion))return null;return new EllipticArc(state,axis,tangent,a,e,peri,b,start,motion);
     }
+    public double secondsTo(SpaceVector point){double angle=Math.atan2(point.dot(tangent)/b,1+(point.dot(axis)-peri)/a);while(angle<start-1e-12)angle+=2*Math.PI;return Math.max(0,meanDelta(angle)/motion);}
     public double period(){return 2*Math.PI/motion;}
     public SpaceVector periapsis(){return axis.scale(peri);}
     public SpaceVector apoapsis(){return axis.scale(-(2*a-peri));}

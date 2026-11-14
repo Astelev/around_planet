@@ -64,5 +64,18 @@
   "around_planet.maneuver.help.0": "Плюс: по движению. Минус: против движения. м/с.",
   "around_planet.maneuver.help.1": "Плюс: нормаль орбиты r × v. Минус: антинормаль. м/с.",
   "around_planet.maneuver.help.2": "Плюс: наружу, перпендикулярно движению в плоскости орбиты. Минус: внутрь. м/с.",
-  "around_planet.maneuver.legend": "Жёлтый: корабль · Бирюзовый: орбита · Оранжевый: план"
+  "around_planet.maneuver.legend": "Жёлтый: корабль · Бирюзовый: орбита · Оранжевый: план",
+  "around_planet.sensor.mode.maneuver": "Ближайший манёвр",
+  "around_planet.maneuver.warning": "Предупреждение за %s с",
+  "around_planet.maneuver.warning_short": "Предупр., с",
+  "around_planet.maneuver.warning_help": "Сигнал 15 перед ближайшим манёвром. Введите секунды; 0 отключает предупреждение.",
+  "around_planet.maneuver.warning_range": "Введите секунды ≥ 0",
+  "around_planet.maneuver.countdown": "До манёвра: %s с",
+  "around_planet.maneuver.none": "Манёвр не запланирован",
+  "around_planet.helmet.orbit_speed": "Орбитальная: %s м/с",
+  "around_planet.helmet.altitude": "Высота: %s м",
+  "around_planet.map.point_speed": "Скорость: %s м/с",
+  "around_planet.map.point_altitude": "Высота: %s м",
+  "around_planet.map.apsis": "Орбита: %s",
+  "around_planet.map.planned_apsis": "После манёвра: %s"
 }

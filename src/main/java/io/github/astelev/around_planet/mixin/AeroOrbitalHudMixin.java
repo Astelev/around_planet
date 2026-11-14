@@ -11,5 +11,5 @@ import net.minecraft.core.BlockPos;
 public abstract class AeroOrbitalHudMixin {
     /** Our circular instrument replaces only this sensor's generic text section. */
     @WrapOperation(method="createSnapshot",at=@At(value="INVOKE",target="Lcom/cxw/aeroengineering/content/item/EngineMonitorHelmetItem;shouldHideLeftHud(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/core/BlockPos;)Z"))
-    private static boolean planet$noDuplicateText(ItemStack helmet,BlockPos pos,Operation<Boolean> original,@Local(argsOnly=true) Level level){return level.getBlockEntity(pos) instanceof io.github.astelev.around_planet.sensor.OrbitalSensorBlockEntity || original.call(helmet,pos);}
+    private static boolean planet$noDuplicateText(ItemStack helmet,BlockPos pos,Operation<Boolean> original,@Local(argsOnly=true) Level level){return level.getBlockEntity(pos) instanceof io.github.astelev.around_planet.sensor.OrbitalSensorBlockEntity || level.getBlockEntity(pos) instanceof io.github.astelev.around_planet.maneuver.ManeuverPlannerBlockEntity || original.call(helmet,pos);}
 }
