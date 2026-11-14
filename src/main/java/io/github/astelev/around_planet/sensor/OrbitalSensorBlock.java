@@ -29,6 +29,6 @@ public final class OrbitalSensorBlock extends BaseEntityBlock {
     @Override protected boolean isSignalSource(BlockState s){return true;}
     @Override protected int getSignal(BlockState s,BlockGetter l,BlockPos p,Direction d){return l.getBlockEntity(p) instanceof OrbitalSensorBlockEntity be?be.power(d.getOpposite()):0;}
     @Override protected int getDirectSignal(BlockState s,BlockGetter l,BlockPos p,Direction d){return getSignal(s,l,p,d);}
-    @Override protected InteractionResult useWithoutItem(BlockState s,Level l,BlockPos p,Player player,BlockHitResult hit){if(l.isClientSide && l.getBlockEntity(p) instanceof OrbitalSensorBlockEntity be)io.github.astelev.around_planet.client.OrbitalSensorScreen.open(be);return InteractionResult.sidedSuccess(l.isClientSide);}
+    @Override protected InteractionResult useWithoutItem(BlockState s,Level l,BlockPos p,Player player,BlockHitResult hit){if(!player.getMainHandItem().isEmpty()||!player.getOffhandItem().isEmpty())return InteractionResult.PASS;if(l.isClientSide && l.getBlockEntity(p) instanceof OrbitalSensorBlockEntity be)io.github.astelev.around_planet.client.OrbitalSensorScreen.open(be);return InteractionResult.sidedSuccess(l.isClientSide);}
     @Override protected void onRemove(BlockState s,Level l,BlockPos p,BlockState next,boolean moving){if(!s.is(next.getBlock())){super.onRemove(s,l,p,next,moving);l.updateNeighborsAt(p,this);}}
 }

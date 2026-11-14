@@ -1,5 +1,8 @@
 # Vacuum propulsion and angular damping (0.11.0-alpha.18)
 
+[Alpha.19](rsu-model-horizon-and-wrench.md) adds native Create wrench rotation,
+empty-hands-only configuration and a revised RSU model.
+
 Three new blocks appear in the Redstone creative tab and inventory search.
 They work with Sable in ordinary terrain and Around Planet space cells. Their
 physics does not query atmospheric density, engine RPM or generated terrain.
