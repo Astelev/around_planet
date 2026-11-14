@@ -10,7 +10,7 @@ public final class ExhaustMath {
     public static Jet jet(double thrust,int signal,boolean rsu,double phase){
         if(!Double.isFinite(thrust)||thrust<=0||signal<=0||!Double.isFinite(phase))return OFF;
         double throttle=Math.clamp(signal,0,15)/15.0;
-        double intensity=Math.min(2,Math.sqrt(Math.min(thrust,10_000_000)*throttle/(rsu?1000:10000)));
+        double intensity=Math.min(2,(rsu?2:1)*Math.sqrt(Math.min(thrust,rsu?PropulsionMath.RSU_MAX_THRUST:10_000_000)*throttle/(rsu?PropulsionMath.RSU_MAX_THRUST:10000)));
         double pulse=.985+.015*Math.sin(phase),brightness=Math.min(1,intensity);
         return new Jet((float)((rsu?.54:2.6)*intensity*pulse),(float)Math.max(minimumCone(rsu),(rsu?.66:3.4)*intensity),rsu?.072f:.16f,(int)(60+90*brightness),(int)((28+70*brightness)*(.97+.03*Math.sin(phase+2))));
     }
@@ -20,7 +20,7 @@ public final class ExhaustMath {
         double blend=Math.max(.15,length*.12),d=y-jet.activeLength(),start=-jet.activeLength();
         double expansion=.5*(d+Math.sqrt(d*d+blend*blend)-start-Math.sqrt(start*start+blend*blend));
         double t=y/length,tail=Math.clamp((t-.72)/.28,0,1);tail=tail*tail*(3-2*tail);
-        return (float)((jet.halfWidth()+.14*expansion)*(1-.55*tail));
+        return (float)(1.5*(jet.halfWidth()+.14*expansion)*(1-.55*tail));
     }
     private ExhaustMath(){}
 }

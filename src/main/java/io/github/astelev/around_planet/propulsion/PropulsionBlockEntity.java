@@ -17,13 +17,14 @@ public final class PropulsionBlockEntity extends BlockEntity {
         private void spend(int value){energy=Math.max(0,energy-Math.max(0,value));}
         @Override public int receiveEnergy(int amount,boolean simulate){if(amount<=0)return 0;int n=super.receiveEnergy(amount,simulate);if(!simulate&&n>0)setChanged();return n;}
     }
-    public PropulsionBlockEntity(BlockPos p,BlockState s){super(PropulsionRegistry.TYPE.get(),p,s);java.util.Arrays.fill(frequencies,ItemStack.EMPTY);if(kind()==PropulsionRegistry.Kind.RSU)thrust=1000;}
+    public PropulsionBlockEntity(BlockPos p,BlockState s){super(PropulsionRegistry.TYPE.get(),p,s);java.util.Arrays.fill(frequencies,ItemStack.EMPTY);if(kind()==PropulsionRegistry.Kind.RSU)thrust=PropulsionMath.RSU_MAX_THRUST;}
     public PropulsionRegistry.Kind kind(){return ((PropulsionBlock)getBlockState().getBlock()).kind;}
+    public double maximumThrust(){return kind()==PropulsionRegistry.Kind.RSU?PropulsionMath.RSU_MAX_THRUST:10_000_000;}
     public double thrust(){return thrust;}public double strength(){return strength;}public int signal(int port){return kind()==PropulsionRegistry.Kind.RSU?signals[port]:redstone;}
     public ItemStack frequency(int index){return frequencies[index].copy();}
     public SpaceVector direction(int port){var f=OrbitalSensorBlock.frame(getBlockState());return kind()==PropulsionRegistry.Kind.RSU?f.model(switch(port){case 0->new SpaceVector(0,0,-1);case 1->new SpaceVector(1,0,0);case 2->new SpaceVector(0,0,1);default->new SpaceVector(-1,0,0);}).scale(-1):f.forward();}
     public void receiveSignal(int port,int value){signals[port]=Math.clamp(value,0,15);}
-    public void configure(double value){if(!Double.isFinite(value))return;if(kind()==PropulsionRegistry.Kind.DAMPER)strength=Math.clamp(value,.1,20);else thrust=Math.clamp(value,0,10_000_000);setChanged();sync();}
+    public void configure(double value){if(!Double.isFinite(value))return;if(kind()==PropulsionRegistry.Kind.DAMPER)strength=Math.clamp(value,.1,20);else thrust=Math.clamp(value,0,maximumThrust());setChanged();sync();}
     public void frequency(int index,ItemStack stack){if(index<0||index>=8)return;unlink();frequencies[index]=stack.copyWithCount(1);setChanged();ensureLinks();sync();}
     public void spend(int value){energy.spend(value);setChanged();}
     public static void tick(Level l,BlockPos p,BlockState s,PropulsionBlockEntity be){
@@ -40,7 +41,7 @@ public final class PropulsionBlockEntity extends BlockEntity {
     private void sync(){if(level!=null&&!level.isClientSide){sentEnergy=energy.getEnergyStored();sentSignal=redstone;System.arraycopy(signals,0,sentSignals,0,4);level.sendBlockUpdated(worldPosition,getBlockState(),getBlockState(),2);}}
 
     @Override protected void saveAdditional(CompoundTag n,HolderLookup.Provider r){super.saveAdditional(n,r);n.putDouble("Thrust",thrust);n.putDouble("Damping",strength);n.putInt("Energy",energy.getEnergyStored());n.putInt("Signal",redstone);for(int i=0;i<8;i++)if(!frequencies[i].isEmpty())n.put("Frequency"+i,frequencies[i].save(r));for(int i=0;i<4;i++)n.putInt("Signal"+i,signals[i]);}
-    @Override protected void loadAdditional(CompoundTag n,HolderLookup.Provider r){super.loadAdditional(n,r);if(level!=null&&!level.isClientSide)unlink();thrust=n.contains("Thrust")&&Double.isFinite(n.getDouble("Thrust"))?Math.clamp(n.getDouble("Thrust"),0,10_000_000):kind()==PropulsionRegistry.Kind.RSU?1000:10000;strength=n.contains("Damping")&&Double.isFinite(n.getDouble("Damping"))?Math.clamp(n.getDouble("Damping"),.1,20):2;if(n.contains("Energy"))energy.stored(n.getInt("Energy"));for(int i=0;i<8;i++)frequencies[i]=n.contains("Frequency"+i)?ItemStack.parseOptional(r,n.getCompound("Frequency"+i)):ItemStack.EMPTY;redstone=Math.clamp(n.getInt("Signal"),0,15);for(int i=0;i<4;i++)signals[i]=Math.clamp(n.getInt("Signal"+i),0,15);}
+    @Override protected void loadAdditional(CompoundTag n,HolderLookup.Provider r){super.loadAdditional(n,r);if(level!=null&&!level.isClientSide)unlink();thrust=n.contains("Thrust")&&Double.isFinite(n.getDouble("Thrust"))?Math.clamp(n.getDouble("Thrust"),0,maximumThrust()):kind()==PropulsionRegistry.Kind.RSU?PropulsionMath.RSU_MAX_THRUST:10000;strength=n.contains("Damping")&&Double.isFinite(n.getDouble("Damping"))?Math.clamp(n.getDouble("Damping"),.1,20):2;if(n.contains("Energy"))energy.stored(n.getInt("Energy"));for(int i=0;i<8;i++)frequencies[i]=n.contains("Frequency"+i)?ItemStack.parseOptional(r,n.getCompound("Frequency"+i)):ItemStack.EMPTY;redstone=Math.clamp(n.getInt("Signal"),0,15);for(int i=0;i<4;i++)signals[i]=Math.clamp(n.getInt("Signal"+i),0,15);}
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider r){return saveWithoutMetadata(r);}
     @Override public ClientboundBlockEntityDataPacket getUpdatePacket(){return ClientboundBlockEntityDataPacket.create(this);}
 }

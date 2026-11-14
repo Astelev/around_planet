@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.25: струя двигателя шире в 1,5 раза; максимальная тяга каждого сопла RSU — 500 Н, при ней достигается максимальная длина выхлопа. Сохранённые значения выше 500 Н ограничиваются при загрузке.
+
 Обновление 0.11.0-alpha.24: [плотная струя двигателя с плавным расширением](docs/dense-engine-exhaust.md).
 
 Обновление 0.11.0-alpha.23: [градиент выхлопа, глубина облаков и туман AeroWorks](docs/exhaust-clouds-and-fog.md).
@@ -428,7 +430,7 @@ bash ./gradlew -PplanetTests runGameTestServer
 bash ./gradlew runClient
 ```
 
-JAR: `build/libs/around_planet-0.11.0-alpha.24.jar`.
+JAR: `build/libs/around_planet-0.11.0-alpha.25.jar`.
 `-PcompatModsDir=/absolute/path/to/test-mods` добавляет локальные JAR только в
 среду запуска; они не включаются в мод. Серверные и клиентские тестовые классы
 также не входят в итоговый JAR. Клиентский smoke-тест запускается с

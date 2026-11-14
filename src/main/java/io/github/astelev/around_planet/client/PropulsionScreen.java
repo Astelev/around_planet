@@ -15,11 +15,11 @@ public final class PropulsionScreen extends Screen {
     @Override public boolean isPauseScreen(){return false;}
     @Override public void renderBackground(GuiGraphics g,int x,int y,float partial){}
     @Override protected void init(){w=Math.min(360,width-16);left=(width-w)/2;top=Math.max(4,(height-(be.kind()==PropulsionRegistry.Kind.RSU?236:160))/2);
-        boolean damping=be.kind()==PropulsionRegistry.Kind.DAMPER;double initial=damping?(value-.1)/19.9:Math.log10(value+1)/7;
+        boolean damping=be.kind()==PropulsionRegistry.Kind.DAMPER;double scale=be.kind()==PropulsionRegistry.Kind.RSU?Math.log10(be.maximumThrust()+1):7;double initial=damping?(value-.1)/19.9:Math.log10(value+1)/scale;
         addRenderableWidget(new AbstractSliderButton(left+12,top+28,w-24,20,Component.empty(),initial){
             {updateMessage();}
-            @Override protected void updateMessage(){double n=damping?.1+value*19.9:Math.pow(10,value*7)-1;setMessage(Component.translatable(damping?"around_planet.propulsion.damping":"around_planet.propulsion.thrust",String.format(java.util.Locale.ROOT,damping?"%.2f":"%.0f",n)));}
-            @Override protected void applyValue(){PropulsionScreen.this.value=damping?.1+value*19.9:Math.pow(10,value*7)-1;PacketDistributor.sendToServer(new PropulsionPayload(be.getBlockPos(),0,0,(int)Math.round(PropulsionScreen.this.value*(damping?100:1))));}
+            @Override protected void updateMessage(){double n=damping?.1+value*19.9:Math.pow(10,value*scale)-1;setMessage(Component.translatable(damping?"around_planet.propulsion.damping":"around_planet.propulsion.thrust",String.format(java.util.Locale.ROOT,damping?"%.2f":"%.0f",n)));}
+            @Override protected void applyValue(){PropulsionScreen.this.value=damping?.1+value*19.9:Math.pow(10,value*scale)-1;PacketDistributor.sendToServer(new PropulsionPayload(be.getBlockPos(),0,0,(int)Math.round(PropulsionScreen.this.value*(damping?100:1))));}
         });
         if(be.kind()==PropulsionRegistry.Kind.RSU){for(int i=0;i<8;i++){final int index=i;addRenderableWidget(Button.builder(Component.literal(""),b->selected=index).bounds(left+142+(i%2)*24,top+49+(i/2)*18,22,18).build());}
             addRenderableWidget(Button.builder(Component.translatable("around_planet.propulsion.clear"),b->{if(selected>=0)PacketDistributor.sendToServer(new PropulsionPayload(be.getBlockPos(),1,selected,-1));}).bounds(left+208,top+50,w-220,20).build());

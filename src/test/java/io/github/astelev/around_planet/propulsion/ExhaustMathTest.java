@@ -12,11 +12,13 @@ class ExhaustMathTest {
     @Test void engineExpansionHasNoSlopeBreakAtActiveLength(){
         for(double thrust:new double[]{.0001,100,10000,1e7}){
             var jet=ExhaustMath.jet(thrust,15,false,0);float y=jet.activeLength(),h=.0001f;
-            assertEquals(jet.halfWidth(),ExhaustMath.engineRadius(jet,0),1e-6);
+            assertEquals(jet.halfWidth()*1.5,ExhaustMath.engineRadius(jet,0),1e-6);
             assertEquals((ExhaustMath.engineRadius(jet,y)-ExhaustMath.engineRadius(jet,y-h))/h,
                 (ExhaustMath.engineRadius(jet,y+h)-ExhaustMath.engineRadius(jet,y))/h,.004);
             for(int k=0;k<=100;k++){float r=ExhaustMath.engineRadius(jet,jet.length()*k/100);assertTrue(Float.isFinite(r)&&r>0&&r<2);}
         }
     }
+
+    @Test void rsuReachesMaximumExhaustAtFiveHundredNewtons(){assertEquals(ExhaustMath.jet(500,15,true,0),ExhaustMath.jet(1e7,15,true,0));assertTrue(ExhaustMath.jet(250,15,true,0).activeLength()<ExhaustMath.jet(500,15,true,0).activeLength());}
 
 }
