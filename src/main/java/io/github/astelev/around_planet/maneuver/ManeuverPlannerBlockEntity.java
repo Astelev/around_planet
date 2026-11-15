@@ -12,8 +12,8 @@ public final class ManeuverPlannerBlockEntity extends BlockEntity {
     public int warningSeconds(){return warningSeconds;}public long nextTick(){return nextTick;}public double deltaV(){return deltaV;}
     public void configure(int seconds){warningSeconds=Math.max(0,seconds);setChanged();if(level instanceof net.minecraft.server.level.ServerLevel)tick(level,worldPosition,getBlockState(),this);sync();}
     public static void tick(Level level,BlockPos pos,BlockState state,ManeuverPlannerBlockEntity be){
-        long tick=-1;double dv=0;if(net.neoforged.fml.ModList.get().isLoaded("sable")){var id=io.github.astelev.around_planet.compat.ManeuverAccess.orbit((net.minecraft.server.level.ServerLevel)level,pos);if(id!=null){var data=SpaceOrbitData.get(level.getServer());var next=ManeuverGuidance.next(data.maneuvers(id),level.getGameTime());if(next.isPresent()){tick=next.get().tick();dv=next.get().magnitude();}}}
-        boolean powered=ManeuverGuidance.warning(level.getGameTime(),tick,be.warningSeconds);
+        long tick=-1;double dv=0;int warning=be.warningSeconds;if(net.neoforged.fml.ModList.get().isLoaded("sable")){var id=io.github.astelev.around_planet.compat.ManeuverAccess.orbit((net.minecraft.server.level.ServerLevel)level,pos);if(id!=null){var data=SpaceOrbitData.get(level.getServer());var next=ManeuverGuidance.next(data.maneuvers(id),level.getGameTime());if(next.isPresent()){tick=next.get().tick();dv=next.get().magnitude();warning=next.get().warningSeconds(be.warningSeconds);}}}
+        boolean powered=ManeuverGuidance.warning(level.getGameTime(),tick,warning);
         if(state.getValue(ManeuverPlannerBlock.POWERED)!=powered){state=state.setValue(ManeuverPlannerBlock.POWERED,powered);level.setBlock(pos,state,3);be.setBlockState(state);level.updateNeighborsAt(pos,state.getBlock());}
         if(be.nextTick!=tick||be.deltaV!=dv){be.nextTick=tick;be.deltaV=dv;be.sync();}
     }

@@ -68,7 +68,7 @@
   "around_planet.sensor.mode.maneuver": "Ближайший манёвр",
   "around_planet.maneuver.warning": "Предупреждение за %s с",
   "around_planet.maneuver.warning_short": "Предупр., с",
-  "around_planet.maneuver.warning_help": "Сигнал 15 перед ближайшим манёвром. Введите секунды; 0 отключает предупреждение.",
+  "around_planet.maneuver.warning_help": "Продолжительность редстоун-предупреждения перед выбранным манёвром, в секундах.",
   "around_planet.maneuver.warning_range": "Введите секунды ≥ 0",
   "around_planet.maneuver.countdown": "До манёвра: %s с",
   "around_planet.maneuver.none": "Манёвр не запланирован",
@@ -99,5 +99,18 @@
   "around_planet.warp.invalid": "Введите положительный конечный интервал в секундах",
   "around_planet.warp.maneuver": "Остановка перед манёвром или предупреждением планёра",
   "around_planet.warp.atmosphere": "Остановка перед полётом в атмосфере",
-  "around_planet.warp.rendezvous": "Остановка перед сближением с выбранной целью"
+  "around_planet.warp.rendezvous": "Остановка перед сближением с выбранной целью",
+  "around_planet.map.apoapsis": "Апоцентр",
+  "around_planet.map.periapsis": "Перицентр",
+  "around_planet.map.target_apoapsis": "Апоцентр орбиты цели",
+  "around_planet.map.target_periapsis": "Перицентр орбиты цели",
+  "around_planet.map.ascending_node": "Восходящий узел",
+  "around_planet.map.descending_node": "Нисходящий узел",
+  "around_planet.map.planned_ascending_node": "Восходящий узел после манёвра",
+  "around_planet.map.planned_descending_node": "Нисходящий узел после манёвра",
+  "around_planet.map.closest_own": "Точка минимального сближения — корабль",
+  "around_planet.map.closest_target": "Точка минимального сближения — цель",
+  "around_planet.maneuver.time": "Через, с",
+  "around_planet.maneuver.time_help": "Время до манёвра в секундах. Кнопки ± сдвигают узел на выбранный шаг.",
+  "around_planet.map.maneuver_node": "Узел манёвра"
 }

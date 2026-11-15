@@ -68,7 +68,7 @@
   "around_planet.sensor.mode.maneuver": "Next maneuver",
   "around_planet.maneuver.warning": "Warning %s s before burn",
   "around_planet.maneuver.warning_short": "Warning, s",
-  "around_planet.maneuver.warning_help": "Signal 15 before the nearest maneuver. Enter seconds; 0 disables the warning.",
+  "around_planet.maneuver.warning_help": "Redstone warning duration before this maneuver, in seconds.",
   "around_planet.maneuver.warning_range": "Enter nonnegative seconds",
   "around_planet.maneuver.countdown": "Maneuver in %s s",
   "around_planet.maneuver.none": "No planned maneuver",
@@ -99,5 +99,18 @@
   "around_planet.warp.invalid": "Enter a positive finite interval in seconds",
   "around_planet.warp.maneuver": "Stopped before a maneuver or planner warning",
   "around_planet.warp.atmosphere": "Stopped before atmospheric flight",
-  "around_planet.warp.rendezvous": "Stopped before close approach to the selected target"
+  "around_planet.warp.rendezvous": "Stopped before close approach to the selected target",
+  "around_planet.map.apoapsis": "Apoapsis",
+  "around_planet.map.periapsis": "Periapsis",
+  "around_planet.map.target_apoapsis": "Target apoapsis",
+  "around_planet.map.target_periapsis": "Target periapsis",
+  "around_planet.map.ascending_node": "Ascending node",
+  "around_planet.map.descending_node": "Descending node",
+  "around_planet.map.planned_ascending_node": "Planned ascending node",
+  "around_planet.map.planned_descending_node": "Planned descending node",
+  "around_planet.map.closest_own": "Closest approach — spacecraft",
+  "around_planet.map.closest_target": "Closest approach — target",
+  "around_planet.maneuver.time": "In, s",
+  "around_planet.maneuver.time_help": "Seconds until this maneuver. ± shifts the node by the selected step.",
+  "around_planet.map.maneuver_node": "Maneuver node"
 }

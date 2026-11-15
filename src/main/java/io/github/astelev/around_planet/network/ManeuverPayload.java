@@ -31,12 +31,12 @@ public record ManeuverPayload(UUID focus,long now,SpaceTrajectory trajectory,Lis
         @Override public Type<Target> type(){return TYPE;}
     }
     private static SpaceVector vector(RegistryFriendlyByteBuf b){return new SpaceVector(b.readDouble(),b.readDouble(),b.readDouble());}
-    private static void writeNode(RegistryFriendlyByteBuf b,ManeuverNode n){b.writeUUID(n.id());b.writeLong(n.tick());b.writeDouble(n.prograde());b.writeDouble(n.normal());b.writeDouble(n.radial());}
-    private static ManeuverNode readNode(RegistryFriendlyByteBuf b){return new ManeuverNode(b.readUUID(),b.readLong(),b.readDouble(),b.readDouble(),b.readDouble());}
+    private static void writeNode(RegistryFriendlyByteBuf b,ManeuverNode n){b.writeUUID(n.id());b.writeLong(n.tick());b.writeDouble(n.prograde());b.writeDouble(n.normal());b.writeDouble(n.radial());b.writeInt(n.warningSeconds());}
+    private static ManeuverNode readNode(RegistryFriendlyByteBuf b){return new ManeuverNode(b.readUUID(),b.readLong(),b.readDouble(),b.readDouble(),b.readDouble(),b.readInt());}
     private record Session(UUID nonce,UUID focus,BlockPos block,ResourceLocation dimension,long expires,long sequence){}
     private static final Map<ServerPlayer,Session> EDITORS=new WeakHashMap<>();
     @Override public Type<ManeuverPayload> type(){return TYPE;}
-    public static void register(RegisterPayloadHandlersEvent e){var r=e.registrar("2").optional();r.playToClient(TYPE,CODEC,(p,c)->c.enqueueWork(()->io.github.astelev.around_planet.client.ManeuverClient.accept(p)));r.playToServer(Edit.TYPE,Edit.CODEC,(p,c)->c.enqueueWork(()->edit((ServerPlayer)c.player(),p)));r.playToServer(Target.TYPE,Target.CODEC,(p,c)->c.enqueueWork(()->target((ServerPlayer)c.player(),p)));r.playToServer(Warning.TYPE,Warning.CODEC,(p,c)->c.enqueueWork(()->warning((ServerPlayer)c.player(),p)));}
+    public static void register(RegisterPayloadHandlersEvent e){var r=e.registrar("3").optional();r.playToClient(TYPE,CODEC,(p,c)->c.enqueueWork(()->io.github.astelev.around_planet.client.ManeuverClient.accept(p)));r.playToServer(Edit.TYPE,Edit.CODEC,(p,c)->c.enqueueWork(()->edit((ServerPlayer)c.player(),p)));r.playToServer(Target.TYPE,Target.CODEC,(p,c)->c.enqueueWork(()->target((ServerPlayer)c.player(),p)));r.playToServer(Warning.TYPE,Warning.CODEC,(p,c)->c.enqueueWork(()->warning((ServerPlayer)c.player(),p)));}
     public static void open(ServerPlayer p,BlockPos block){
         if(p instanceof net.neoforged.neoforge.common.util.FakePlayer||!net.neoforged.fml.ModList.get().isLoaded("sable")||p.isSpectator()||!p.mayBuild()||!p.connection.hasChannel(TYPE))return;
         var focus=ManeuverAccess.focus(p);if(focus==null||!ManeuverAccess.near(p,block,focus.id())){p.displayClientMessage(net.minecraft.network.chat.Component.translatable("around_planet.maneuver.space_only"),true);return;}
