@@ -17,6 +17,24 @@ public abstract class SpaceUnloadCaptureMixin implements io.github.astelev.aroun
     @Shadow @Final private it.unimi.dsi.fastutil.longs.Long2ObjectMap<dev.ryanhcode.sable.sublevel.storage.holding.SubLevelHoldingChunk> loadedHoldingChunks;
     @Shadow @Final private dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer container;
     @Shadow public abstract void snatchAndLoad(dev.ryanhcode.sable.sublevel.storage.holding.GlobalSavedSubLevelPointer pointer,UUID id);
+    @Shadow private dev.ryanhcode.sable.sublevel.storage.holding.SubLevelHoldingChunk getOrLoadHoldingChunk(net.minecraft.world.level.ChunkPos p,boolean create){throw new AssertionError();}
+    @Shadow private void setDirty(net.minecraft.world.level.ChunkPos p){throw new AssertionError();}
+    @Shadow @Final private it.unimi.dsi.fastutil.objects.ObjectSet<dev.ryanhcode.sable.sublevel.storage.holding.GlobalSavedSubLevelPointer> queuedDeletion;
+    @Override public boolean around_planet$discard(UUID id,net.minecraft.world.level.ChunkPos fallback){
+        if(container.getSubLevel(id)!=null)return false;
+        var known=allHoldingSubLevels.get(id);
+        if(known!=null&&known.pointer()!=null)getOrLoadHoldingChunk(known.pointer().chunkPos(),false);
+        else if(fallback!=null)getOrLoadHoldingChunk(fallback,false);
+        for(var chunk:loadedHoldingChunks.values()){
+            var held=((io.github.astelev.around_planet.compat.SpaceHeldChunkAccess)chunk).around_planet$discard(id);
+            if(held==null)continue;
+            allHoldingSubLevels.remove(id);setDirty(chunk.getChunkPos());
+            if(held.pointer()!=null)queuedDeletion.add(held.pointer());
+            return true;
+        }
+        // Already absent (e.g. a previous member of the same cleanup transaction).
+        return !allHoldingSubLevels.containsKey(id);
+    }
     @Override public boolean around_planet$queued(UUID id){for(var chunk:loadedHoldingChunks.values())for(var held:chunk.getLoadedHoldingSubLevels())if(held.data().uuid().equals(id))return true;return false;}
     @Override public boolean around_planet$wake(UUID id,net.minecraft.world.level.ChunkPos fallback){
         if(container.getSubLevel(id)!=null)return true;

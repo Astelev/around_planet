@@ -140,7 +140,7 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
             else if (project.providers.gradleProperty('planetPropulsionSmoke').isPresent()) java.include('**/PropulsionClientSmoke.java')
             else if (project.providers.gradleProperty('planetSensorMountSmoke').isPresent()) java.include('**/SensorMountSmoke.java')
             else if (project.providers.gradleProperty('planetEmptyPerfSmoke').isPresent()) java.include('**/EmptyWorldPerformanceSmoke.java')
-            else if (project.providers.gradleProperty('planetLunarSkySmoke').isPresent()) java.include('**/LunarSurfaceSkySmoke.java')
+            else if (project.providers.gradleProperty('planetLunarSkySmoke').isPresent()) java.include('**/LunarSurfaceSkySmoke.java', '**/SkyContrastGpuSmoke.java')
             else if (project.providers.gradleProperty('planetSurfaceSmoke').isPresent()) java.include('**/SurfaceVisualSmoke.java')
             compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
             runtimeClasspath += output + sourceSets.main.output + sourceSets.main.runtimeClasspath

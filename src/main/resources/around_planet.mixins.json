@@ -63,7 +63,8 @@
     "DimensionalVelocityMixin",
     "MoonEntityGravityMixin",
     "ShipLoaderNativeActorMixin",
-    "ShipLoaderTicketsMixin"
+    "ShipLoaderTicketsMixin",
+    "SpaceHeldDiscardMixin"
   ],
   "injectors": {
     "defaultRequire": 1

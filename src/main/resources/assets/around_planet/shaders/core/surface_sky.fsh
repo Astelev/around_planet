@@ -28,7 +28,11 @@ void main() {
     float above=smoothstep(Horizon-0.015,Horizon+0.015,ray.y);
     float sunDot=dot(ray,SunDirection);
     float sunDisk=smoothstep(cos(0.014),cos(0.012),sunDot);
-    float sunHalo=exp((sunDot-1.0)*5000.0)*0.2;
+    // Compact corona plus a broad, smooth atmospheric aureole (stronger near the ground).
+    float air=1.0-Darkness;
+    float sunHalo=exp((sunDot-1.0)*1800.0)*0.48
+                 +exp((sunDot-1.0)*180.0)*0.18*air
+                 +exp((sunDot-1.0)*35.0)*0.055*air;
     float sunAlpha=min(1.0,sunDisk+sunHalo)*Visibility*above;
     vec3 color=mix(bg,vec3(1.0,0.95,0.78),sunAlpha);
     float alpha=max(1.0-above,sunAlpha);
@@ -41,7 +45,11 @@ void main() {
         float light=0.045+0.955*max(0.0,dot(normal,SunDirection));
         float nx=dot(normal,MoonTextureX),nz=dot(normal,MoonTextureZ);
         float albedo=(155.0+20.0*sin(nx*43.0)*cos(nz*31.0))/255.0;
-        vec3 moonColor=vec3(albedo*light);
+        // Daylight is scattered in front of the Moon too: its unlit hemisphere must not
+        // paint a black disc over the blue sky. Fade this veil continuously with altitude.
+        float daylight=smoothstep(-0.10,0.25,SunDirection.y)*(1.0-Darkness);
+        float lunarTransmission=mix(1.0,0.22,daylight);
+        vec3 moonColor=mix(bg,vec3(albedo*light),lunarTransmission);
         float a=(1.0-smoothstep(0.98,1.0,d2))*Visibility*above;
         color=mix(color,moonColor,a);alpha=max(alpha,a);
     }
