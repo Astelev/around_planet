@@ -40,12 +40,13 @@ public final class SpaceEntrySmoke {
     }
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         if(!Boolean.getBoolean("around_planet.spaceEntrySmoke"))return;
-        var mc=Minecraft.getInstance();ticks++;
+        var mc=Minecraft.getInstance();ticks++;if(Boolean.getBoolean("around_planet.moonSmoke")&&mc.screen instanceof net.minecraft.client.gui.screens.BackupConfirmScreen){for(var widget:mc.screen.children())if(widget instanceof net.minecraft.client.gui.components.Button b&&b.getMessage().getString().contains("I know")){b.onPress();return;}}
         if(failure!=null)throw new AssertionError("SPACE_SMOKE server",failure);
         if(ticks>2200)throw new AssertionError("SPACE_SMOKE timeout phase="+phase);
         if(mc.player==null || mc.level==null || mc.getSingleplayerServer()==null || ticks<100)return;
         if(ticks%100==0)AroundPlanet.LOGGER.info("SPACE_SMOKE phase={} player={} cell={} shipY={} mounted={} seatClient={} seatRemoved={}",phase,mc.player.position(),SpaceCells.contains(mc.player),client(mc)==null?null:client(mc).logicalPose().position().y,mc.player.isPassenger(),seat==null?null:mc.level.getEntity(seat.getId()),seat==null?null:seat.isRemoved());
         if(Boolean.getBoolean("around_planet.rendezvousSmoke")&&phase==20){RendezvousClientSmoke.tick(mc,ship);return;}
+        if(Boolean.getBoolean("around_planet.moonSmoke")&&phase==20){MoonLandingClientSmoke.tick(mc,ship);return;}
         if(Boolean.getBoolean("around_planet.maneuverSmoke")&&phase==20){ManeuverClientSmoke.tick(mc,ship);return;}
         if(Boolean.getBoolean("around_planet.atlasSmoke")&&phase==20){SpaceAtlasSmoke.tick(mc,ship);return;}
         if(phase==1 && ticks-started>40 && ticks%20==0 && client(mc)!=null && seat!=null && !mc.player.isPassenger() ) {

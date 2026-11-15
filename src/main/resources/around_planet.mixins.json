@@ -57,7 +57,10 @@
     "SpacePhysicsStepMixin",
     "SpaceEntityGravityMixin",
     "SpaceUnloadCaptureMixin",
-    "PlannerGogglesMixin"
+    "PlannerGogglesMixin",
+    "DimensionalPassengersMixin",
+    "DimensionalItemDataMixin",
+    "DimensionalVelocityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

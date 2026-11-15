@@ -131,5 +131,6 @@
   "around_planet.helmet.cardinal.north": "N",
   "around_planet.helmet.cardinal.south": "S",
   "around_planet.helmet.cardinal.east": "E",
-  "around_planet.helmet.cardinal.west": "W"
+  "around_planet.helmet.cardinal.west": "W",
+  "around_planet.warp.surface": "Stopped before lunar surface handoff"
 }

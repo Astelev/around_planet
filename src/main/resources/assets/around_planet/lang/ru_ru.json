@@ -131,5 +131,6 @@
   "around_planet.helmet.cardinal.north": "С",
   "around_planet.helmet.cardinal.south": "Ю",
   "around_planet.helmet.cardinal.east": "В",
-  "around_planet.helmet.cardinal.west": "З"
+  "around_planet.helmet.cardinal.west": "З",
+  "around_planet.warp.surface": "Остановка перед переходом на поверхность Луны"
 }

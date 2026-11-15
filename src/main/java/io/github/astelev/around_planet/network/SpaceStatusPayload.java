@@ -23,10 +23,10 @@ public record SpaceStatusPayload(boolean active,double x,double y,double z,doubl
     @Override public Type<SpaceStatusPayload> type(){return TYPE;}
     public static void register(RegisterPayloadHandlersEvent e){e.registrar("5").optional().playToClient(TYPE,CODEC,(p,c)->c.enqueueWork(()->io.github.astelev.around_planet.client.SpaceHud.accept(p)));}
     @SubscribeEvent public static void tick(LevelTickEvent.Post event){
-        if(!(event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) || !level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD) || level.getGameTime()%5!=0 || !net.neoforged.fml.ModList.get().isLoaded("sable"))return;
+        if(!(event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) || !(level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD)||level.dimension().equals(MoonSurface.dimension())) || level.getGameTime()%5!=0 || !net.neoforged.fml.ModList.get().isLoaded("sable"))return;
         for(var player:level.players())if(player.connection.hasChannel(TYPE)) {
             var packet=io.github.astelev.around_planet.compat.SpaceTelemetry.sample(player);
-            if(packet.active()){SENT.add(player);PacketDistributor.sendToPlayer(player,packet);}else if(SENT.remove(player))PacketDistributor.sendToPlayer(player,packet);
+            if(packet.active()||level.dimension().equals(MoonSurface.dimension())){SENT.add(player);PacketDistributor.sendToPlayer(player,packet);}else if(SENT.remove(player))PacketDistributor.sendToPlayer(player,packet);
         }
     }
 }

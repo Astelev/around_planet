@@ -2,7 +2,6 @@ package io.github.astelev.around_planet.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import io.github.astelev.around_planet.border.PlanetBorders;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerLevel;
 import org.spongepowered.asm.mixin.*;
@@ -19,7 +18,7 @@ public abstract class SeamUnloadBudgetMixin {
     @Unique private boolean around_planet$closing;
     @Inject(method="processUnloads",at=@At("HEAD"))
     private void around_planet$batch(BooleanSupplier time,CallbackInfo ci) {
-        around_planet$closing=!level.getServer().isRunning() && PlanetBorders.get(level.getWorldBorder())!=null;
+        around_planet$closing=!level.getServer().isRunning();
         around_planet$budget=-1;
     }
     @WrapOperation(method="processUnloads",at=@At(value="INVOKE",target="Ljava/util/Queue;poll()Ljava/lang/Object;"))

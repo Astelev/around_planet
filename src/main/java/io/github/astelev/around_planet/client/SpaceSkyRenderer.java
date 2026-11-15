@@ -14,7 +14,7 @@ public final class SpaceSkyRenderer {
     static Matrix4f inverse(SpaceFrame basis){return new Matrix4f().m00((float)basis.east().x()).m01((float)basis.up().x()).m02((float)basis.south().x()).m10((float)basis.east().y()).m11((float)basis.up().y()).m12((float)basis.south().y()).m20((float)basis.east().z()).m21((float)basis.up().z()).m22((float)basis.south().z());}
     private static VertexBuffer stars,sun,planet,moon;public static long frames,planetFrames;
     public static void render(Matrix4f view,Matrix4f projection,float partial,Camera camera){
-        var p=SpaceHud.current();if(p==null || !p.active() || p.radius()<=0)return;
+        var p=SpaceHud.current();boolean surface=net.minecraft.client.Minecraft.getInstance().level.dimension().equals(MoonSurface.dimension());if(p==null || !p.active()&&!surface || p.radius()<=0)return;
         ensureMeshes();var state=new SpaceState(new SpaceVector(p.x(),p.y(),p.z()),new SpaceVector(p.vx(),p.vy(),p.vz()));
         if(!p.returning())state=new SpaceTrajectory("around_planet:render",0,state,p.mu()).afterSeconds(SpaceHud.age(partial));
         if(p.system()!=null)state=p.system().global(p.primary(),state,net.minecraft.client.Minecraft.getInstance().level.getGameTime());double earthRadius=p.system()==null?p.radius():p.system().earthRadius();
@@ -27,7 +27,7 @@ public final class SpaceSkyRenderer {
             var sky=new Matrix4f(view).mul(inverse);draw(stars,sky,projection);draw(sun,sky,projection);
             var center=basis.toLocal(observer.scale(-100/distance));var model=new Matrix4f(view).translate((float)center.x(),(float)center.y(),(float)center.z()).mul(inverse).scale((float)(100*earthRadius/distance));
             RenderSystem.disableBlend();RenderSystem.enableCull();
-            var lunarObserver=p.system()==null?null:observer.subtract(p.system().moon(net.minecraft.client.Minecraft.getInstance().level.getGameTime()).position());if(lunarObserver!=null&&lunarObserver.length()>distance)drawMoon(view,projection,inverse,basis,lunarObserver,p.system().moonRadius());
+            var lunarObserver=surface||p.system()==null?null:observer.subtract(p.system().moon(net.minecraft.client.Minecraft.getInstance().level.getGameTime()).position());if(lunarObserver!=null&&lunarObserver.length()>distance)drawMoon(view,projection,inverse,basis,lunarObserver,p.system().moonRadius());
             if(planetShader!=null){PlanetAtlasTexture.bind(planetShader);planetShader.safeGetUniform("PlanetSpin").set((float)PlanetDaylight.spin(net.minecraft.client.Minecraft.getInstance().level,partial).angle());var light=SpaceEnvironment.SUN_DIRECTION;planetShader.safeGetUniform("SunDirection").set((float)light.x(),(float)light.y(),(float)light.z());RenderSystem.setShader(()->planetShader);planet.bind();planet.drawWithShader(model,projection,planetShader);}
             AtmosphereRenderer.render(sky,projection,observer,earthRadius,p.atmosphereTop());if(lunarObserver!=null&&lunarObserver.length()<=distance)drawMoon(view,projection,inverse,basis,lunarObserver,p.system().moonRadius());RenderSystem.setShader(GameRenderer::getPositionColorShader);frames++;planetFrames++;
         } finally {VertexBuffer.unbind();RenderSystem.depthMask(true);RenderSystem.enableDepthTest();RenderSystem.enableCull();RenderSystem.disableBlend();RenderSystem.setShaderColor(1,1,1,1);RenderSystem.setShaderFogStart(fogStart);RenderSystem.setShaderFogEnd(fogEnd);}

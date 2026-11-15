@@ -123,6 +123,8 @@ if (providers.gradleProperty('planetTests').isPresent()) {
     neoForge.runs {
         gameTestServer {
             type = 'gameTestServer'
+            systemProperty 'around_planet.gameTestDimensions', 'true'
+            if (providers.gradleProperty('planetMoonTests').isPresent()) systemProperty 'around_planet.moonTests', 'true'
             if (providers.gradleProperty('planetTestRunDir').isPresent()) gameDirectory = project.file(providers.gradleProperty('planetTestRunDir').get())
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
@@ -158,6 +160,7 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
         if (providers.gradleProperty('planetBareSpaceSmoke').isPresent()) jvmArguments.add('-Daround_planet.bareSpaceSmoke=true')
         if (providers.gradleProperty('planetRendezvousReloadSmoke').isPresent()) jvmArguments.add('-Daround_planet.rendezvousReloadSmoke=true')
         if (providers.gradleProperty('planetRendezvousSmoke').isPresent()) jvmArguments.add('-Daround_planet.rendezvousSmoke=true')
+        if (providers.gradleProperty('planetMoonSmoke').isPresent()) jvmArguments.add('-Daround_planet.moonSmoke=true')
         if (providers.gradleProperty('planetManeuverSmoke').isPresent()) jvmArguments.add('-Daround_planet.maneuverSmoke=true')
         if (providers.gradleProperty('planetAtlasSmoke').isPresent()) jvmArguments.add('-Daround_planet.atlasSmoke=true')
         if (providers.gradleProperty('planetSpaceEntrySmoke').isPresent()) jvmArguments.add('-Daround_planet.spaceEntrySmoke=true')
