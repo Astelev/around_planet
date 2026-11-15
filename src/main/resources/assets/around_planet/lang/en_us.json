@@ -123,5 +123,13 @@
   "around_planet.moon.chart_earth": "Earth reference frame",
   "around_planet.maneuver.depth": "Arcs: %s",
   "around_planet.maneuver.depth_help": "Show 1–16 successive sphere-of-influence patches. Click to increase, Shift-click to decrease. Saved in this planner.",
-  "around_planet.moon.circular_apsides": "Circular orbit: Ap = Pe; markers show two reference points."
+  "around_planet.moon.circular_apsides": "Circular orbit: Ap = Pe; markers show two reference points.",
+  "around_planet.maneuver.turns": "Turns: %s",
+  "around_planet.maneuver.turns_help": "Search 1–32 revolutions ahead for approaches and SOI crossings (default 1). Click increases; Shift-click decreases. Open paths use the local circular timescale.",
+  "around_planet.maneuver.node_short": "N: %s",
+  "around_planet.helmet.surface_horizon": "Surface horizon",
+  "around_planet.helmet.cardinal.north": "N",
+  "around_planet.helmet.cardinal.south": "S",
+  "around_planet.helmet.cardinal.east": "E",
+  "around_planet.helmet.cardinal.west": "W"
 }

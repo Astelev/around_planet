@@ -123,5 +123,13 @@
   "around_planet.moon.chart_earth": "Система отсчёта Земли",
   "around_planet.maneuver.depth": "Дуги: %s",
   "around_planet.maneuver.depth_help": "Число участков между переходами сфер влияния: 1–16. Нажатие увеличивает, Shift + нажатие уменьшает. Настройка сохраняется в планере.",
-  "around_planet.moon.circular_apsides": "Круговая орбита: Ap = Pe; отметки показывают две опорные точки."
+  "around_planet.moon.circular_apsides": "Круговая орбита: Ap = Pe; отметки показывают две опорные точки.",
+  "around_planet.maneuver.turns": "Обороты: %s",
+  "around_planet.maneuver.turns_help": "Горизонт поиска сближений и переходов: 1–32 оборота текущей орбиты, по умолчанию 1. Нажатие увеличивает, Shift + нажатие уменьшает. Для открытой траектории используется местный круговой период.",
+  "around_planet.maneuver.node_short": "Узл: %s",
+  "around_planet.helmet.surface_horizon": "Наземный горизонт",
+  "around_planet.helmet.cardinal.north": "С",
+  "around_planet.helmet.cardinal.south": "Ю",
+  "around_planet.helmet.cardinal.east": "В",
+  "around_planet.helmet.cardinal.west": "З"
 }
