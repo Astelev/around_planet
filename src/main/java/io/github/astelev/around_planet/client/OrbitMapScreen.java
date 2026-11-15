@@ -101,10 +101,11 @@ public final class OrbitMapScreen extends Screen {
         }});
     }
     private void arcs(GuiGraphics g,boolean behind){arcs(g,plot,FUTURE,behind,1);}
-    private void arcs(GuiGraphics g,OrbitPlot curve,int color,boolean behind,int stride){var points=curve.points();for(int i=0;i<points.size()-1;i+=stride){var a=project(points.get(i));var b=project(points.get(Math.min(points.size()-1,i+stride)));int dim=0xFF000000|((color&0xFEFEFE)>>>1);if(((a.depth()+b.depth())/2<0)==behind)line(g,a.x(),a.y(),b.x(),b.y(),behind?dim:color);}}
+    private void arcs(GuiGraphics g,OrbitPlot curve,int color,boolean behind,int stride){var points=curve.points();int dim=0xFF000000|((color&0xFEFEFE)>>>1);for(int i=0;i<points.size()-1;i+=stride)orbitLine(g,points.get(i),points.get(Math.min(points.size()-1,i+stride)),behind?dim:color,behind);}
+    void orbitLine(GuiGraphics g,SpaceVector a,SpaceVector b,int color,boolean behind){var aa=project(a);var bb=project(b);for(var r:OrbitOcclusion.ranges(camera.direction(a),camera.direction(b),viewRadius(),behind))line(g,aa.x()+(bb.x()-aa.x())*r.from(),aa.y()+(bb.y()-aa.y())*r.from(),aa.x()+(bb.x()-aa.x())*r.until(),aa.y()+(bb.y()-aa.y())*r.until(),color);}
     void marker(GuiGraphics g,SpaceVector v,int color,String text){if(v==null)return;var p=project(v);if(p.x()<left || p.x()>right || p.y()<top || p.y()>bottom)return;
         var center=project(SpaceVector.ZERO);double scale=camera.scale(size()),x=p.x()-center.x(),y=p.y()-center.y();
-        if(p.depth()<0 && x*x+y*y<Math.pow(viewRadius()*scale,2))return;
+        if(!OrbitOcclusion.visible(camera.direction(v),viewRadius()))return;
         g.fill((int)p.x()-2,(int)p.y()-2,(int)p.x()+3,(int)p.y()+3,color);if(!text.isEmpty()){var shown=font.plainSubstrByWidth(text,Math.max(20,right-left-12));int w=font.width(shown),labelX=Math.clamp((int)p.x()+6,left+3,Math.max(left+3,right-w-3)),labelY=Math.clamp((int)p.y()-4,top+2,bottom-10);var box=new LabelBox(labelX-2,labelY-1,w+4,11);if(labels.stream().noneMatch(box::intersects)){labels.add(box);g.fill(labelX-2,labelY-1,labelX+w+2,labelY+10,0xbb07101d);g.drawString(font,shown,labelX,labelY,color,true);}}
     }
     private void circle(GuiGraphics g,double cx,double cy,double r,int color,boolean solid){if(r<.5 || !Double.isFinite(r))return;
@@ -113,7 +114,7 @@ public final class OrbitMapScreen extends Screen {
     }
     void line(GuiGraphics g,double ax,double ay,double bx,double by,int color){var c=OrbitCamera.clip(ax,ay,bx,by,left,top,right,bottom);if(c==null)return;double dx=c[2]-c[0],dy=c[3]-c[1],length=Math.hypot(dx,dy);if(length<.1)return;
         var pose=g.pose();pose.pushPose();pose.translate(c[0],c[1],0);pose.mulPose(Axis.ZP.rotation((float)Math.atan2(dy,dx)));g.fill(0,0,(int)Math.ceil(length),1,color);pose.popPose();}
-    boolean visible(SpaceVector v){var p=project(v);if(p.x()<left||p.x()>right||p.y()<top||p.y()>bottom)return false;var center=project(SpaceVector.ZERO);double x=p.x()-center.x(),y=p.y()-center.y();return p.depth()>=0||x*x+y*y>=Math.pow(viewRadius()*camera.scale(size()),2);}
+    boolean visible(SpaceVector v){var p=project(v);return p.x()>=left&&p.x()<=right&&p.y()>=top&&p.y()<=bottom&&OrbitOcclusion.visible(camera.direction(v),viewRadius());}
     @Override public boolean mouseClicked(double x,double y,int button){if(super.mouseClicked(x,y,button))return true;if(button==0&&x>=left&&x<=right&&y>=top&&y<=bottom){if(getFocused()!=null)getFocused().setFocused(false);setFocused(null);pressX=x;pressY=y;mapPressed=true;return true;}return false;}
     @Override public boolean mouseReleased(double x,double y,int button){if(button==0&&mapPressed){mapPressed=false;if(Math.hypot(x-pressX,y-pressY)<4){if(!maneuvers.clickPriority(x,y)&&!lunar.select(x,y,maneuvers.preview())&&!rendezvous.select(x,y))maneuvers.click(x,y);}return true;}return super.mouseReleased(x,y,button);}
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){if(button==0&&mapPressed){camera.rotate(dx,dy);return true;}if((button==1 || button==2)&&x>=left&&x<=right&&y>=top&&y<=bottom){follow=false;if(followButton!=null)followButton.setMessage(followLabel());camera.pan(dx,dy,size());return true;}return super.mouseDragged(x,y,button,dx,dy);}

@@ -16,6 +16,9 @@ import org.joml.Quaterniond;
 import java.util.*;
 @net.neoforged.neoforge.gametest.PrefixGameTestTemplate(false)
 public final class MoonLandingGameTests {
+ @GameTest(template="empty",templateNamespace="around_planet",batch="moonGravity",timeoutTicks=40)
+ public static void lunarPlayerGravityMatchesMoonMassAndRadiusAndKeepsNoGravity(GameTestHelper h){var moon=h.getLevel().getServer().getLevel(MoonSurface.dimension());h.assertTrue(moon!=null,"No Moon dimension");var ground=net.neoforged.neoforge.common.util.FakePlayerFactory.getMinecraft(h.getLevel());var player=net.neoforged.neoforge.common.util.FakePlayerFactory.getMinecraft(moon);boolean old=player.isNoGravity(),oldGround=ground.isNoGravity();try{player.setNoGravity(false);ground.setNoGravity(false);double expected=ground.getGravity()*.0123/(.2724*.2724);h.assertTrue(Math.abs(player.getGravity()-expected)<1e-8,"Lunar player gravity stayed terrestrial");player.setNoGravity(true);h.assertTrue(player.getGravity()==0,"No-gravity state changed on Moon");h.succeed();}finally{player.setNoGravity(old);ground.setNoGravity(oldGround);}}
+
  @GameTest(template="empty",templateNamespace="around_planet",batch="moonPending",timeoutTicks=40)
  public static void pendingLunarEntryRetainsPositionAndFullVelocityAcrossSave(GameTestHelper h){var pending=new MoonLandingData();var id=UUID.randomUUID();var state=new SpaceState(new SpaceVector(1,6500,2),new SpaceVector(30,-75,10));pending.put(id,state);var saved=pending.save(new net.minecraft.nbt.CompoundTag(),h.getLevel().registryAccess());var loaded=MoonLandingData.load(saved,h.getLevel().registryAccess());h.assertTrue(state.equals(loaded.get(id)),"Pending lunar state lost during save");loaded.remove(id);h.assertTrue(!loaded.containsKey(id),"Completed landing retained pending state");h.succeed();}
 

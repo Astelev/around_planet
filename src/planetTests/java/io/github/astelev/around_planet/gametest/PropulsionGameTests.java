@@ -18,8 +18,9 @@ import java.util.*;
 public final class PropulsionGameTests {
     private static PropulsionBlockEntity machine(ServerSubLevel ship,PropulsionRegistry.Kind kind){return java.util.stream.Stream.concat(PropulsionRuntime.loaded(ship.getLevel()).stream(),ship.getPlot().getLoadedChunks().stream().flatMap(h->h.getChunk().getBlockEntities().values().stream()).filter(PropulsionBlockEntity.class::isInstance).map(PropulsionBlockEntity.class::cast)).filter(be->!be.isRemoved()&&be.getLevel().getBlockEntity(be.getBlockPos())==be&&be.kind()==kind&&dev.ryanhcode.sable.Sable.HELPER.getContaining(ship.getLevel(),be.getBlockPos())==ship).findFirst().orElseThrow(()->new AssertionError("No propulsion BE in native plot"));}
 
-    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
-    public static void thrusterAppliesNativeImpulseAndStopsWithoutSignal(GameTestHelper h){
+    @GameTest(template="empty",templateNamespace="around_planet",batch="thrusterAppliesNativeImpulseAndStopsWithoutSignal",timeoutTicks=100)
+    public static void thrusterAppliesNativeImpulseAndStopsWithoutSignal(GameTestHelper h){h.runAfterDelay(2,()->thrusterAppliesNativeImpulseAndStopsWithoutSignalChecks(h));}
+    private static void thrusterAppliesNativeImpulseAndStopsWithoutSignalChecks(GameTestHelper h){
         var level=h.getLevel();var c=SubLevelContainer.getContainer(level);var p=h.absolutePos(new BlockPos(1,2,1));level.setBlockAndUpdate(p,PropulsionRegistry.ENGINE.get().defaultBlockState());level.setBlockAndUpdate(p.below(),Blocks.REDSTONE_BLOCK.defaultBlockState());
         var ship=SubLevelAssemblyHelper.assembleBlocks(level,p,List.of(p,p.below()),new BoundingBox3i(p.getX(),p.getY()-1,p.getZ(),p.getX(),p.getY(),p.getZ()));
         try{var be=machine(ship,PropulsionRegistry.Kind.CREATIVE);var at=be.getBlockPos();if(be==null)throw new AssertionError("Engine BE missing after assembly");be.configure(10000);PropulsionBlockEntity.tick(level,at,be.getBlockState(),be);h.assertTrue(be.signal(0)==15,"Engine lost native redstone input");var pipe=c.physicsSystem().getPipeline();pipe.resetVelocity(ship);PropulsionPhysics.step(c.physicsSystem(),.05);var v=pipe.getLinearVelocity(ship,new Vector3d());h.assertTrue(Math.abs(v.y-500/ship.getMassTracker().getMass())<1e-6&&Math.abs(v.x)<1e-8,"Engine force/seconds/mass conversion wrong");
@@ -29,8 +30,9 @@ public final class PropulsionGameTests {
             var saved=be.saveWithoutMetadata(level.registryAccess());be.configure(123);be.loadWithComponents(saved,level.registryAccess());h.assertTrue(be.thrust()==10000,"Thrust setting did not survive persistence");h.succeed();
         }finally{c.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);}
     }
-    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
-    public static void damperConsumesFEAndPreservesLinearVelocity(GameTestHelper h){
+    @GameTest(template="empty",templateNamespace="around_planet",batch="damperConsumesFEAndPreservesLinearVelocity",timeoutTicks=100)
+    public static void damperConsumesFEAndPreservesLinearVelocity(GameTestHelper h){h.runAfterDelay(2,()->damperConsumesFEAndPreservesLinearVelocityChecks(h));}
+    private static void damperConsumesFEAndPreservesLinearVelocityChecks(GameTestHelper h){
         var level=h.getLevel();var c=SubLevelContainer.getContainer(level);var p=h.absolutePos(new BlockPos(1,2,1));level.setBlockAndUpdate(p,PropulsionRegistry.DAMPER.get().defaultBlockState());level.setBlockAndUpdate(p.below(),Blocks.REDSTONE_BLOCK.defaultBlockState());var ship=SubLevelAssemblyHelper.assembleBlocks(level,p,List.of(p,p.below()),new BoundingBox3i(p.getX(),p.getY()-1,p.getZ(),p.getX(),p.getY(),p.getZ()));
         try{var be=machine(ship,PropulsionRegistry.Kind.DAMPER);var at=be.getBlockPos();PropulsionBlockEntity.tick(level,at,be.getBlockState(),be);var pipe=c.physicsSystem().getPipeline();pipe.resetVelocity(ship);pipe.addLinearAndAngularVelocity(ship,new Vector3d(10,3,2),new Vector3d(0,2,0));PropulsionPhysics.step(c.physicsSystem(),.05);h.assertTrue(Math.abs(pipe.getAngularVelocity(ship,new Vector3d()).y-2)<1e-8,"Empty damper damped without FE");
             var cap=level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK,at,Direction.UP);h.assertTrue(cap!=null&&cap.receiveEnergy(100000,false)>0&&!cap.canExtract(),"Damper FE capability missing or exports power");int before=be.energy.getEnergyStored();PropulsionPhysics.step(c.physicsSystem(),.05);var w=pipe.getAngularVelocity(ship,new Vector3d());h.assertTrue(w.y>0&&w.y<2&&be.energy.getEnergyStored()<before,"Powered damper failed to dissipate rotation using FE");h.assertTrue(pipe.getLinearVelocity(ship,new Vector3d()).distance(new Vector3d(10,3,2))<1e-8,"Damper changed linear flight velocity");
@@ -46,8 +48,9 @@ public final class PropulsionGameTests {
         try{com.simibubi.create.Create.REDSTONE_LINK_NETWORK_HANDLER.addToNetwork(level,transmitter);h.assertTrue(be.signal(0)==11&&be.signal(1)==0,"RSU channels were crossed or did not receive native Create power");be.frequency(0,ItemStack.EMPTY);be.frequency(1,ItemStack.EMPTY);h.assertTrue(be.signal(0)==0,"Clearing frequency retained a stale signal");var box=be.getBlockState().getShape(level,p).bounds();h.assertTrue(box.getXsize()<=.5&&box.getYsize()<=.25&&box.getZsize()<=.5,"RSU hitbox is not compact");h.succeed();}
         finally{com.simibubi.create.Create.REDSTONE_LINK_NETWORK_HANDLER.removeFromNetwork(level,transmitter);level.removeBlock(p,false);}
     }
-    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
-    public static void thrusterUpdatesVirtualSpaceVelocity(GameTestHelper h){
+    @GameTest(template="empty",templateNamespace="around_planet",batch="thrusterUpdatesVirtualSpaceVelocity",timeoutTicks=100)
+    public static void thrusterUpdatesVirtualSpaceVelocity(GameTestHelper h){h.runAfterDelay(2,()->thrusterUpdatesVirtualSpaceVelocityChecks(h));}
+    private static void thrusterUpdatesVirtualSpaceVelocityChecks(GameTestHelper h){
         var level=h.getLevel();var c=SubLevelContainer.getContainer(level);var p=h.absolutePos(new BlockPos(1,2,1));level.setBlockAndUpdate(p,PropulsionRegistry.ENGINE.get().defaultBlockState());level.setBlockAndUpdate(p.below(),Blocks.REDSTONE_BLOCK.defaultBlockState());var ship=SubLevelAssemblyHelper.assembleBlocks(level,p,List.of(p,p.below()),new BoundingBox3i(p.getX(),p.getY()-1,p.getZ(),p.getX(),p.getY(),p.getZ()));
         var cells=io.github.astelev.around_planet.space.SpaceCells.get(level);var data=io.github.astelev.around_planet.space.SpaceOrbitData.get(level.getServer());io.github.astelev.around_planet.space.SpaceCells.Cell cell=null;
         try{var be=machine(ship,PropulsionRegistry.Kind.CREATIVE);var at=be.getBlockPos();PropulsionBlockEntity.tick(level,at,be.getBlockState(),be);var pipe=c.physicsSystem().getPipeline();pipe.teleport(ship,new Vector3d(1200,6144,1200),new org.joml.Quaterniond());ship.updateBoundingBox();ship.updateLastPose();pipe.resetVelocity(ship);
@@ -56,8 +59,9 @@ public final class PropulsionGameTests {
         }finally{if(cell!=null){data.remove(cell.id());cells.remove(level,cell);}c.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);}
     }
 
-    @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
-    public static void rsuOppositeNozzlesCancelAndSingleNozzlePushesAway(GameTestHelper h){
+    @GameTest(template="empty",templateNamespace="around_planet",batch="rsuOppositeNozzlesCancelAndSingleNozzlePushesAway",timeoutTicks=100)
+    public static void rsuOppositeNozzlesCancelAndSingleNozzlePushesAway(GameTestHelper h){h.runAfterDelay(2,()->rsuOppositeNozzlesCancelAndSingleNozzlePushesAwayChecks(h));}
+    private static void rsuOppositeNozzlesCancelAndSingleNozzlePushesAwayChecks(GameTestHelper h){
         var level=h.getLevel();var c=SubLevelContainer.getContainer(level);var p=h.absolutePos(new BlockPos(1,2,1));level.setBlockAndUpdate(p,PropulsionRegistry.RSU.get().defaultBlockState());var ship=SubLevelAssemblyHelper.assembleBlocks(level,p,List.of(p),new BoundingBox3i(p.getX(),p.getY(),p.getZ(),p.getX(),p.getY(),p.getZ()));
         try{var be=machine(ship,PropulsionRegistry.Kind.RSU);PropulsionBlockEntity.tick(level,be.getBlockPos(),be.getBlockState(),be);be.configure(1000);h.assertTrue(be.thrust()==500,"RSU allowed thrust above 500 N");var saved=be.saveWithoutMetadata(level.registryAccess());saved.putDouble("Thrust",1000000);be.loadWithComponents(saved,level.registryAccess());h.assertTrue(be.thrust()==500,"Saved RSU exceeded 500 N");be.receiveSignal(0,15);be.receiveSignal(2,15);var pipe=c.physicsSystem().getPipeline();pipe.resetVelocity(ship);PropulsionPhysics.step(c.physicsSystem(),.05);h.assertTrue(pipe.getLinearVelocity(ship,new Vector3d()).length()<1e-8&&pipe.getAngularVelocity(ship,new Vector3d()).length()<1e-8,"Opposite RSU nozzles did not cancel");be.receiveSignal(2,0);PropulsionPhysics.step(c.physicsSystem(),.05);h.assertTrue(Math.abs(pipe.getLinearVelocity(ship,new Vector3d()).z-25/ship.getMassTracker().getMass())<1e-6,"Gold exhaust did not push away from its north side");h.succeed();}
         finally{c.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);}

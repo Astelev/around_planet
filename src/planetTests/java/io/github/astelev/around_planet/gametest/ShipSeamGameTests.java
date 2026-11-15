@@ -270,8 +270,9 @@ public final class ShipSeamGameTests {
             h.assertTrue(Math.abs(actualCenter.y-returnY)<.01,"Reentry altitude is wrong");
             h.assertTrue(pipeline.getLinearVelocity(a,new Vector3d()).length()<=io.github.astelev.around_planet.PlanetConfig.REENTRY_SPEED.get()+.001,"Unsafe owner velocity passed into native reentry");
             var destination=spin.frame(planet,actualCenter.x,actualCenter.z);var q=io.github.astelev.around_planet.compat.SpaceRotation.between(frame,destination);var boost=spin.landingVelocity(planet,spin.position(planet,actualCenter.x,returnY,actualCenter.z),velocity);
-            var expectedV=q.transform(new Vector3d(3,1,2)).add(boost.x(),boost.y(),boost.z());// Rapier stores velocity with float precision: one ULP at this deliberately extreme speed.
-            h.assertTrue(pipeline.getLinearVelocity(free,new Vector3d()).distance(expectedV)<=Math.max(1e-6,Math.ulp((float)expectedV.length())),"Free body velocity: actual="+pipeline.getLinearVelocity(free,new Vector3d())+" expected="+expectedV+" error="+pipeline.getLinearVelocity(free,new Vector3d()).distance(expectedV));
+            var expectedV=q.transform(new Vector3d(3,1,2)).add(boost.x(),boost.y(),boost.z());// Deliberately extreme speed exercises Rapier float quantization.
+            // Rapier stores three float components; allow two rounding steps per component.
+            h.assertTrue(pipeline.getLinearVelocity(free,new Vector3d()).distance(expectedV)<=Math.max(1e-6,2*Math.sqrt(3)*Math.ulp((float)expectedV.length())),"Free body velocity: actual="+pipeline.getLinearVelocity(free,new Vector3d())+" expected="+expectedV+" error="+pipeline.getLinearVelocity(free,new Vector3d()).distance(expectedV));
             h.assertTrue(pipeline.getAngularVelocity(free,new Vector3d()).distance(q.transform(oldOmega))<1e-6,"Reentry lost angular momentum direction");
             var expectedP=io.github.astelev.around_planet.compat.SpaceRotation.point(before,new Vector3d(101,1536,80),actualCenter,q);h.assertTrue(free.logicalPose().position().distance(expectedP)<.01,"Free body did not preserve its relative layout");
             h.assertTrue(joint.isValid() && cooldown.keySet().containsAll(ships.stream().map(ServerSubLevel::getUniqueId).toList()),"Reentry lost a rotary joint or a free body");h.succeed();

@@ -60,7 +60,8 @@
     "PlannerGogglesMixin",
     "DimensionalPassengersMixin",
     "DimensionalItemDataMixin",
-    "DimensionalVelocityMixin"
+    "DimensionalVelocityMixin",
+    "MoonEntityGravityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

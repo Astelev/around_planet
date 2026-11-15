@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.44: [отсечение орбит, гравитация игрока на Луне и Cruising 1.1.8](docs/lunar-occlusion-gravity-and-cruising.md).
+
 Обновление 0.11.0-alpha.43: [лунное измерение, посадка и обратный взлёт через Dimensional Sable](docs/moon-surface-dimension.md).
 
 Обновление 0.11.0-alpha.42: земной вид карты показывает лунные участки прогнозируемого перелёта, перицентры и узлы манёвров с учётом движения Луны.
@@ -466,7 +468,7 @@ bash ./gradlew -PplanetTests runGameTestServer
 bash ./gradlew runClient
 ```
 
-JAR: `build/libs/around_planet-0.11.0-alpha.43.jar`.
+JAR: `build/libs/around_planet-0.11.0-alpha.44.jar`.
 `-PcompatModsDir=/absolute/path/to/test-mods` добавляет локальные JAR только в
 среду запуска; они не включаются в мод. Серверные и клиентские тестовые классы
 также не входят в итоговый JAR. Клиентский smoke-тест запускается с
