@@ -112,5 +112,6 @@
   "around_planet.map.closest_target": "Closest approach — target",
   "around_planet.maneuver.time": "In, s",
   "around_planet.maneuver.time_help": "Seconds until this maneuver. ± shifts the node by the selected step.",
-  "around_planet.map.maneuver_node": "Maneuver node"
+  "around_planet.map.maneuver_node": "Maneuver node",
+  "around_planet.rendezvous.clear": "Clear rendezvous target"
 }
