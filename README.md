@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.36: [дробные интервалы предупреждений с точностью до тика](docs/fractional-maneuver-warnings.md).
+
 Обновление 0.11.0-alpha.35: [подписи орбит, сброс цели и изоляция космоса от погоды и фантомов](docs/space-weather-and-target-clear.md).
 
 Обновление 0.11.0-alpha.34: [привязка отметок карты, время и индивидуальные предупреждения манёвров](docs/map-markers-and-node-timing.md).
@@ -450,7 +452,7 @@ bash ./gradlew -PplanetTests runGameTestServer
 bash ./gradlew runClient
 ```
 
-JAR: `build/libs/around_planet-0.11.0-alpha.35.jar`.
+JAR: `build/libs/around_planet-0.11.0-alpha.36.jar`.
 `-PcompatModsDir=/absolute/path/to/test-mods` добавляет локальные JAR только в
 среду запуска; они не включаются в мод. Серверные и клиентские тестовые классы
 также не входят в итоговый JAR. Клиентский smoke-тест запускается с

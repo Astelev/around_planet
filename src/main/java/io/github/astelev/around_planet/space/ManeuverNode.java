@@ -1,11 +1,12 @@
 package io.github.astelev.around_planet.space;
 import java.util.UUID;
 /** Signed prograde, orbit-normal and radial-out delta-v, in m/s at an absolute game tick. */
-public record ManeuverNode(UUID id,long tick,double prograde,double normal,double radial,int warningSeconds) {
+public record ManeuverNode(UUID id,long tick,double prograde,double normal,double radial,double warningSeconds) {
     public ManeuverNode(UUID id,long tick,double prograde,double normal,double radial){this(id,tick,prograde,normal,radial,-1);}
-    public int warningSeconds(int fallback){return warningSeconds<0?fallback:warningSeconds;}
+    public double warningSeconds(double fallback){return warningSeconds<0?fallback:warningSeconds;}
+    public long warningTicks(long fallback){return warningSeconds<0?fallback:WarningDuration.ticks(warningSeconds);}
     public static final int MAX_NODES=16;public static final double MAX_DV=10000;
-    public ManeuverNode {if(warningSeconds < -1)throw new IllegalArgumentException("Maneuver warning");if(id==null||tick<0)throw new IllegalArgumentException("Maneuver identity/time");for(double v:new double[]{prograde,normal,radial})if(!Double.isFinite(v)||Math.abs(v)>MAX_DV)throw new IllegalArgumentException("Maneuver delta-v");}
+    public ManeuverNode {if(warningSeconds!=-1)warningSeconds=WarningDuration.ticks(warningSeconds)/20.0;if(id==null||tick<0)throw new IllegalArgumentException("Maneuver identity/time");for(double v:new double[]{prograde,normal,radial})if(!Double.isFinite(v)||Math.abs(v)>MAX_DV)throw new IllegalArgumentException("Maneuver delta-v");}
     public double magnitude(){return Math.hypot(Math.hypot(prograde,normal),radial);}
     public SpaceVector delta(SpaceState state){
         var r=state.position();var v=state.velocity();if(r.length()<1e-8)throw new IllegalArgumentException("No orbital frame at centre");

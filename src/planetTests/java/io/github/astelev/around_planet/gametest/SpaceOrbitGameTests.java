@@ -135,10 +135,10 @@ public final class SpaceOrbitGameTests {
     @GameTest(template="empty",templateNamespace="around_planet",batch="maneuverMetadata",timeoutTicks=100)
     public static void individualWarningSurvivesSaveWarpAndLegacyMigration(GameTestHelper h){
         var data=new SpaceOrbitData();var id=UUID.randomUUID();data.put(id,new SpaceTrajectory("test",0,new SpaceState(new SpaceVector(100000,0,0),SpaceVector.ZERO),0));
-        var first=new ManeuverNode(UUID.randomUUID(),10000,10,0,0,7);var second=new ManeuverNode(UUID.randomUUID(),20000,0,2,0,90);data.maneuver(id,first);data.maneuver(id,second);
+        var first=new ManeuverNode(UUID.randomUUID(),10000,10,0,0,.35);var second=new ManeuverNode(UUID.randomUUID(),20000,0,2,0,90);data.maneuver(id,first);data.maneuver(id,second);
         var saved=data.save(new CompoundTag(),h.getLevel().registryAccess());var copy=SpaceOrbitData.load(saved,h.getLevel().registryAccess());copy.warp(100,200);
-        h.assertTrue(copy.maneuvers(id).getFirst().warningSeconds()==7&&copy.maneuvers(id).getLast().warningSeconds()==90&&copy.maneuvers(id).getFirst().tick()==9800,"Warp/save lost individual warnings");
-        saved.getList("objects",10).getCompound(0).getList("maneuvers",10).getCompound(0).remove("warningSeconds");copy=SpaceOrbitData.load(saved,h.getLevel().registryAccess());
+        h.assertTrue(copy.maneuvers(id).getFirst().warningTicks(-1)==7&&copy.maneuvers(id).getLast().warningSeconds()==90&&copy.maneuvers(id).getFirst().tick()==9800,"Warp/save lost individual warnings");
+        var oldNode=saved.getList("objects",10).getCompound(0).getList("maneuvers",10).getCompound(0);oldNode.remove("warningTicks");oldNode.putInt("warningSeconds",7);copy=SpaceOrbitData.load(saved,h.getLevel().registryAccess());h.assertTrue(copy.maneuvers(id).getFirst().warningTicks(-1)==140,"Legacy integer seconds did not migrate to ticks");oldNode.remove("warningSeconds");copy=SpaceOrbitData.load(saved,h.getLevel().registryAccess());
         h.assertTrue(copy.maneuvers(id).getFirst().warningSeconds(30)==30,"Legacy node lost planner fallback");h.succeed();
     }
 }

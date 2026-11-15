@@ -68,7 +68,7 @@
   "around_planet.sensor.mode.maneuver": "Next maneuver",
   "around_planet.maneuver.warning": "Warning %s s before burn",
   "around_planet.maneuver.warning_short": "Warning, s",
-  "around_planet.maneuver.warning_help": "Redstone warning duration before this maneuver, in seconds.",
+  "around_planet.maneuver.warning_help": "Warning duration before this maneuver, in seconds. Rounded to the nearest 0.05 s (one tick); output turns off at the maneuver.",
   "around_planet.maneuver.warning_range": "Enter nonnegative seconds",
   "around_planet.maneuver.countdown": "Maneuver in %s s",
   "around_planet.maneuver.none": "No planned maneuver",

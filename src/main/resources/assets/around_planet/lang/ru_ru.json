@@ -68,7 +68,7 @@
   "around_planet.sensor.mode.maneuver": "Ближайший манёвр",
   "around_planet.maneuver.warning": "Предупреждение за %s с",
   "around_planet.maneuver.warning_short": "Предупр., с",
-  "around_planet.maneuver.warning_help": "Продолжительность редстоун-предупреждения перед выбранным манёвром, в секундах.",
+  "around_planet.maneuver.warning_help": "Длительность сигнала перед выбранным манёвром в секундах. Шаг 0,05 с (1 тик); значение округляется до ближайшего тика. Сигнал выключается в момент манёвра.",
   "around_planet.maneuver.warning_range": "Введите секунды ≥ 0",
   "around_planet.maneuver.countdown": "До манёвра: %s с",
   "around_planet.maneuver.none": "Манёвр не запланирован",
