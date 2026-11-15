@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "around_planet:maneuver_planner"
+    "around_planet:maneuver_planner",
+    "around_planet:ship_loader"
   ]
 }

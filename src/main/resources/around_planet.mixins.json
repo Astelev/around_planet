@@ -61,7 +61,9 @@
     "DimensionalPassengersMixin",
     "DimensionalItemDataMixin",
     "DimensionalVelocityMixin",
-    "MoonEntityGravityMixin"
+    "MoonEntityGravityMixin",
+    "ShipLoaderNativeActorMixin",
+    "ShipLoaderTicketsMixin"
   ],
   "injectors": {
     "defaultRequire": 1

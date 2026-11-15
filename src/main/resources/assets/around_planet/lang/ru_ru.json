@@ -132,5 +132,10 @@
   "around_planet.helmet.cardinal.south": "Ю",
   "around_planet.helmet.cardinal.east": "В",
   "around_planet.helmet.cardinal.west": "З",
-  "around_planet.warp.surface": "Остановка перед переходом на поверхность Луны"
+  "around_planet.warp.surface": "Остановка перед переходом на поверхность Луны",
+  "block.around_planet.ship_loader": "Загрузчик физической конструкции",
+  "around_planet.loader.tooltip": "Удерживает конструкцию и связанные части в загрузке. Пустая рука: вкл./выкл.",
+  "around_planet.loader.on": "Загрузка конструкции включена",
+  "around_planet.loader.off": "Загрузка конструкции выключена",
+  "around_planet.loader.requires_sable": "Для загрузки физических конструкций требуется Sable"
 }

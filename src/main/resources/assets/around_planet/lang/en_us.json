@@ -132,5 +132,10 @@
   "around_planet.helmet.cardinal.south": "S",
   "around_planet.helmet.cardinal.east": "E",
   "around_planet.helmet.cardinal.west": "W",
-  "around_planet.warp.surface": "Stopped before lunar surface handoff"
+  "around_planet.warp.surface": "Stopped before lunar surface handoff",
+  "block.around_planet.ship_loader": "Ship Loader",
+  "around_planet.loader.tooltip": "Keeps its physical assembly loaded. Empty hand: toggle.",
+  "around_planet.loader.on": "Assembly loading enabled",
+  "around_planet.loader.off": "Assembly loading disabled",
+  "around_planet.loader.requires_sable": "Sable is required to load physical assemblies"
 }

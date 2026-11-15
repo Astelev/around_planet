@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "enabled=true": {
+      "model": "around_planet:block/ship_loader"
+    },
+    "enabled=false": {
+      "model": "around_planet:block/ship_loader_off"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "around_planet:block/ship_loader",
+  "textures": {
+    "core": "minecraft:block/gray_concrete"
+  }
+}

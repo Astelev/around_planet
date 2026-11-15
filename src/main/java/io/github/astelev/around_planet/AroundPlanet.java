@@ -23,13 +23,14 @@ public final class AroundPlanet {
         bus.addListener(io.github.astelev.around_planet.network.SpaceMapPayload::register);
         bus.addListener(io.github.astelev.around_planet.network.PlanetAtlasPayload::register);
         io.github.astelev.around_planet.maneuver.ManeuverRegistry.register(bus);
+        io.github.astelev.around_planet.loader.ShipLoaderRegistry.register(bus);
         bus.addListener(io.github.astelev.around_planet.network.ManeuverPayload::register);
         bus.addListener(io.github.astelev.around_planet.network.RendezvousPayload::register);
         io.github.astelev.around_planet.sensor.OrbitalSensorRegistry.register(bus);
         io.github.astelev.around_planet.propulsion.PropulsionRegistry.register(bus);
         bus.addListener(io.github.astelev.around_planet.network.PropulsionPayload::register);
         bus.addListener(io.github.astelev.around_planet.network.OrbitalSensorPayload::register);
-        if(net.neoforged.fml.ModList.get().isLoaded("sable"))io.github.astelev.around_planet.compat.SpaceRendezvous.init();
+        if(net.neoforged.fml.ModList.get().isLoaded("sable")){io.github.astelev.around_planet.compat.SpaceRendezvous.init();io.github.astelev.around_planet.compat.ShipLoaderBridge.init();}
         if(net.neoforged.fml.ModList.get().isLoaded("sable")&&net.neoforged.fml.ModList.get().isLoaded("dimensional_sable"))io.github.astelev.around_planet.compat.DimensionalTransfers.init();
         container.registerConfig(ModConfig.Type.SERVER, new PlanetConfigMigration());
     }
