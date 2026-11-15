@@ -89,14 +89,6 @@
       ]
     },
     {
-      "name": "MoonPhase",
-      "type": "float",
-      "count": 1,
-      "values": [
-        0
-      ]
-    },
-    {
       "name": "Visibility",
       "type": "float",
       "count": 1,
@@ -121,6 +113,44 @@
         0,
         0,
         0
+      ]
+    },
+    {
+      "name": "MoonCenter",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "MoonRadius",
+      "type": "float",
+      "count": 1,
+      "values": [
+        0
+      ]
+    },
+    {
+      "name": "MoonTextureX",
+      "type": "float",
+      "count": 3,
+      "values": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "MoonTextureZ",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        1
       ]
     }
   ],

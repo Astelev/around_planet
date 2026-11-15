@@ -4,7 +4,10 @@ uniform vec3 SkyColor;
 uniform vec3 SunDirection;
 uniform float Darkness;
 uniform float Horizon;
-uniform float MoonPhase;
+uniform vec3 MoonCenter;
+uniform float MoonRadius;
+uniform vec3 MoonTextureX;
+uniform vec3 MoonTextureZ;
 uniform float Visibility;
 uniform int Layer;
 uniform vec4 CloudFog;
@@ -29,17 +32,17 @@ void main() {
     float sunAlpha=min(1.0,sunDisk+sunHalo)*Visibility*above;
     vec3 color=mix(bg,vec3(1.0,0.95,0.78),sunAlpha);
     float alpha=max(1.0-above,sunAlpha);
-    vec3 moon=-SunDirection;
-    vec3 right=vec3(0.0,0.0,1.0),up=normalize(cross(moon,right));
-    vec2 coord=vec2(dot(ray,right),dot(ray,up))/sin(0.013);
-    float d2=dot(coord,coord);
-    if(dot(ray,moon)>0.0 && d2<1.0){
-        vec3 normal=vec3(coord,sqrt(max(0.0,1.0-d2)));
-        float phase=MoonPhase*0.7853981634;
-        float light=max(0.0,dot(normal,vec3(sin(phase),0.0,cos(phase))));
-        float speck=0.85+0.15*sin(coord.x*37.0+sin(coord.y*25.0))*sin(coord.y*29.0);
-        vec3 moonColor=mix(vec3(0.004,0.006,0.012),vec3(0.8,0.84,0.92)*speck,light);
-        float a=(1.0-smoothstep(0.94,1.0,d2))*Visibility*above;
+    float along=dot(ray,MoonCenter);
+    vec3 perpendicular=MoonCenter-ray*along;
+    float d2=dot(perpendicular,perpendicular)/max(MoonRadius*MoonRadius,0.0001);
+    if(MoonRadius>0.0 && along>0.0 && d2<1.0){
+        float hit=along-MoonRadius*sqrt(max(0.0,1.0-d2));
+        vec3 normal=normalize(ray*hit-MoonCenter);
+        float light=0.045+0.955*max(0.0,dot(normal,SunDirection));
+        float nx=dot(normal,MoonTextureX),nz=dot(normal,MoonTextureZ);
+        float albedo=(155.0+20.0*sin(nx*43.0)*cos(nz*31.0))/255.0;
+        vec3 moonColor=vec3(albedo*light);
+        float a=(1.0-smoothstep(0.98,1.0,d2))*Visibility*above;
         color=mix(color,moonColor,a);alpha=max(alpha,a);
     }
     if(alpha<0.0005)discard;
