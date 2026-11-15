@@ -27,8 +27,10 @@ public final class OrbitCamera {
     }
     /** Drag translates the world-space pivot, so the next rotation and zoom use the dragged view center. */
     public void pan(double dx,double dy,double viewportSize){double s=scale(viewportSize);focus=focus.add(fromView(-dx/s,dy/s,0));}
+    public OrbitCamera copy(){var c=new OrbitCamera();c.set(this);return c;}
+    public void set(OrbitCamera c){yaw=c.yaw;pitch=c.pitch;zoom=c.zoom;focus=c.focus;extent=c.extent;right=c.right;up=c.up;forward=c.forward;basisVersion=c.basisVersion+1;}
     public void rotate(double dx,double dy){yaw=Math.IEEEremainder(yaw+dx*.008,2*Math.PI);pitch=Math.max(-Math.PI/2,Math.min(Math.PI/2,pitch+dy*.008));}
-    public void zoom(double wheel){zoom=Math.max(.025,Math.min(200,zoom*Math.pow(1.15,Math.max(-20,Math.min(20,wheel)))));}
+    public void zoom(double wheel){zoom=Math.max(.000001,Math.min(100000000,zoom*Math.pow(1.15,Math.max(-20,Math.min(20,wheel)))));}
     /** Clip huge open trajectories before submitting float GUI vertices. */
     public static double[] clip(double ax,double ay,double bx,double by,double left,double top,double right,double bottom){
         double dx=bx-ax,dy=by-ay,lo=0,hi=1;double[] p={-dx,dx,-dy,dy},q={ax-left,right-ax,ay-top,bottom-ay};

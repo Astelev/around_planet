@@ -1,0 +1,12 @@
+package io.github.astelev.around_planet.compat;
+import io.github.astelev.around_planet.space.*;
+import io.github.astelev.around_planet.network.*;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.PacketDistributor;
+public final class RendezvousTelemetry {
+    public static void send(ServerPlayer p){if(!p.connection.hasChannel(RendezvousPayload.TYPE))return;var focus=io.github.astelev.around_planet.compat.ManeuverAccess.focus(p);if(focus==null)return;var data=SpaceOrbitData.get(p.getServer());if(data.get(focus.id()).isEmpty())return;var target=data.target(focus.id()).orElse(ManeuverPayload.NONE);var other=data.get(target);var own=data.sample(focus.id(),p.level().getGameTime());if(other.isPresent()){var ship=io.github.astelev.around_planet.compat.SablePassengers.ship(p);if(ship instanceof dev.ryanhcode.sable.sublevel.ServerSubLevel nativeShip&&nativeShip.getSelfMassTracker().getCenterOfMass()!=null){var container=dev.ryanhcode.sable.api.sublevel.SubLevelContainer.getContainer(p.serverLevel());var nav=io.github.astelev.around_planet.compat.SpaceLocalPhysics.navigation(p.serverLevel(),focus);var point=nativeShip.logicalPose().transformPosition(new org.joml.Vector3d(nativeShip.getSelfMassTracker().getCenterOfMass()));var velocity=container.physicsSystem().getPipeline().getLinearVelocity(nativeShip,new org.joml.Vector3d());own=new SpaceState(own.position().add(nav.frame().toCosmic(new SpaceVector(point.x-focus.x(),point.y-focus.y(),point.z-focus.z()))),own.velocity().add(nav.frame().toCosmic(new SpaceVector(velocity.x,velocity.y,velocity.z))));}}
+        String name="Object "+target.toString().substring(0,8);var dormant=SpaceDormantData.get(p.getServer()).get(target);if(dormant!=null)name=dormant.name();else{var cell=SpaceCells.get(p.serverLevel()).all().stream().filter(c->c.id().equals(target)).findFirst().orElse(null);if(cell!=null){var s=dev.ryanhcode.sable.api.sublevel.SubLevelContainer.getContainer(p.serverLevel()).getSubLevel(cell.ships().getFirst());if(s!=null&&s.getName()!=null&&!s.getName().isBlank())name=s.getName();}}if(name.length()>80)name=name.substring(0,80);
+        PacketDistributor.sendToPlayer(p,new RendezvousPayload(focus.id(),target,other.isPresent()?name:"",p.level().getGameTime(),own,other.isPresent()?data.sample(target,p.level().getGameTime()):own,other.map(SpaceTrajectory::mu).orElse(0.0)));
+    }
+    private RendezvousTelemetry(){}
+}

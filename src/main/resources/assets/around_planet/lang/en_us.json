@@ -79,5 +79,20 @@
   "around_planet.map.apsis": "Orbit: %s",
   "around_planet.map.planned_apsis": "After maneuver: %s",
   "around_planet.map.follow_on": "Follow craft: on",
-  "around_planet.map.follow_off": "Follow craft: off"
+  "around_planet.map.follow_off": "Follow craft: off",
+  "around_planet.map.point_time": "Time to point: %s s",
+  "around_planet.rendezvous.off": "Rendezvous: off",
+  "around_planet.rendezvous.target": "Target: %s",
+  "around_planet.rendezvous.choose": "Click an object on the map or cycle targets here. After the last target, rendezvous is disabled.",
+  "around_planet.rendezvous.inclination": "Relative inclination: %s°",
+  "around_planet.rendezvous.planned_inclination": "After burns: %s°",
+  "around_planet.rendezvous.horizon": "Prediction window: %s s",
+  "around_planet.rendezvous.distance": "Target distance: %s m",
+  "around_planet.rendezvous.speed": "Relative speed: %s m/s",
+  "around_planet.rendezvous.closest": "Closest approach",
+  "around_planet.sensor.mode.target": "Toward target",
+  "around_planet.sensor.mode.anti_target": "Away from target",
+  "around_planet.sensor.mode.relative_prograde": "Relative prograde",
+  "around_planet.sensor.mode.relative_retrograde": "Relative retrograde",
+  "around_planet.rendezvous.legend": "%s Craft  %s Target  %s Δv"
 }

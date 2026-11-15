@@ -23,6 +23,7 @@ public final class AroundPlanet {
         bus.addListener(io.github.astelev.around_planet.network.PlanetAtlasPayload::register);
         io.github.astelev.around_planet.maneuver.ManeuverRegistry.register(bus);
         bus.addListener(io.github.astelev.around_planet.network.ManeuverPayload::register);
+        bus.addListener(io.github.astelev.around_planet.network.RendezvousPayload::register);
         io.github.astelev.around_planet.sensor.OrbitalSensorRegistry.register(bus);
         io.github.astelev.around_planet.propulsion.PropulsionRegistry.register(bus);
         bus.addListener(io.github.astelev.around_planet.network.PropulsionPayload::register);

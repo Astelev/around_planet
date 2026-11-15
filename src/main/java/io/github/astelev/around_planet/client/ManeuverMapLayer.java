@@ -44,9 +44,10 @@ final class ManeuverMapLayer {
     boolean click(double mx,double my){if(!authorized()||preview==null)return false;
         for(var mark:preview.nodes()){var p=map.project(mark.position());if(Math.hypot(p.x()-mx,p.y()-my)<=9&&map.visible(mark.position())){select(mark.node());return true;}}
         var hit=pick(mx,my,true);if(hit==null)return false;long tick=hit.tick();
-        tick=Math.max(tick,ManeuverClient.now()+20);if(nodes().size()>=ManeuverNode.MAX_NODES){error="around_planet.maneuver.limit";return true;}
-        select(new ManeuverNode(UUID.randomUUID(),tick,0,0,0));submit(false);return true;
+        return at(tick);
     }
+    boolean at(long tick){if(!authorized())return false;tick=Math.max(tick,ManeuverClient.now()+20);if(nodes().size()>=ManeuverNode.MAX_NODES){error="around_planet.maneuver.limit";return true;}select(new ManeuverNode(UUID.randomUUID(),tick,0,0,0));submit(false);return true;}
+
     private record Hit(SpaceTrajectory path,long tick,SpaceVector position,boolean planned,OrbitInspection.Apsis apsis){}
     private Hit pick(double mx,double my,boolean editing){
         OrbitInspection.Apsis snapped=null;double snapDistance=10;for(var a:apsides){if(editing&&!a.planned()&&preview!=null&&!preview.nodes().isEmpty()&&a.tick()>=preview.nodes().getFirst().node().tick())continue;var point=map.project(a.position());double distance=Math.hypot(point.x()-mx,point.y()-my);if(distance<=snapDistance&&map.visible(a.position())){snapped=a;snapDistance=distance;}}if(snapped!=null)return new Hit(snapped.path(),snapped.tick(),snapped.position(),snapped.planned(),snapped);
@@ -63,6 +64,7 @@ final class ManeuverMapLayer {
     void tooltip(GuiGraphics g,int mx,int my){
         if(map.getMinecraft().screen!=map||preview==null)return;var hit=pick(mx,my,false);if(hit==null)return;var state=hit.path().at(hit.tick());var lines=new ArrayList<Component>();
         if(hit.apsis()!=null){var a=hit.apsis();lines.add(Component.translatable(a.planned()?"around_planet.map.planned_apsis":"around_planet.map.apsis",a.apo()?"Ap":"Pe"));var p=map.project(a.position());g.fill((int)p.x()-3,(int)p.y()-3,(int)p.x()+4,(int)p.y()+4,0xffffff99);}
+        lines.add(Component.translatable("around_planet.map.point_time",String.format(Locale.ROOT,"%.1f",Math.max(0,(hit.tick()-ManeuverClient.now())/20.0))));
         lines.add(Component.translatable("around_planet.map.point_speed",String.format(Locale.ROOT,"%.2f",state.velocity().length())));lines.add(Component.translatable("around_planet.map.point_altitude",String.format(Locale.ROOT,"%.0f",hit.position().length()-radius)));g.renderComponentTooltip(map.getMinecraft().font,lines,mx,my);
     }
     private double score(SpaceTrajectory path,long tick,double x,double y){var p=map.project(path.at(tick).position());return Math.hypot(p.x()-x,p.y()-y);}

@@ -79,5 +79,20 @@
   "around_planet.map.apsis": "Орбита: %s",
   "around_planet.map.planned_apsis": "После манёвра: %s",
   "around_planet.map.follow_on": "За кораблём: вкл",
-  "around_planet.map.follow_off": "За кораблём: выкл"
+  "around_planet.map.follow_off": "За кораблём: выкл",
+  "around_planet.map.point_time": "До точки: %s с",
+  "around_planet.rendezvous.off": "Сближение: выкл",
+  "around_planet.rendezvous.target": "Цель: %s",
+  "around_planet.rendezvous.choose": "Выберите объект на карте или перебирайте цели этой кнопкой. После последней цели режим отключается.",
+  "around_planet.rendezvous.inclination": "Взаимное наклонение: %s°",
+  "around_planet.rendezvous.planned_inclination": "После манёвров: %s°",
+  "around_planet.rendezvous.horizon": "Интервал прогноза: %s с",
+  "around_planet.rendezvous.distance": "До цели: %s м",
+  "around_planet.rendezvous.speed": "Отн. скорость: %s м/с",
+  "around_planet.rendezvous.closest": "Минимальное сближение",
+  "around_planet.sensor.mode.target": "К цели",
+  "around_planet.sensor.mode.anti_target": "От цели",
+  "around_planet.sensor.mode.relative_prograde": "По отн. скорости",
+  "around_planet.sensor.mode.relative_retrograde": "Против отн. скорости",
+  "around_planet.rendezvous.legend": "%s Корабль  %s Цель  %s Δv"
 }

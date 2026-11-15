@@ -17,7 +17,7 @@ public final class SpaceMapSnapshot {
             String name=dormant==null?"Object "+id.toString().substring(0,8):dormant.name();if(loaded){var ship=container.getSubLevel(cell.ships().getFirst());if(ship.getName()!=null && !ship.getName().isBlank())name=ship.getName();}if(name.length()>80)name=name.substring(0,80);
             var state=data.sample(id,level.getGameTime());var r=state.position();var v=state.velocity();list.add(new SpaceMapPayload.Body(id,name,r.x(),r.y(),r.z(),v.x(),v.y(),v.z(),orbit.mu(),cell==null?(dormant==null?focus.originY():dormant.returnAltitude()):cell.originY(),data.reentry(id).isPresent(),loaded));
         }
-        return new SpaceMapPayload(focus.id(),list.size(),List.copyOf(list.subList(0,Math.min(128,list.size()))));
+        return new SpaceMapPayload(focus.id(),level.getGameTime(),list.size(),List.copyOf(list.subList(0,Math.min(128,list.size()))));
     }
     private SpaceMapSnapshot(){}
 }
