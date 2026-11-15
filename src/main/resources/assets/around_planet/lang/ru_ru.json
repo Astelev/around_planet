@@ -94,5 +94,10 @@
   "around_planet.sensor.mode.anti_target": "От цели",
   "around_planet.sensor.mode.relative_prograde": "По отн. скорости",
   "around_planet.sensor.mode.relative_retrograde": "Против отн. скорости",
-  "around_planet.rendezvous.legend": "%s Корабль  %s Цель  %s Δv"
+  "around_planet.rendezvous.legend": "%s Корабль  %s Цель  %s Δv",
+  "around_planet.warp.result": "Орбиты и сутки перемотаны на %s с; объектов: %s",
+  "around_planet.warp.invalid": "Введите положительный конечный интервал в секундах",
+  "around_planet.warp.maneuver": "Остановка перед манёвром или предупреждением планёра",
+  "around_planet.warp.atmosphere": "Остановка перед полётом в атмосфере",
+  "around_planet.warp.rendezvous": "Остановка перед сближением с выбранной целью"
 }

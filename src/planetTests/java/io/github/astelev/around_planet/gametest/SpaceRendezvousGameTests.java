@@ -41,4 +41,31 @@ public final class SpaceRendezvousGameTests {
             for(var id:List.of(all.get(1),all.get(2)))h.assertTrue(!((SpaceHoldingAccess)c.getHoldingChunkMap()).around_planet$queued(id),"Woken body remained in native holding chunk and would load twice");c.getHoldingChunkMap().processChanges();if(stale!=null)c.getHoldingChunkMap().loadHoldingSubLevel(stale);h.assertTrue(c.getSubLevel(arrival.getUniqueId())==arrival,"Holding processing recreated arrival");SpaceRendezvous.check(level,c);h.assertTrue(c.collectForceLoadedSubLevels().contains(arrival),"Arrival lease expired while receiver loaded");h.succeed();
         }finally{io.github.astelev.around_planet.PlanetConfig.RENDEZVOUS_DISTANCE.set(oldDistance);if(host!=null)cells.remove(level,host);if(source!=null)cells.remove(level,source);data.remove(hostId);data.remove(sourceId);SpaceDormantData.get(level.getServer()).remove(sourceId);for(var id:all){SpaceCargoData.get(level.getServer()).remove(id);var s=c.getSubLevel(id);if(s==null){var record=c.getHoldingChunkMap().getHoldingSubLevel(id);if(record!=null)c.getHoldingChunkMap().loadHoldingSubLevel(record);s=c.getSubLevel(id);}if(s!=null)c.removeSubLevel(s,SubLevelRemovalReason.REMOVED);}SpaceRendezvous.clear(level);}
     }
+    @GameTest(template="empty",templateNamespace="around_planet",batch="nativeWarp",timeoutTicks=160)
+    public static void orbitalWarpPreservesNativeBodyAndDoesNotTriggerChordReentry(GameTestHelper h) {
+        var level=h.getLevel();var c=SubLevelContainer.getContainer(level);var pipe=c.physicsSystem().getPipeline();
+        var cells=SpaceCells.get(level);var data=SpaceOrbitData.get(level.getServer());var id=UUID.randomUUID();
+        long now=level.getGameTime(),day=level.getDayTime();ServerSubLevel ship=null;SpaceCells.Cell cell=null;
+        try {
+            var p=h.absolutePos(new BlockPos(1,2,1));level.setBlockAndUpdate(p,Blocks.IRON_BLOCK.defaultBlockState());
+            ship=(ServerSubLevel)SubLevelAssemblyHelper.assembleBlocks(level,p,List.of(p),new BoundingBox3i(p.getX(),p.getY(),p.getZ(),p.getX(),p.getY(),p.getZ()));
+            pipe.teleport(ship,new Vector3d(24000,6144,0),new Quaterniond());ship.updateBoundingBox();ship.updateLastPose();
+            pipe.addLinearAndAngularVelocity(ship,new Vector3d(),new Vector3d(.1,.2,.3));
+            cell=new SpaceCells.Cell(id,78,24000,6144,0,0,2200,0,List.of(ship.getUniqueId()));cells.add(level,cell);
+            var planet=new PlanetScale(131072).geometry();double r=planet.radius()+8000,mu=9.81*planet.radius()*planet.radius();
+            var path=new SpaceTrajectory("warp-native",now,new SpaceState(new SpaceVector(r,0,0),new SpaceVector(0,Math.sqrt(mu/r),0)),mu);
+            data.put(id,path);data.navigate(id,new SpaceNavigation(planet,SpaceFrame.IDENTITY));SpaceReentry.entered(level,id,path.initial().position());
+            var position=new Vector3d(ship.logicalPose().position());var angular=pipe.getAngularVelocity(ship,new Vector3d());
+            var result=SpaceTimeWarp.advance(level.getServer(),2400);
+            h.assertTrue(result.ticks()==2400&&data.sample(id,now).position().subtract(path.at(now+2400).position()).length()<1e-7,"Native orbit did not advance");
+            h.assertTrue(c.getSubLevel(ship.getUniqueId())==ship&&ship.logicalPose().position().distance(position)<1e-8,"Warp recreated or moved native ship");
+            h.assertTrue(pipe.getAngularVelocity(ship,new Vector3d()).distance(angular)<1e-8,"Warp discarded native angular velocity");
+            SpaceReentry.check(level,c,new HashSet<>(),new HashMap<>());
+            h.assertTrue(data.reentry(id).isEmpty()&&cells.all().contains(cell),"Circular orbit falsely landed along the skipped chord");
+            h.succeed();
+        } finally {
+            if(cell!=null)cells.remove(level,cell);data.remove(id);level.setDayTime(day);SpaceReentry.clear(level);
+            if(ship!=null)c.removeSubLevel(ship,SubLevelRemovalReason.REMOVED);
+        }
+    }
 }

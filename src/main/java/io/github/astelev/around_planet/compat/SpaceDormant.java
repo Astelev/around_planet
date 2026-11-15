@@ -13,6 +13,7 @@ public final class SpaceDormant {
     private static final Map<ServerLevel,Set<UUID>> STARTED=new WeakHashMap<>();
     private static final Map<ServerLevel,Map<UUID,SpaceVector>> LAST=new WeakHashMap<>();
     public static void clear(ServerLevel level){STARTED.remove(level);LAST.remove(level);}
+    public static void resetSamples(ServerLevel level){var last=LAST.computeIfAbsent(level,k->new HashMap<>());last.clear();var data=SpaceOrbitData.get(level.getServer());for(var b:SpaceDormantData.get(level.getServer()).all())if(data.get(b.orbit()).isPresent())last.put(b.orbit(),data.sample(b.orbit(),level.getGameTime()).position());}
     public static void forget(ServerLevel level,UUID orbit){STARTED.getOrDefault(level,new HashSet<>()).remove(orbit);LAST.getOrDefault(level,new HashMap<>()).remove(orbit);}
     public static boolean bound(ServerSubLevel ship){return SpaceDormantData.get(ship.getLevel().getServer()).forShip(ship.getUniqueId())!=null;}
     public static void capture(ServerSubLevel ship,List<UUID> dependencies){

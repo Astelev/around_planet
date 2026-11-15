@@ -94,5 +94,10 @@
   "around_planet.sensor.mode.anti_target": "Away from target",
   "around_planet.sensor.mode.relative_prograde": "Relative prograde",
   "around_planet.sensor.mode.relative_retrograde": "Relative retrograde",
-  "around_planet.rendezvous.legend": "%s Craft  %s Target  %s Δv"
+  "around_planet.rendezvous.legend": "%s Craft  %s Target  %s Δv",
+  "around_planet.warp.result": "Advanced orbital time and daylight by %s s for %s objects",
+  "around_planet.warp.invalid": "Enter a positive finite interval in seconds",
+  "around_planet.warp.maneuver": "Stopped before a maneuver or planner warning",
+  "around_planet.warp.atmosphere": "Stopped before atmospheric flight",
+  "around_planet.warp.rendezvous": "Stopped before close approach to the selected target"
 }

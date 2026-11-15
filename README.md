@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.33: [перемотка орбитального времени командой `/time warp`](docs/orbital-time-warp.md).
+
 Обновление 0.11.0-alpha.32: [планирование сближения, относительная навигация и сохранение вида карты](docs/rendezvous-planning.md).
 
 Обновление 0.11.0-alpha.31: [исправление повторной загрузки после сближения, перемещаемый фокус карты и слежение за кораблём](docs/rendezvous-holding-and-map-focus.md).
@@ -444,7 +446,7 @@ bash ./gradlew -PplanetTests runGameTestServer
 bash ./gradlew runClient
 ```
 
-JAR: `build/libs/around_planet-0.11.0-alpha.32.jar`.
+JAR: `build/libs/around_planet-0.11.0-alpha.33.jar`.
 `-PcompatModsDir=/absolute/path/to/test-mods` добавляет локальные JAR только в
 среду запуска; они не включаются в мод. Серверные и клиентские тестовые классы
 также не входят в итоговый JAR. Клиентский smoke-тест запускается с

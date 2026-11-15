@@ -65,6 +65,8 @@ public final class SpaceOrbitData extends SavedData {
         var trajectory=new SpaceTrajectory(parent.primary(),gameTick,frame.detach(sample(source,gameTick),local),parent.mu());
         put(detached,trajectory);return trajectory;
     }
+    /** Atomic virtual-time jump; Minecraft gameTime and physical cells remain untouched. */
+    public void warp(long now,long ticks){if(ticks<0)throw new IllegalArgumentException("Negative orbital warp");if(ticks==0)return;long future=Math.addExact(now,ticks);var advanced=new HashMap<UUID,SpaceTrajectory>();var plans=new HashMap<UUID,List<ManeuverNode>>();for(var e:objects.entrySet()){var path=e.getValue();advanced.put(e.getKey(),reentries.containsKey(e.getKey())?path:new SpaceTrajectory(path.primary(),now,path.at(future),path.mu()));}for(var e:maneuvers.entrySet()){var nodes=new ArrayList<ManeuverNode>();for(var n:e.getValue())nodes.add(new ManeuverNode(n.id(),Math.max(0,n.tick()-ticks),n.prograde(),n.normal(),n.radial()));plans.put(e.getKey(),List.copyOf(nodes));}objects.clear();objects.putAll(advanced);maneuvers.clear();maneuvers.putAll(plans);setDirty();}
     private SpaceTrajectory require(UUID id){var value=objects.get(id);if(value==null)throw new IllegalArgumentException("Unknown space object: "+id);return value;}
     public static SpaceOrbitData load(CompoundTag tag,HolderLookup.Provider lookup) {
         if(tag.getInt("schema")!=1 || !tag.contains("objects",Tag.TAG_LIST))throw new IllegalArgumentException("Unsupported orbit save format");

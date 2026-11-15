@@ -26,6 +26,7 @@ public record SpaceMapPayload(UUID focus,long now,int total,List<Body> bodies) i
     public static void register(RegisterPayloadHandlersEvent event){var r=event.registrar("2").optional();r.playToClient(TYPE,CODEC,(p,c)->c.enqueueWork(()->io.github.astelev.around_planet.client.SpaceMapCatalog.accept(p)));
         r.playToServer(Request.TYPE,Request.CODEC,(p,c)->c.enqueueWork(()->{var player=(ServerPlayer)c.player();if(p.open && net.neoforged.fml.ModList.get().isLoaded("sable"))SUBSCRIBERS.put(player,player.serverLevel().getGameTime()+200);else {SUBSCRIBERS.remove(player);ManeuverPayload.close(player);}}));
     }
+    public static void refreshNow(net.minecraft.server.level.ServerLevel level){for(var p:level.players())if(SUBSCRIBERS.containsKey(p)&&p.connection.hasChannel(TYPE)){var packet=io.github.astelev.around_planet.compat.SpaceMapSnapshot.sample(p);if(packet!=null){PacketDistributor.sendToPlayer(p,packet);ManeuverPayload.refresh(p,packet.focus());}}}
     @SubscribeEvent public static void tick(LevelTickEvent.Post event){
         if(!(event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) || !level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD) || level.getGameTime()%20!=0 || !net.neoforged.fml.ModList.get().isLoaded("sable"))return;
         for(var p:level.players())if(SUBSCRIBERS.containsKey(p)){
