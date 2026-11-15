@@ -113,5 +113,12 @@
   "around_planet.maneuver.time": "Через, с",
   "around_planet.maneuver.time_help": "Время до манёвра в секундах. Кнопки ± сдвигают узел на выбранный шаг.",
   "around_planet.map.maneuver_node": "Узел манёвра",
-  "around_planet.rendezvous.clear": "Сбросить цель сближения"
+  "around_planet.rendezvous.clear": "Сбросить цель сближения",
+  "around_planet.moon.name": "Луна",
+  "around_planet.moon.view_earth": "Вид: Земля",
+  "around_planet.moon.view_moon": "Вид: Луна",
+  "around_planet.moon.enter": "Вход в сферу Луны",
+  "around_planet.moon.exit": "Выход из сферы Луны",
+  "around_planet.moon.chart_moon": "Система отсчёта Луны",
+  "around_planet.moon.chart_earth": "Система отсчёта Земли"
 }

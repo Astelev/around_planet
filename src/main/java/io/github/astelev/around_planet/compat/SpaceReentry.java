@@ -25,7 +25,7 @@ public final class SpaceReentry {
         var data=SpaceOrbitData.get(level.getServer());var cells=SpaceCells.get(level);var last=LAST.computeIfAbsent(level,k->new HashMap<>());
         last.keySet().removeIf(id->cells.all().stream().noneMatch(cell->cell.id().equals(id)));
         for(var cell:cells.all()) {
-            var nav=SpaceLocalPhysics.navigation(level,cell);var trajectory=data.get(cell.id());if(trajectory.isEmpty())continue;
+            var nav=SpaceLocalPhysics.navigation(level,cell);var trajectory=data.get(cell.id());if(trajectory.isEmpty()||CelestialSystem.MOON.equals(trajectory.get().primary()))continue;
             long now=level.getGameTime();SpaceAtmosphere.advance(level,cell.id(),cell);var state=data.sample(cell.id(),now);double shell=SpaceAtmosphere.returnAltitude();
             if(data.reentry(cell.id()).isEmpty()) {
                 SpaceVector previous=last.put(cell.id(),state.position());SpaceVector contact=null;

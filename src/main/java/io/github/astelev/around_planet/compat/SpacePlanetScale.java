@@ -12,9 +12,9 @@ public final class SpacePlanetScale {
         io.github.astelev.around_planet.AroundPlanet.LOGGER.info("PLANET_SPIN periodSeconds={} radius={} equatorSpeed={} circularSpeed={} upperAtmosphereRatio={}",PlanetSpin.PERIOD_SECONDS,planet.radius(),PlanetSpin.OMEGA*planet.radius(),Math.sqrt(gravity*planet.radius()),spinRatio);
         if(gravity>0 && spinRatio<3)io.github.astelev.around_planet.AroundPlanet.LOGGER.warn("Custom planet size/gravity gives circular-to-spin speed ratio below 3 at the atmosphere top: {}. Rotation period and configured gravity were retained.",spinRatio);
         for(var id:data.ids()){var old=data.navigation(id);if(old.isEmpty() || old.get().planet().equals(planet))continue;
-            var nav=old.get();var state=data.sample(id,level.getGameTime());double distance=state.position().length(),altitude=distance-nav.planet().radius();
-            if(distance<1e-9 || planet.radius()+altitude<=0)continue;
-            var p=state.position().scale((planet.radius()+altitude)/distance);var orbit=data.get(id).orElseThrow();boolean waiting=data.reentry(id).isPresent();
+            var nav=old.get();var state=data.sample(id,level.getGameTime());boolean moon=CelestialSystem.MOON.equals(data.get(id).orElseThrow().primary());double oldRadius=nav.planet().radius()*(moon?.2724:1),newRadius=planet.radius()*(moon?.2724:1);double distance=state.position().length(),altitude=distance-oldRadius;
+            if(distance<1e-9 || newRadius+altitude<=0)continue;
+            var p=state.position().scale((newRadius+altitude)/distance);var orbit=data.get(id).orElseThrow();boolean waiting=data.reentry(id).isPresent();
             double ratio=planet.radius()/nav.planet().radius();data.put(id,new SpaceTrajectory(orbit.primary(),level.getGameTime(),new SpaceState(p,state.velocity()),orbit.mu()*ratio*ratio));
             data.navigate(id,new SpaceNavigation(planet,nav.frame()));if(waiting)data.reenter(id,p,level.getGameTime());
         }

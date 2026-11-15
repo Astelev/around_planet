@@ -113,5 +113,12 @@
   "around_planet.maneuver.time": "In, s",
   "around_planet.maneuver.time_help": "Seconds until this maneuver. ± shifts the node by the selected step.",
   "around_planet.map.maneuver_node": "Maneuver node",
-  "around_planet.rendezvous.clear": "Clear rendezvous target"
+  "around_planet.rendezvous.clear": "Clear rendezvous target",
+  "around_planet.moon.name": "Moon",
+  "around_planet.moon.view_earth": "View: Earth",
+  "around_planet.moon.view_moon": "View: Moon",
+  "around_planet.moon.enter": "Moon SOI entry",
+  "around_planet.moon.exit": "Moon SOI exit",
+  "around_planet.moon.chart_moon": "Moon reference frame",
+  "around_planet.moon.chart_earth": "Earth reference frame"
 }

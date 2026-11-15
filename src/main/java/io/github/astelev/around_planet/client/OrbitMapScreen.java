@@ -13,35 +13,40 @@ import java.util.*;
 public final class OrbitMapScreen extends Screen {
     private record LabelBox(int x,int y,int width,int height){boolean intersects(LabelBox b){return x<b.x+b.width&&x+width>b.x&&y<b.y+b.height&&y+height>b.y;}}
     private final List<LabelBox> labels=new ArrayList<>();
-    private record View(OrbitCamera camera,boolean follow){}
+    private record View(OrbitCamera camera,boolean follow,String primary){}
     private static final Map<net.minecraft.client.multiplayer.ClientLevel,Map<UUID,View>> VIEWS=new WeakHashMap<>();
+    private final LunarMapLayer lunar=new LunarMapLayer(this);
+    String viewPrimary(){return lunar.primary();}
+    double viewRadius(){return lunar.enabled()?lunar.system().radius(viewPrimary()):sampled==null?1:sampled.radius();}
+    double viewEntry(){return lunar.moon()?0:lunar.enabled()?lunar.system().earthEntry():sampled==null?0:sampled.returnAltitude();}
+    void reframe(){fitted=false;sampled=null;}
     private final RendezvousMapLayer rendezvous=new RendezvousMapLayer(this);
     private UUID focusId(){var r=RendezvousClient.current();var p=ManeuverClient.current();return r!=null?r.focus():p==null?null:p.focus();}
     private final ManeuverMapLayer maneuvers;private double pressX,pressY;private boolean mapPressed;
     private final OrbitSphereTexture sphere=new OrbitSphereTexture();
     private record Other(io.github.astelev.around_planet.network.SpaceMapPayload.Body body,OrbitPlot plot,int color){}
     private java.util.List<Other> others=java.util.List.of();private io.github.astelev.around_planet.network.SpaceMapPayload catalog;
-    private final OrbitCamera camera=new OrbitCamera();private SpaceStatusPayload sampled;private OrbitPlot plot;private boolean fitted;private boolean follow;private Button followButton;
+    private final OrbitCamera camera=new OrbitCamera();private SpaceStatusPayload sampled,sampledForPlot;private OrbitPlot plot;private boolean fitted;private boolean follow;private Button followButton;
     private int left=8,top=32,right,bottom;private static final int FUTURE=0xFF69E4DB;
     public OrbitMapScreen(){this(null);}
     public OrbitMapScreen(UUID session){super(Component.translatable(session==null?"around_planet.map.title":"around_planet.maneuver.title"));maneuvers=new ManeuverMapLayer(this,session);}
-    @Override protected void init(){right=width-(maneuvers.editor()?190:8);bottom=height-45;for(var widget:maneuvers.init(width-179,32,175))addRenderableWidget(widget);if(maneuvers.editor()){addRenderableWidget(rendezvous.init(width-179,height-23,171));addRenderableWidget(rendezvous.clearButton());}SpaceMapCatalog.subscribe(true);followButton=addRenderableWidget(Button.builder(followLabel(),b->{follow=!follow;if(follow&&sampled!=null)camera.focus=state().position();b.setMessage(followLabel());}).bounds(width-187,8,104,20).build());addRenderableWidget(Button.builder(Component.translatable("around_planet.map.reset"),b->reset()).bounds(width-79,8,70,20).build());}
+    @Override protected void init(){right=width-(maneuvers.editor()?190:8);bottom=height-45;for(var widget:maneuvers.init(width-179,32,175))addRenderableWidget(widget);if(maneuvers.editor()){addRenderableWidget(rendezvous.init(width-179,height-23,171));addRenderableWidget(rendezvous.clearButton());}SpaceMapCatalog.subscribe(true);addRenderableWidget(lunar.init());followButton=addRenderableWidget(Button.builder(followLabel(),b->{follow=!follow;if(follow&&sampled!=null)camera.focus=state().position();b.setMessage(followLabel());}).bounds(width-187,8,104,20).build());addRenderableWidget(Button.builder(Component.translatable("around_planet.map.reset"),b->reset()).bounds(width-79,8,70,20).build());}
     @Override public void renderBackground(GuiGraphics g,int x,int y,float tick){}
     @Override public boolean isPauseScreen(){return false;}
     @Override public void tick(){if(minecraft.player==null || !SpaceCells.contains(minecraft.player)){onClose();return;}if(minecraft.level.getGameTime()%40==0)SpaceMapCatalog.subscribe(true);}
-    @Override public void removed(){if(fitted&&minecraft.level!=null&&focusId()!=null)VIEWS.computeIfAbsent(minecraft.level,k->new HashMap<>()).put(focusId(),new View(camera.copy(),follow));sphere.close();SpaceMapCatalog.subscribe(false);super.removed();}
+    @Override public void removed(){if(fitted&&minecraft.level!=null&&focusId()!=null)VIEWS.computeIfAbsent(minecraft.level,k->new HashMap<>()).put(focusId(),new View(camera.copy(),follow,viewPrimary()));sphere.close();SpaceMapCatalog.subscribe(false);super.removed();}
     private void update(){var sample=SpaceHud.current();if(sample==null || !sample.active() || sample.radius()<=0)return;
-        if(sample!=sampled){sampled=sample;plot=OrbitPlot.create(state(),sample.mu(),sample.radius(),sample.returnAltitude(),sample.returning());if(!fitted){var id=focusId();var saved=id==null?null:VIEWS.getOrDefault(minecraft.level,Map.of()).get(id);if(saved==null)reset();else{camera.set(saved.camera());follow=saved.follow();if(followButton!=null)followButton.setMessage(followLabel());}fitted=true;}}
+        lunar.update();sampled=sample;maneuvers.update(viewRadius(),viewEntry());if(sample!=sampledForPlot||!fitted){sampledForPlot=sample;var path=maneuvers.pathForView();plot=OrbitPlot.create(state(),path==null?sample.mu():path.mu(),viewRadius(),viewEntry(),sample.returning());if(!fitted){var id=focusId();var saved=id==null?null:VIEWS.getOrDefault(minecraft.level,Map.of()).get(id);if(saved==null||!saved.primary().equals(viewPrimary()))reset();else{camera.set(saved.camera());follow=saved.follow();if(followButton!=null)followButton.setMessage(followLabel());}fitted=true;}}
         if(follow)camera.focus=state().position();
-        maneuvers.update(sample.radius(),sample.returnAltitude());rendezvous.update(sample.radius(),sample.returnAltitude());
-        var next=SpaceMapCatalog.current();if(next!=catalog){catalog=next;var list=new ArrayList<Other>();if(next!=null)for(var body:next.bodies()){
+        rendezvous.update(viewRadius(),viewEntry());
+        var next=SpaceMapCatalog.current();if(next!=catalog){catalog=next;var list=new ArrayList<Other>();if(next!=null)for(var body:next.bodies()){if(CelestialSystem.body(body.id()))continue;
             var state=new SpaceState(new SpaceVector(body.x(),body.y(),body.z()),new SpaceVector(body.vx(),body.vy(),body.vz()));
             int[] colors={0xFFB59AFF,0xFFFFB775,0xFF92D98C,0xFFFF8BAF,0xFF80BFFF};int color=colors[Math.floorMod(body.id().hashCode(),colors.length)];
             list.add(new Other(body,OrbitPlot.create(state,body.mu(),sample.radius(),body.returnAltitude(),body.waiting()),color));}others=List.copyOf(list);}
     }
-    private SpaceState state(){var state=new SpaceState(new SpaceVector(sampled.x(),sampled.y(),sampled.z()),new SpaceVector(sampled.vx(),sampled.vy(),sampled.vz()));return sampled.returning()?state:new SpaceTrajectory("map",0,state,sampled.mu()).afterSeconds(SpaceHud.age(0));}
+    private SpaceState state(){var packet=ManeuverClient.current();if(lunar.enabled()&&packet!=null&&!packet.trajectory().primary().equals(viewPrimary())){var point=maneuvers.firstForView();if(point!=null)return point;return new SpaceState(new SpaceVector(viewRadius()*3,0,0),SpaceVector.ZERO);}var state=new SpaceState(new SpaceVector(sampled.x(),sampled.y(),sampled.z()),new SpaceVector(sampled.vx(),sampled.vy(),sampled.vz()));return sampled.returning()?state:new SpaceTrajectory("map",0,state,sampled.mu()).afterSeconds(SpaceHud.age(0));}
     private Component followLabel(){return Component.translatable(follow?"around_planet.map.follow_on":"around_planet.map.follow_off");}
-    private void reset(){follow=false;if(followButton!=null)followButton.setMessage(followLabel());if(sampled!=null&&plot!=null){var focusState=state();var focusPlot=plot;var planned=ManeuverClient.current();if(maneuvers.authorized()&&planned!=null){focusState=planned.trajectory().at(ManeuverClient.now());focusPlot=OrbitPlot.create(focusState,planned.trajectory().mu(),sampled.radius(),sampled.returnAltitude(),sampled.returning());}double extent=Math.min(focusPlot.extent(sampled.radius()),Math.max(sampled.radius()*8,focusState.position().length()*2));camera.fit(focusState,extent*1.12);if(maneuvers.editor())camera.pitch=.45;}}
+    private void reset(){follow=false;if(followButton!=null)followButton.setMessage(followLabel());if(sampled!=null&&plot!=null){var focusState=state();var focusPlot=plot;var planned=ManeuverClient.current();if(maneuvers.authorized()&&planned!=null&&planned.trajectory().primary().equals(viewPrimary())){focusState=planned.trajectory().at(ManeuverClient.now());focusPlot=OrbitPlot.create(focusState,planned.trajectory().mu(),viewRadius(),sampled.returnAltitude(),sampled.returning());}double extent=Math.min(focusPlot.extent(viewRadius()),Math.max(viewRadius()*8,focusState.position().length()*2));camera.fit(focusState,extent*1.12);if(maneuvers.editor())camera.pitch=.45;}}
 
     private double size(){return Math.max(1,Math.min(right-left,bottom-top));}
     boolean planAt(long tick){return maneuvers.at(tick);}
@@ -53,27 +58,27 @@ public final class OrbitMapScreen extends Screen {
         if(sampled==null || plot==null){g.drawCenteredString(font,Component.translatable("around_planet.map.waiting"),width/2,height/2,0xFFBAC9DC);super.render(g,mx,my,partial);return;}
         double speed=state().velocity().length();
         g.enableScissor(left,top,right,bottom);g.fill(left,top,right,bottom,0xFF0B1423);
-        var planetCenter=project(SpaceVector.ZERO);double cx=planetCenter.x(),cy=planetCenter.y(),radius=sampled.radius()*camera.scale(size());
+        var planetCenter=project(SpaceVector.ZERO);double cx=planetCenter.x(),cy=planetCenter.y(),radius=viewRadius()*camera.scale(size());
         g.drawManaged(()->{for(int i=1;i<=4;i++)circle(g,cx,cy,radius*i,0xFF19283C,false);
             globalAxes(g,true);
-            for(var other:others)if(!rendezvous.isTarget(other.body.id()))arcs(g,other.plot,other.color,true,3);rendezvous.paths(g,true);arcs(g,true);maneuvers.paths(g,true);
+            for(var other:others)if(lunar.sameChart()&&!rendezvous.isTarget(other.body.id()))arcs(g,other.plot,other.color,true,3);rendezvous.paths(g,true);if(!lunar.enabled())arcs(g,true);maneuvers.paths(g,true);
         });
-        sphere.render(g,camera,sampled.radius(),left,top,right,bottom,PlanetDaylight.spin(minecraft.level,partial).angle());
-        g.drawManaged(()->{globalAxes(g,false);for(var other:others)if(!rendezvous.isTarget(other.body.id()))arcs(g,other.plot,other.color,false,3);rendezvous.paths(g,false);arcs(g,false);maneuvers.paths(g,false);
-            for(var other:others){if(rendezvous.isTarget(other.body.id()))continue;var p=new SpaceVector(other.body.x(),other.body.y(),other.body.z());var screen=project(p);boolean hover=Math.hypot(screen.x()-mx,screen.y()-my)<8;
+        sphere.render(g,camera,viewRadius(),left,top,right,bottom,PlanetDaylight.spin(minecraft.level,partial).angle(),lunar.moon());
+        g.drawManaged(()->{globalAxes(g,false);for(var other:others)if(lunar.sameChart()&&!rendezvous.isTarget(other.body.id()))arcs(g,other.plot,other.color,false,3);rendezvous.paths(g,false);if(!lunar.enabled())arcs(g,false);maneuvers.paths(g,false);
+            for(var other:others){if(!lunar.sameChart()||rendezvous.isTarget(other.body.id()))continue;var p=new SpaceVector(other.body.x(),other.body.y(),other.body.z());var screen=project(p);boolean hover=Math.hypot(screen.x()-mx,screen.y()-my)<8;
                 marker(g,p,other.color,hover?other.body.name()+(other.body.loaded()?"":" · "+Component.translatable("around_planet.map.dormant").getString()):"");}
         });
         if(plot.reentry() && plot.points().size()>1)marker(g,plot.points().getLast(),0xFFFFAE68,Component.translatable("around_planet.map.entry").getString());
         var current=project(state().position());g.fill((int)current.x()-4,(int)current.y()-4,(int)current.x()+5,(int)current.y()+5,0xFF101626);g.fill((int)current.x()-2,(int)current.y()-2,(int)current.x()+3,(int)current.y()+3,0xFFFFD85C);
         if(speed>1e-8){var arrow=project(state().position().add(state().velocity().scale(12/(camera.scale(size())*speed))));line(g,current.x(),current.y(),arrow.x(),arrow.y(),0xFFFFD85C);}
-        rendezvous.markers(g);maneuvers.markers(g,mx,my);axisCompass(g);g.disableScissor();maneuvers.panel(g);rendezvous.panel(g,left,top,right,bottom);if(sampled.returning())g.drawCenteredString(font,Component.translatable("around_planet.space.returning"),width/2,top+9,0xFFFFAE68);
-        super.render(g,mx,my,partial);if(!maneuvers.tooltip(g,mx,my,true)&&!rendezvous.tooltip(g,mx,my))maneuvers.tooltip(g,mx,my);
+        rendezvous.markers(g);maneuvers.markers(g,mx,my);lunar.render(g,maneuvers.preview());axisCompass(g);g.disableScissor();maneuvers.panel(g);rendezvous.panel(g,left,top,right,bottom);if(sampled.returning())g.drawCenteredString(font,Component.translatable("around_planet.space.returning"),width/2,top+9,0xFFFFAE68);
+        super.render(g,mx,my,partial);if(!maneuvers.tooltip(g,mx,my,true)&&!lunar.tooltip(g,mx,my,maneuvers.preview())&&!rendezvous.tooltip(g,mx,my))maneuvers.tooltip(g,mx,my);
     }
     /** Signed inertial axes start at the planet surface so the opaque globe occludes their inner halves. */
     private void globalAxes(GuiGraphics g,boolean behind){
-        double length=Math.max(sampled.radius()*1.45,.44*size()/camera.scale(size()));
+        double length=Math.max(viewRadius()*1.45,.44*size()/camera.scale(size()));
         for(var axis:OrbitAxes.values())for(int sign:new int[]{-1,1}){
-            var start=project(axis.vector.scale(sign*sampled.radius()));var end=project(axis.vector.scale(sign*length));
+            var start=project(axis.vector.scale(sign*viewRadius()));var end=project(axis.vector.scale(sign*length));
             if((end.depth()<0)!=behind)continue;
             int color=sign>0?axis.color:axis.dim();var clipped=OrbitCamera.clip(start.x(),start.y(),end.x(),end.y(),left+5,top+6,right-18,bottom-12);if(clipped==null)continue;
             if(sign>0){line(g,clipped[0],clipped[1],clipped[2],clipped[3],color);arrowHead(g,clipped[0],clipped[1],clipped[2],clipped[3],color);}
@@ -98,7 +103,7 @@ public final class OrbitMapScreen extends Screen {
     private void arcs(GuiGraphics g,OrbitPlot curve,int color,boolean behind,int stride){var points=curve.points();for(int i=0;i<points.size()-1;i+=stride){var a=project(points.get(i));var b=project(points.get(Math.min(points.size()-1,i+stride)));int dim=0xFF000000|((color&0xFEFEFE)>>>1);if(((a.depth()+b.depth())/2<0)==behind)line(g,a.x(),a.y(),b.x(),b.y(),behind?dim:color);}}
     void marker(GuiGraphics g,SpaceVector v,int color,String text){if(v==null)return;var p=project(v);if(p.x()<left || p.x()>right || p.y()<top || p.y()>bottom)return;
         var center=project(SpaceVector.ZERO);double scale=camera.scale(size()),x=p.x()-center.x(),y=p.y()-center.y();
-        if(p.depth()<0 && x*x+y*y<Math.pow(sampled.radius()*scale,2))return;
+        if(p.depth()<0 && x*x+y*y<Math.pow(viewRadius()*scale,2))return;
         g.fill((int)p.x()-2,(int)p.y()-2,(int)p.x()+3,(int)p.y()+3,color);if(!text.isEmpty()){var shown=font.plainSubstrByWidth(text,Math.max(20,right-left-12));int w=font.width(shown),labelX=Math.clamp((int)p.x()+6,left+3,Math.max(left+3,right-w-3)),labelY=Math.clamp((int)p.y()-4,top+2,bottom-10);var box=new LabelBox(labelX-2,labelY-1,w+4,11);if(labels.stream().noneMatch(box::intersects)){labels.add(box);g.fill(labelX-2,labelY-1,labelX+w+2,labelY+10,0xbb07101d);g.drawString(font,shown,labelX,labelY,color,true);}}
     }
     private void circle(GuiGraphics g,double cx,double cy,double r,int color,boolean solid){if(r<.5 || !Double.isFinite(r))return;
@@ -107,9 +112,9 @@ public final class OrbitMapScreen extends Screen {
     }
     void line(GuiGraphics g,double ax,double ay,double bx,double by,int color){var c=OrbitCamera.clip(ax,ay,bx,by,left,top,right,bottom);if(c==null)return;double dx=c[2]-c[0],dy=c[3]-c[1],length=Math.hypot(dx,dy);if(length<.1)return;
         var pose=g.pose();pose.pushPose();pose.translate(c[0],c[1],0);pose.mulPose(Axis.ZP.rotation((float)Math.atan2(dy,dx)));g.fill(0,0,(int)Math.ceil(length),1,color);pose.popPose();}
-    boolean visible(SpaceVector v){var p=project(v);if(p.x()<left||p.x()>right||p.y()<top||p.y()>bottom)return false;var center=project(SpaceVector.ZERO);double x=p.x()-center.x(),y=p.y()-center.y();return p.depth()>=0||x*x+y*y>=Math.pow(sampled.radius()*camera.scale(size()),2);}
+    boolean visible(SpaceVector v){var p=project(v);if(p.x()<left||p.x()>right||p.y()<top||p.y()>bottom)return false;var center=project(SpaceVector.ZERO);double x=p.x()-center.x(),y=p.y()-center.y();return p.depth()>=0||x*x+y*y>=Math.pow(viewRadius()*camera.scale(size()),2);}
     @Override public boolean mouseClicked(double x,double y,int button){if(super.mouseClicked(x,y,button))return true;if(button==0&&x>=left&&x<=right&&y>=top&&y<=bottom){if(getFocused()!=null)getFocused().setFocused(false);setFocused(null);pressX=x;pressY=y;mapPressed=true;return true;}return false;}
-    @Override public boolean mouseReleased(double x,double y,int button){if(button==0&&mapPressed){mapPressed=false;if(Math.hypot(x-pressX,y-pressY)<4){if(!maneuvers.clickPriority(x,y)&&!rendezvous.select(x,y))maneuvers.click(x,y);}return true;}return super.mouseReleased(x,y,button);}
+    @Override public boolean mouseReleased(double x,double y,int button){if(button==0&&mapPressed){mapPressed=false;if(Math.hypot(x-pressX,y-pressY)<4){if(!maneuvers.clickPriority(x,y)&&!lunar.select(x,y,maneuvers.preview())&&!rendezvous.select(x,y))maneuvers.click(x,y);}return true;}return super.mouseReleased(x,y,button);}
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){if(button==0&&mapPressed){camera.rotate(dx,dy);return true;}if((button==1 || button==2)&&x>=left&&x<=right&&y>=top&&y<=bottom){follow=false;if(followButton!=null)followButton.setMessage(followLabel());camera.pan(dx,dy,size());return true;}return super.mouseDragged(x,y,button,dx,dy);}
     @Override public boolean mouseScrolled(double x,double y,double horizontal,double vertical){if(x>=left&&x<=right&&y>=top&&y<=bottom){camera.zoom(vertical);return true;}return super.mouseScrolled(x,y,horizontal,vertical);}
     @Override public boolean keyPressed(int key,int scan,int modifiers){if(getFocused() instanceof net.minecraft.client.gui.components.EditBox edit&&edit.isFocused()){return super.keyPressed(key,scan,modifiers);}if(OrbitMapKeys.MAP.matches(key,scan)){onClose();return true;}if(key==GLFW.GLFW_KEY_R){reset();return true;}if(key==GLFW.GLFW_KEY_EQUAL || key==GLFW.GLFW_KEY_KP_ADD){camera.zoom(1);return true;}if(key==GLFW.GLFW_KEY_MINUS || key==GLFW.GLFW_KEY_KP_SUBTRACT){camera.zoom(-1);return true;}return super.keyPressed(key,scan,modifiers);}

@@ -14,10 +14,14 @@ import java.util.*;
  */
 public final class SpaceOrbitData extends SavedData {
     public static final String STORAGE_ID="around_planet_space_orbits";
+    private CelestialSystem system;
+    public CelestialSystem system(){return system;}
+    public void system(CelestialSystem value){if(!Objects.equals(system,value)){system=value;setDirty();}}
     private final Map<UUID,SpaceTrajectory> objects=new HashMap<>();
     private final Map<UUID,UUID> targets=new HashMap<>();
-    public Optional<UUID> target(UUID id){return Optional.ofNullable(targets.get(id)).filter(objects::containsKey);}
-    public void target(UUID id,UUID target){require(id);if(target==null)targets.remove(id);else{require(target);if(id.equals(target))throw new IllegalArgumentException("Self target");targets.put(id,target);}setDirty();}
+    public SpaceState targetState(UUID focus,UUID target,long tick){var own=require(focus);if(CelestialSystem.body(target)){if(system==null)throw new IllegalArgumentException("Missing celestial system");return system.target(target,own.primary(),tick);}var state=sample(target,tick);var other=require(target);return system!=null&&system.managed(own.primary())&&system.managed(other.primary())?system.relative(own.primary(),system.global(other.primary(),state,tick),tick):state;}
+    public Optional<UUID> target(UUID id){return Optional.ofNullable(targets.get(id)).filter(key->objects.containsKey(key)||CelestialSystem.body(key));}
+    public void target(UUID id,UUID target){require(id);if(target==null)targets.remove(id);else{if(!CelestialSystem.body(target))require(target);if(id.equals(target))throw new IllegalArgumentException("Self target");targets.put(id,target);}setDirty();}
     private final Map<UUID,List<ManeuverNode>> maneuvers=new HashMap<>();
     public List<ManeuverNode> maneuvers(UUID id){return maneuvers.getOrDefault(id,List.of());}
     public void maneuver(UUID orbit,ManeuverNode node){require(orbit);var nodes=new ArrayList<>(maneuvers(orbit));nodes.removeIf(n->n.id().equals(node.id()));if(nodes.size()>=ManeuverNode.MAX_NODES)throw new IllegalArgumentException("Too many maneuvers");nodes.add(node);nodes.sort(Comparator.comparingLong(ManeuverNode::tick).thenComparing(ManeuverNode::id));maneuvers.put(orbit,List.copyOf(nodes));setDirty();}
@@ -53,7 +57,7 @@ public final class SpaceOrbitData extends SavedData {
     public Set<UUID> ids(){return Set.copyOf(objects.keySet());}
     public SpaceState sample(UUID id,long gameTick){var state=require(id).at(gameTick);return reentries.containsKey(id)?new SpaceState(reentries.get(id),state.velocity()):state;}
     public void put(UUID id,SpaceTrajectory trajectory) {
-        Objects.requireNonNull(id);Objects.requireNonNull(trajectory);
+        Objects.requireNonNull(id);Objects.requireNonNull(trajectory);if(CelestialSystem.body(id))throw new IllegalArgumentException("Celestial bodies have prescribed ephemerides");
         if(!trajectory.equals(objects.put(id,trajectory)))setDirty();
     }
     public void remove(UUID id){targets.remove(id);targets.values().removeIf(id::equals);if(maneuvers.remove(id)!=null | objects.remove(id)!=null | navigation.remove(id)!=null | reentries.remove(id)!=null | surfaceContacts.remove(id)!=null)setDirty();}
@@ -66,11 +70,11 @@ public final class SpaceOrbitData extends SavedData {
         put(detached,trajectory);return trajectory;
     }
     /** Atomic virtual-time jump; Minecraft gameTime and physical cells remain untouched. */
-    public void warp(long now,long ticks){if(ticks<0)throw new IllegalArgumentException("Negative orbital warp");if(ticks==0)return;long future=Math.addExact(now,ticks);var advanced=new HashMap<UUID,SpaceTrajectory>();var plans=new HashMap<UUID,List<ManeuverNode>>();for(var e:objects.entrySet()){var path=e.getValue();advanced.put(e.getKey(),reentries.containsKey(e.getKey())?path:new SpaceTrajectory(path.primary(),now,path.at(future),path.mu()));}for(var e:maneuvers.entrySet()){var nodes=new ArrayList<ManeuverNode>();for(var n:e.getValue())nodes.add(new ManeuverNode(n.id(),Math.max(0,n.tick()-ticks),n.prograde(),n.normal(),n.radial(),n.warningSeconds()));plans.put(e.getKey(),List.copyOf(nodes));}objects.clear();objects.putAll(advanced);maneuvers.clear();maneuvers.putAll(plans);setDirty();}
+    public void warp(long now,long ticks){if(ticks<0)throw new IllegalArgumentException("Negative orbital warp");if(ticks==0)return;long future=Math.addExact(now,ticks);var advanced=new HashMap<UUID,SpaceTrajectory>();var plans=new HashMap<UUID,List<ManeuverNode>>();for(var e:objects.entrySet()){var path=e.getValue();var coast=reentries.containsKey(e.getKey())?path:PatchedConics.trace(path,now,future,system).finalPath();advanced.put(e.getKey(),reentries.containsKey(e.getKey())?path:new SpaceTrajectory(coast.primary(),now,coast.at(future),coast.mu()));}for(var e:maneuvers.entrySet()){var nodes=new ArrayList<ManeuverNode>();for(var n:e.getValue())nodes.add(new ManeuverNode(n.id(),Math.max(0,n.tick()-ticks),n.prograde(),n.normal(),n.radial(),n.warningSeconds()));plans.put(e.getKey(),List.copyOf(nodes));}if(system!=null)system=system.warp(ticks);objects.clear();objects.putAll(advanced);maneuvers.clear();maneuvers.putAll(plans);setDirty();}
     private SpaceTrajectory require(UUID id){var value=objects.get(id);if(value==null)throw new IllegalArgumentException("Unknown space object: "+id);return value;}
     public static SpaceOrbitData load(CompoundTag tag,HolderLookup.Provider lookup) {
         if(tag.getInt("schema")!=1 || !tag.contains("objects",Tag.TAG_LIST))throw new IllegalArgumentException("Unsupported orbit save format");
-        var data=new SpaceOrbitData();var entries=(ListTag)tag.get("objects");
+        var data=new SpaceOrbitData();if(tag.contains("celestialSystem",Tag.TAG_COMPOUND)){var s=tag.getCompound("celestialSystem");data.system=new CelestialSystem(s.getDouble("radius"),s.getDouble("mu"),s.getLong("clock"),s.contains("entry")?s.getDouble("entry"):2000);}var entries=(ListTag)tag.get("objects");
         if(!entries.isEmpty() && entries.getElementType()!=Tag.TAG_COMPOUND)throw new IllegalArgumentException("Invalid orbit record list");
         for(var raw:entries) {
             var entry=(CompoundTag)raw;
@@ -94,7 +98,7 @@ public final class SpaceOrbitData extends SavedData {
     private static SpaceVector readVector(CompoundTag t,String key){for(String axis:new String[]{"x","y","z"})if(!t.contains(key+axis,Tag.TAG_ANY_NUMERIC))throw new IllegalArgumentException("Missing frame axis");return new SpaceVector(t.getDouble(key+"x"),t.getDouble(key+"y"),t.getDouble(key+"z"));}
     private static void writeVector(CompoundTag t,String key,SpaceVector v){t.putDouble(key+"x",v.x());t.putDouble(key+"y",v.y());t.putDouble(key+"z",v.z());}
     @Override public CompoundTag save(CompoundTag tag,HolderLookup.Provider lookup) {
-        tag.putInt("schema",1);var list=new ListTag();
+        tag.putInt("schema",1);if(system!=null){var s=new CompoundTag();s.putDouble("radius",system.earthRadius());s.putDouble("mu",system.earthMu());s.putLong("clock",system.clockTicks());s.putDouble("entry",system.earthEntry());tag.put("celestialSystem",s);}var list=new ListTag();
         objects.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(item->{
             var e=new CompoundTag();var trajectory=item.getValue();var p=trajectory.initial().position();var v=trajectory.initial().velocity();
             e.putUUID("id",item.getKey());e.putString("primary",trajectory.primary());e.putLong("epoch",trajectory.epochTick());e.putDouble("mu",trajectory.mu());

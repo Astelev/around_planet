@@ -17,7 +17,7 @@ public final class SpaceMapSnapshot {
             String name=dormant==null?"Object "+id.toString().substring(0,8):dormant.name();if(loaded){var ship=container.getSubLevel(cell.ships().getFirst());if(ship.getName()!=null && !ship.getName().isBlank())name=ship.getName();}if(name.length()>80)name=name.substring(0,80);
             var state=data.sample(id,level.getGameTime());var r=state.position();var v=state.velocity();list.add(new SpaceMapPayload.Body(id,name,r.x(),r.y(),r.z(),v.x(),v.y(),v.z(),orbit.mu(),cell==null?(dormant==null?focus.originY():dormant.returnAltitude()):cell.originY(),data.reentry(id).isPresent(),loaded));
         }
-        return new SpaceMapPayload(focus.id(),level.getGameTime(),list.size(),List.copyOf(list.subList(0,Math.min(128,list.size()))));
+        if(data.system()!=null){var sys=data.system();String primary=data.get(focus.id()).orElseThrow().primary();if(sys.managed(primary))for(var bodyId:List.of(CelestialSystem.MOON_ID,CelestialSystem.EARTH_ID)){if(bodyId.equals(CelestialSystem.MOON_ID)&&primary.equals(CelestialSystem.MOON)||bodyId.equals(CelestialSystem.EARTH_ID)&&primary.equals(CelestialSystem.EARTH))continue;var s=sys.target(bodyId,primary,level.getGameTime());var r=s.position();var v=s.velocity();list.add(0,new SpaceMapPayload.Body(bodyId,bodyId.equals(CelestialSystem.MOON_ID)?"Moon":"Earth",r.x(),r.y(),r.z(),v.x(),v.y(),v.z(),sys.mu(primary),0,false,true));}}return new SpaceMapPayload(focus.id(),level.getGameTime(),list.size(),List.copyOf(list.subList(0,Math.min(128,list.size()))));
     }
     private SpaceMapSnapshot(){}
 }

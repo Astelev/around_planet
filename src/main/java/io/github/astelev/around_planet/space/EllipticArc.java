@@ -16,6 +16,8 @@ public final class EllipticArc {
         if(!(motion>0)||!Double.isFinite(2*Math.PI/motion))return null;return new EllipticArc(state,axis,tangent,a,e,peri,b,start,motion);
     }
     public double secondsTo(SpaceVector point){double angle=Math.atan2(point.dot(tangent)/b,1+(point.dot(axis)-peri)/a);while(angle<start-1e-12)angle+=2*Math.PI;return Math.max(0,meanDelta(angle)/motion);}
+    public double outwardCrossing(double radius){if(e<=1e-12||radius>=2*a-peri)return Double.POSITIVE_INFINITY;if(radius<=peri)return 0;double angle=Math.acos(Math.clamp((1-radius/a)/e,-1,1));while(angle<start+1e-10)angle+=2*Math.PI;return Math.max(0,meanDelta(angle)/motion);}
+    public double inwardCrossing(double radius){if(e<=1e-12||radius>=2*a-peri||radius<=peri)return Double.POSITIVE_INFINITY;double angle=-Math.acos(Math.clamp((1-radius/a)/e,-1,1));while(angle<start+1e-10)angle+=2*Math.PI;return Math.max(0,meanDelta(angle)/motion);}
     public double period(){return 2*Math.PI/motion;}
     public SpaceVector periapsis(){return axis.scale(peri);}
     public SpaceVector apoapsis(){return axis.scale(-(2*a-peri));}
