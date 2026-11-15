@@ -1,0 +1,6 @@
+package io.github.astelev.around_planet.space;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+class OrbitChartTest {
+ @Test void earthAndMoonConicsUseTheirOwnPrimaryAndCanBeViewedFromEitherChart(){var sys=new CelestialSystem(20000,4e9,1000);long tick=5000;var moon=sys.moon(tick).position();double radius=90000;var state=new SpaceState(new SpaceVector(radius,0,0),new SpaceVector(0,Math.sqrt(sys.earthMu()/radius),0));var earth=OrbitPlot.create(state,sys.earthMu(),sys.earthRadius(),2000,false);assertSame(earth,OrbitChart.translate(earth,OrbitChart.offset(sys,CelestialSystem.EARTH,CelestialSystem.EARTH,tick)));var lunarView=OrbitChart.translate(earth,OrbitChart.offset(sys,CelestialSystem.EARTH,CelestialSystem.MOON,tick));assertTrue(lunarView.points().getFirst().subtract(earth.points().getFirst().subtract(moon)).length()<1e-8);var back=OrbitChart.translate(lunarView,OrbitChart.offset(sys,CelestialSystem.MOON,CelestialSystem.EARTH,tick));assertTrue(back.points().getFirst().subtract(earth.points().getFirst()).length()<1e-8);assertEquals(earth.period(),lunarView.period());assertTrue(OrbitChart.shared(sys,CelestialSystem.EARTH,CelestialSystem.MOON));assertFalse(OrbitChart.shared(null,CelestialSystem.EARTH,CelestialSystem.MOON));}
+}

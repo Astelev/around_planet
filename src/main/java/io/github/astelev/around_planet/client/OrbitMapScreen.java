@@ -24,8 +24,8 @@ public final class OrbitMapScreen extends Screen {
     private UUID focusId(){var r=RendezvousClient.current();var p=ManeuverClient.current();return r!=null?r.focus():p==null?null:p.focus();}
     private final ManeuverMapLayer maneuvers;private double pressX,pressY;private boolean mapPressed;
     private final OrbitSphereTexture sphere=new OrbitSphereTexture();
-    private record Other(io.github.astelev.around_planet.network.SpaceMapPayload.Body body,OrbitPlot plot,int color){}
-    private java.util.List<Other> others=java.util.List.of();private io.github.astelev.around_planet.network.SpaceMapPayload catalog;
+    private record Other(io.github.astelev.around_planet.network.SpaceMapPayload.Body body,OrbitPlot plot,SpaceVector position,int color){}
+    private java.util.List<Other> others=java.util.List.of();private io.github.astelev.around_planet.network.SpaceMapPayload catalog;private String catalogChart;private CelestialSystem catalogSystem;
     private final OrbitCamera camera=new OrbitCamera();private SpaceStatusPayload sampled,sampledForPlot;private OrbitPlot plot;private boolean fitted;private boolean follow;private Button followButton;
     private int left=8,top=32,right,bottom;private static final int FUTURE=0xFF69E4DB;
     public OrbitMapScreen(){this(null);}
@@ -36,17 +36,18 @@ public final class OrbitMapScreen extends Screen {
     @Override public void tick(){if(minecraft.player==null || !SpaceCells.contains(minecraft.player)){onClose();return;}if(minecraft.level.getGameTime()%40==0)SpaceMapCatalog.subscribe(true);}
     @Override public void removed(){if(fitted&&minecraft.level!=null&&focusId()!=null)VIEWS.computeIfAbsent(minecraft.level,k->new HashMap<>()).put(focusId(),new View(camera.copy(),follow,viewPrimary()));sphere.close();SpaceMapCatalog.subscribe(false);super.removed();}
     private void update(){var sample=SpaceHud.current();if(sample==null || !sample.active() || sample.radius()<=0)return;
-        lunar.update();sampled=sample;maneuvers.update(viewRadius(),viewEntry());if(sample!=sampledForPlot||!fitted){sampledForPlot=sample;var path=maneuvers.pathForView();plot=OrbitPlot.create(state(),path==null?sample.mu():path.mu(),viewRadius(),viewEntry(),sample.returning());if(!fitted){var id=focusId();var saved=id==null?null:VIEWS.getOrDefault(minecraft.level,Map.of()).get(id);if(saved==null||!saved.primary().equals(viewPrimary()))reset();else{camera.set(saved.camera());follow=saved.follow();if(followButton!=null)followButton.setMessage(followLabel());}fitted=true;}}
+        lunar.update();sampled=sample;maneuvers.update(viewRadius(),viewEntry());if(sample!=sampledForPlot||!fitted){sampledForPlot=sample;var path=maneuvers.pathForView();plot=OrbitPlot.create(focusState(),path==null?(lunar.enabled()?lunar.system().mu(viewPrimary()):sample.mu()):path.mu(),viewRadius(),viewEntry(),sample.returning());if(!fitted){var id=focusId();var saved=id==null?null:VIEWS.getOrDefault(minecraft.level,Map.of()).get(id);if(saved==null||!saved.primary().equals(viewPrimary()))reset();else{camera.set(saved.camera());follow=saved.follow();if(followButton!=null)followButton.setMessage(followLabel());}fitted=true;}}
         if(follow)camera.focus=state().position();
         rendezvous.update(viewRadius(),viewEntry());
-        var next=SpaceMapCatalog.current();if(next!=catalog){catalog=next;var list=new ArrayList<Other>();if(next!=null)for(var body:next.bodies()){if(CelestialSystem.body(body.id()))continue;
+        var next=SpaceMapCatalog.current();if(next!=catalog||!Objects.equals(catalogChart,viewPrimary())||!Objects.equals(catalogSystem,lunar.system())){catalog=next;catalogChart=viewPrimary();catalogSystem=lunar.system();var list=new ArrayList<Other>();if(next!=null)for(var body:next.bodies()){if(CelestialSystem.body(body.id()))continue;
             var state=new SpaceState(new SpaceVector(body.x(),body.y(),body.z()),new SpaceVector(body.vx(),body.vy(),body.vz()));
             int[] colors={0xFFB59AFF,0xFFFFB775,0xFF92D98C,0xFFFF8BAF,0xFF80BFFF};int color=colors[Math.floorMod(body.id().hashCode(),colors.length)];
-            list.add(new Other(body,OrbitPlot.create(state,body.mu(),sample.radius(),body.returnAltitude(),body.waiting()),color));}others=List.copyOf(list);}
+            var offset=OrbitChart.offset(catalogSystem,body.primary(),viewPrimary(),next.now());double bodyRadius=catalogSystem!=null&&catalogSystem.managed(body.primary())?catalogSystem.radius(body.primary()):viewRadius();var shape=OrbitPlot.create(state,body.mu(),bodyRadius,body.returnAltitude(),body.waiting());list.add(new Other(body,OrbitChart.translate(shape,offset),state.position().add(offset),color));}others=List.copyOf(list);}
     }
-    private SpaceState state(){var packet=ManeuverClient.current();if(lunar.enabled()&&packet!=null&&!packet.trajectory().primary().equals(viewPrimary())){var point=maneuvers.firstForView();if(point!=null)return point;return new SpaceState(new SpaceVector(viewRadius()*3,0,0),SpaceVector.ZERO);}var state=new SpaceState(new SpaceVector(sampled.x(),sampled.y(),sampled.z()),new SpaceVector(sampled.vx(),sampled.vy(),sampled.vz()));return sampled.returning()?state:new SpaceTrajectory("map",0,state,sampled.mu()).afterSeconds(SpaceHud.age(0));}
+    private SpaceState state(){var state=new SpaceState(new SpaceVector(sampled.x(),sampled.y(),sampled.z()),new SpaceVector(sampled.vx(),sampled.vy(),sampled.vz()));if(!sampled.returning())state=new SpaceTrajectory("map",0,state,sampled.mu()).afterSeconds(SpaceHud.age(0));if(lunar.enabled()&&!sampled.primary().equals(viewPrimary()))return lunar.system().relative(viewPrimary(),lunar.system().global(sampled.primary(),state,ManeuverClient.now()),ManeuverClient.now());return state;}
+    private SpaceState focusState(){if(lunar.enabled()&&!sampled.primary().equals(viewPrimary())){var future=maneuvers.firstForView();if(future!=null)return future;}return state();}
     private Component followLabel(){return Component.translatable(follow?"around_planet.map.follow_on":"around_planet.map.follow_off");}
-    private void reset(){follow=false;if(followButton!=null)followButton.setMessage(followLabel());if(sampled!=null&&plot!=null){var focusState=state();var focusPlot=plot;var planned=ManeuverClient.current();if(maneuvers.authorized()&&planned!=null&&planned.trajectory().primary().equals(viewPrimary())){focusState=planned.trajectory().at(ManeuverClient.now());focusPlot=OrbitPlot.create(focusState,planned.trajectory().mu(),viewRadius(),sampled.returnAltitude(),sampled.returning());}double extent=Math.min(focusPlot.extent(viewRadius()),Math.max(viewRadius()*8,focusState.position().length()*2));camera.fit(focusState,extent*1.12);if(maneuvers.editor())camera.pitch=.45;}}
+    private void reset(){follow=false;if(followButton!=null)followButton.setMessage(followLabel());if(sampled!=null&&plot!=null){var focusState=focusState();var focusPlot=plot;var planned=ManeuverClient.current();if(maneuvers.authorized()&&planned!=null&&planned.trajectory().primary().equals(viewPrimary())){focusState=planned.trajectory().at(ManeuverClient.now());focusPlot=OrbitPlot.create(focusState,planned.trajectory().mu(),viewRadius(),sampled.returnAltitude(),sampled.returning());}double extent=Math.min(focusPlot.extent(viewRadius()),Math.max(viewRadius()*8,focusState.position().length()*2));camera.fit(focusState,extent*1.12);if(maneuvers.editor())camera.pitch=.45;}}
 
     private double size(){return Math.max(1,Math.min(right-left,bottom-top));}
     boolean planAt(long tick){return maneuvers.at(tick);}
@@ -61,11 +62,11 @@ public final class OrbitMapScreen extends Screen {
         var planetCenter=project(SpaceVector.ZERO);double cx=planetCenter.x(),cy=planetCenter.y(),radius=viewRadius()*camera.scale(size());
         g.drawManaged(()->{for(int i=1;i<=4;i++)circle(g,cx,cy,radius*i,0xFF19283C,false);
             globalAxes(g,true);
-            for(var other:others)if(lunar.sameChart()&&!rendezvous.isTarget(other.body.id()))arcs(g,other.plot,other.color,true,3);rendezvous.paths(g,true);if(!lunar.enabled())arcs(g,true);maneuvers.paths(g,true);
+            for(var other:others)if(!rendezvous.isTarget(other.body.id()))arcs(g,other.plot,other.color,true,3);rendezvous.paths(g,true);if(!lunar.enabled())arcs(g,true);maneuvers.paths(g,true);
         });
         sphere.render(g,camera,viewRadius(),left,top,right,bottom,PlanetDaylight.spin(minecraft.level,partial).angle(),lunar.moon());
-        g.drawManaged(()->{globalAxes(g,false);for(var other:others)if(lunar.sameChart()&&!rendezvous.isTarget(other.body.id()))arcs(g,other.plot,other.color,false,3);rendezvous.paths(g,false);if(!lunar.enabled())arcs(g,false);maneuvers.paths(g,false);
-            for(var other:others){if(!lunar.sameChart()||rendezvous.isTarget(other.body.id()))continue;var p=new SpaceVector(other.body.x(),other.body.y(),other.body.z());var screen=project(p);boolean hover=Math.hypot(screen.x()-mx,screen.y()-my)<8;
+        g.drawManaged(()->{globalAxes(g,false);for(var other:others)if(!rendezvous.isTarget(other.body.id()))arcs(g,other.plot,other.color,false,3);rendezvous.paths(g,false);if(!lunar.enabled())arcs(g,false);maneuvers.paths(g,false);
+            for(var other:others){if(rendezvous.isTarget(other.body.id()))continue;var p=other.position;var screen=project(p);boolean hover=Math.hypot(screen.x()-mx,screen.y()-my)<8;
                 marker(g,p,other.color,hover?other.body.name()+(other.body.loaded()?"":" · "+Component.translatable("around_planet.map.dormant").getString()):"");}
         });
         if(plot.reentry() && plot.points().size()>1)marker(g,plot.points().getLast(),0xFFFFAE68,Component.translatable("around_planet.map.entry").getString());
