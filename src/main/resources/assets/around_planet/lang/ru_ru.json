@@ -120,5 +120,8 @@
   "around_planet.moon.enter": "Вход в сферу Луны",
   "around_planet.moon.exit": "Выход из сферы Луны",
   "around_planet.moon.chart_moon": "Система отсчёта Луны",
-  "around_planet.moon.chart_earth": "Система отсчёта Земли"
+  "around_planet.moon.chart_earth": "Система отсчёта Земли",
+  "around_planet.maneuver.depth": "Дуги: %s",
+  "around_planet.maneuver.depth_help": "Число участков между переходами сфер влияния: 1–16. Нажатие увеличивает, Shift + нажатие уменьшает. Настройка сохраняется в планере.",
+  "around_planet.moon.circular_apsides": "Круговая орбита: Ap = Pe; отметки показывают две опорные точки."
 }

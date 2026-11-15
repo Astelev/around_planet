@@ -120,5 +120,8 @@
   "around_planet.moon.enter": "Moon SOI entry",
   "around_planet.moon.exit": "Moon SOI exit",
   "around_planet.moon.chart_moon": "Moon reference frame",
-  "around_planet.moon.chart_earth": "Earth reference frame"
+  "around_planet.moon.chart_earth": "Earth reference frame",
+  "around_planet.maneuver.depth": "Arcs: %s",
+  "around_planet.maneuver.depth_help": "Show 1–16 successive sphere-of-influence patches. Click to increase, Shift-click to decrease. Saved in this planner.",
+  "around_planet.moon.circular_apsides": "Circular orbit: Ap = Pe; markers show two reference points."
 }

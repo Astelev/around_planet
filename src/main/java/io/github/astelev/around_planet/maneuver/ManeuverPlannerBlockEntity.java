@@ -7,6 +7,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import io.github.astelev.around_planet.space.*;
 /** Loaded planners only; syncs next-node identity data, not a packet every countdown tick. */
 public final class ManeuverPlannerBlockEntity extends BlockEntity {
+    private int previewPatches=6;public int previewPatches(){return previewPatches;}public void configurePreview(int patches){previewPatches=Math.clamp(patches,1,16);setChanged();sync();}
     private int warningSeconds=30;private long nextTick=-1;private double deltaV;
     public ManeuverPlannerBlockEntity(BlockPos p,BlockState s){super(ManeuverRegistry.TYPE.get(),p,s);}
     public int warningSeconds(){return warningSeconds;}public long nextTick(){return nextTick;}public double deltaV(){return deltaV;}
@@ -18,8 +19,8 @@ public final class ManeuverPlannerBlockEntity extends BlockEntity {
         if(be.nextTick!=tick||be.deltaV!=dv){be.nextTick=tick;be.deltaV=dv;be.sync();}
     }
     private void sync(){if(level!=null&&!level.isClientSide)level.sendBlockUpdated(worldPosition,getBlockState(),getBlockState(),2);}
-    @Override protected void saveAdditional(CompoundTag tag,HolderLookup.Provider r){super.saveAdditional(tag,r);tag.putInt("WarningSeconds",warningSeconds);tag.putLong("NextManeuverTick",nextTick);tag.putDouble("NextManeuverDv",deltaV);}
-    @Override protected void loadAdditional(CompoundTag tag,HolderLookup.Provider r){super.loadAdditional(tag,r);warningSeconds=tag.contains("WarningSeconds")?Math.max(0,tag.getInt("WarningSeconds")):30;nextTick=tag.contains("NextManeuverTick")?tag.getLong("NextManeuverTick"):-1;double value=tag.getDouble("NextManeuverDv");deltaV=Double.isFinite(value)&&value>=0?value:0;}
+    @Override protected void saveAdditional(CompoundTag tag,HolderLookup.Provider r){super.saveAdditional(tag,r);tag.putInt("PreviewPatches",previewPatches);tag.putInt("WarningSeconds",warningSeconds);tag.putLong("NextManeuverTick",nextTick);tag.putDouble("NextManeuverDv",deltaV);}
+    @Override protected void loadAdditional(CompoundTag tag,HolderLookup.Provider r){super.loadAdditional(tag,r);previewPatches=tag.contains("PreviewPatches")?Math.clamp(tag.getInt("PreviewPatches"),1,16):6;warningSeconds=tag.contains("WarningSeconds")?Math.max(0,tag.getInt("WarningSeconds")):30;nextTick=tag.contains("NextManeuverTick")?tag.getLong("NextManeuverTick"):-1;double value=tag.getDouble("NextManeuverDv");deltaV=Double.isFinite(value)&&value>=0?value:0;}
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider r){return saveWithoutMetadata(r);}
     @Override public net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket getUpdatePacket(){return net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket.create(this);}
 }

@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.38: [точки Луны-цели, повторные пролёты и глубина прогноза](docs/lunar-target-and-patch-depth.md).
+
 Обновление 0.11.0-alpha.37: [тестовая Луна, сферы влияния и планирование лунных перелётов](docs/lunar-patched-conics.md).
 
 Обновление 0.11.0-alpha.36: [дробные интервалы предупреждений с точностью до тика](docs/fractional-maneuver-warnings.md).
@@ -454,7 +456,7 @@ bash ./gradlew -PplanetTests runGameTestServer
 bash ./gradlew runClient
 ```
 
-JAR: `build/libs/around_planet-0.11.0-alpha.37.jar`.
+JAR: `build/libs/around_planet-0.11.0-alpha.38.jar`.
 `-PcompatModsDir=/absolute/path/to/test-mods` добавляет локальные JAR только в
 среду запуска; они не включаются в мод. Серверные и клиентские тестовые классы
 также не входят в итоговый JAR. Клиентский smoke-тест запускается с
