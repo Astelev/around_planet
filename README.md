@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.53: [более узкое и тёмное сопло](docs/liquid-engine-narrow-dark-nozzle.md).
+
 Обновление 0.11.0-alpha.52: [наклонные стенки сопла Лаваля и свечение при работе](docs/liquid-engine-laval-lining.md).
 
 Обновление 0.11.0-alpha.51: [расход 5 кг/с, квадратное сопло и более широкая струя](docs/liquid-engine-square-nozzle.md).

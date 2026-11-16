@@ -5,6 +5,7 @@
   "shade_quads": true,
   "flip_v": true,
   "textures": {
+    "nozzle": "minecraft:block/polished_deepslate",
     "body": "minecraft:block/iron_block",
     "band": "minecraft:block/cyan_concrete",
     "pipe": "minecraft:block/copper_block",
