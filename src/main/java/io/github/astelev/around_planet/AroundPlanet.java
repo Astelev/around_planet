@@ -28,6 +28,8 @@ public final class AroundPlanet {
         bus.addListener(io.github.astelev.around_planet.network.RendezvousPayload::register);
         io.github.astelev.around_planet.sensor.OrbitalSensorRegistry.register(bus);
         io.github.astelev.around_planet.propulsion.PropulsionRegistry.register(bus);
+        io.github.astelev.around_planet.fuel.CryogenicFluids.register(bus);
+        bus.addListener((net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent event)->event.enqueueWork(io.github.astelev.around_planet.fuel.FuelMassBridge::registerDefaults));
         bus.addListener(io.github.astelev.around_planet.network.PropulsionPayload::register);
         bus.addListener(io.github.astelev.around_planet.network.OrbitalSensorPayload::register);
         if(net.neoforged.fml.ModList.get().isLoaded("sable")){io.github.astelev.around_planet.compat.SpaceRendezvous.init();io.github.astelev.around_planet.compat.ShipLoaderBridge.init();}

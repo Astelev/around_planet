@@ -137,5 +137,13 @@
   "around_planet.loader.tooltip": "Keeps its physical assembly loaded. Empty hand: toggle.",
   "around_planet.loader.on": "Assembly loading enabled",
   "around_planet.loader.off": "Assembly loading disabled",
-  "around_planet.loader.requires_sable": "Sable is required to load physical assemblies"
+  "around_planet.loader.requires_sable": "Sable is required to load physical assemblies",
+  "block.around_planet.liquid_rocket_engine": "Liquid Rocket Engine",
+  "fluid_type.around_planet.liquid_hydrogen": "Liquid Hydrogen",
+  "fluid_type.around_planet.liquid_oxygen": "Liquid Oxygen",
+  "item.around_planet.liquid_hydrogen_bucket": "Liquid Hydrogen Bucket",
+  "item.around_planet.liquid_oxygen_bucket": "Liquid Oxygen Bucket",
+  "around_planet.propulsion.mass_flow": "Mixture flow: %s kg/s",
+  "block.around_planet.liquid_hydrogen": "Liquid Hydrogen",
+  "block.around_planet.liquid_oxygen": "Liquid Oxygen"
 }

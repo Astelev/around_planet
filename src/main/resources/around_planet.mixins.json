@@ -64,7 +64,10 @@
     "MoonEntityGravityMixin",
     "ShipLoaderNativeActorMixin",
     "ShipLoaderTicketsMixin",
-    "SpaceHeldDiscardMixin"
+    "SpaceHeldDiscardMixin",
+    "RocketPondusMassMixin",
+    "RocketFallbackMassMixin",
+    "RocketAssemblyMassMixin"
   ],
   "injectors": {
     "defaultRequire": 1

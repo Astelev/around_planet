@@ -137,5 +137,13 @@
   "around_planet.loader.tooltip": "Удерживает конструкцию и связанные части в загрузке. Пустая рука: вкл./выкл.",
   "around_planet.loader.on": "Загрузка конструкции включена",
   "around_planet.loader.off": "Загрузка конструкции выключена",
-  "around_planet.loader.requires_sable": "Для загрузки физических конструкций требуется Sable"
+  "around_planet.loader.requires_sable": "Для загрузки физических конструкций требуется Sable",
+  "block.around_planet.liquid_rocket_engine": "Жидкостный ракетный двигатель",
+  "fluid_type.around_planet.liquid_hydrogen": "Жидкий водород",
+  "fluid_type.around_planet.liquid_oxygen": "Жидкий кислород",
+  "item.around_planet.liquid_hydrogen_bucket": "Ведро жидкого водорода",
+  "item.around_planet.liquid_oxygen_bucket": "Ведро жидкого кислорода",
+  "around_planet.propulsion.mass_flow": "Расход смеси: %s кг/с",
+  "block.around_planet.liquid_hydrogen": "Жидкий водород",
+  "block.around_planet.liquid_oxygen": "Жидкий кислород"
 }
