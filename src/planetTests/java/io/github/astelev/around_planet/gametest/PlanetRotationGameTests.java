@@ -13,6 +13,25 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import java.util.UUID;
 @PrefixGameTestTemplate(false)
 public final class PlanetRotationGameTests {
+    @GameTest(template="empty",templateNamespace="around_planet",batch="dayLengthConfig",timeoutTicks=100)
+    public static void configuredDayPeriodControlsLocalSkyAndPhysicalSpin(GameTestHelper h){
+        var level=h.getLevel();long oldTime=level.getDayTime();int oldSize=PlanetConfig.PLANET_SIZE.get();
+        double oldMinutes=PlanetConfig.DAY_LENGTH_MINUTES.get(),oldGravity=PlanetConfig.SPACE_GRAVITY.get();int oldTop=PlanetConfig.ATMOSPHERE_TOP.get();
+        var daylight=level.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DAYLIGHT);boolean wasAdvancing=daylight.get();
+        try{
+            daylight.set(true,level.getServer());
+            PlanetConfig.SPACE_GRAVITY.set(9.81);PlanetConfig.ATMOSPHERE_TOP.set(4000);PlanetConfig.DAY_LENGTH_MINUTES.set(0.0);
+            PlanetConfig.PLANET_SIZE.set(262144);h.assertTrue(PlanetDaylight.periodSeconds()==1500,"2x auto day was not 25 minutes");
+            PlanetConfig.PLANET_SIZE.set(393216);h.assertTrue(PlanetDaylight.periodSeconds()==1800,"3x auto day was not 30 minutes");
+            PlanetConfig.DAY_LENGTH_MINUTES.set(40.0);h.assertTrue(PlanetDaylight.periodSeconds()==2400,"Explicit day length ignored");
+            level.setDayTime(12000);h.assertTrue(Math.abs(PlanetDaylight.time(level,0,0))<1e-10,"Local noon still uses vanilla day length");
+            h.assertTrue(Math.abs(PlanetDaylight.spin(level).angle())<1e-10,"Planet angle differs from local sky");
+            h.assertTrue(Math.abs(PlanetDaylight.spin(level).omega()-2*Math.PI/2400)<1e-10,"Launch/spin speed still uses 20 minutes");
+            level.setDayTime(36000);h.assertTrue(Math.abs(PlanetDaylight.time(level,0,0)-.5)<1e-10,"Half custom day did not reach local midnight");
+            PlanetConfig.DAY_LENGTH_MINUTES.set(17.5);h.assertTrue(PlanetDaylight.periodSeconds()==1050,"Manual fractional minutes were rounded");
+            h.succeed();
+        }finally{daylight.set(wasAdvancing,level.getServer());level.setDayTime(oldTime);PlanetConfig.PLANET_SIZE.set(oldSize);PlanetConfig.DAY_LENGTH_MINUTES.set(oldMinutes);PlanetConfig.SPACE_GRAVITY.set(oldGravity);PlanetConfig.ATMOSPHERE_TOP.set(oldTop);}
+    }
     @GameTest(template="empty",templateNamespace="around_planet",timeoutTicks=100)
     public static void highCellConfigIsAcceptedAndOldDefaultMigratesOnce(GameTestHelper h){var config=com.electronwill.nightconfig.core.CommentedConfig.inMemory();config.set("space.cellY",9000);io.github.astelev.around_planet.PlanetConfigMigration.migrate(config);PlanetConfig.SPEC.correct(config);h.assertTrue(((Number)config.get("space.cellY")).intValue()==9000,"Spec rejected custom high cell Y");var legacy=com.electronwill.nightconfig.core.CommentedConfig.inMemory();legacy.set("space.cellY",1536);io.github.astelev.around_planet.PlanetConfigMigration.migrate(legacy);h.assertTrue(((Number)legacy.get("space.cellY")).intValue()==6144,"Legacy default did not migrate");legacy.set("space.cellY",7000);io.github.astelev.around_planet.PlanetConfigMigration.migrate(legacy);h.assertTrue(((Number)legacy.get("space.cellY")).intValue()==7000,"Migration overwrote a custom height");
         for(int value:new int[]{1536,1600,1700}){var old=com.electronwill.nightconfig.core.CommentedConfig.inMemory();old.set("space.cellY",value);old.set("space.heightLayoutRevision",1);io.github.astelev.around_planet.PlanetConfigMigration.migrate(old);PlanetConfig.SPEC.correct(old);h.assertTrue(((Number)old.get("space.cellY")).intValue()==6144 && ((Number)old.get("space.heightLayoutRevision")).intValue()==2,"Marked old height did not upgrade: "+value);}

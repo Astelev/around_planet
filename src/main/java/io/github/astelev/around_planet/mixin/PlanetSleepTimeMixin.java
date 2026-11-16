@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 public abstract class PlanetSleepTimeMixin {
     @WrapOperation(method="tick",at=@At(value="INVOKE",target="Lnet/neoforged/neoforge/event/EventHooks;onSleepFinished(Lnet/minecraft/server/level/ServerLevel;JJ)J"))
     private long planet$localDawn(ServerLevel level,long proposed,long current,Operation<Long> original){
-        if(PlanetDaylight.enabled(level)){double wait=0;for(var p:level.players())if(p.isSleeping() && !SpaceCells.contains(p))wait=Math.max(wait,PlanetSpin.ticksUntilDawn(current,PlanetDaylight.worldX(level,p.blockPosition()),io.github.astelev.around_planet.PlanetConfig.PLANET_SIZE.get()));proposed=current+(long)Math.ceil(wait);}
+        if(PlanetDaylight.enabled(level)){double wait=0;for(var p:level.players())if(p.isSleeping() && !SpaceCells.contains(p))wait=Math.max(wait,PlanetSpin.ticksUntilDawn(current,PlanetDaylight.worldX(level,p.blockPosition()),io.github.astelev.around_planet.PlanetConfig.PLANET_SIZE.get(),PlanetDaylight.periodSeconds()));proposed=current+(long)Math.ceil(wait);}
         return original.call(level,proposed,current);
     }
 }

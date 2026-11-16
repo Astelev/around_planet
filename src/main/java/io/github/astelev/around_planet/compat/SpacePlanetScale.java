@@ -5,11 +5,12 @@ import net.minecraft.server.level.ServerLevel;
 import java.util.*;
 /** Rebase saved planet-bound records once on load/size change, keeping altitude, inertial direction and surface gravity. */
 public final class SpacePlanetScale {
-    private static final Map<ServerLevel,Integer> APPLIED=new WeakHashMap<>();
-    public static void check(ServerLevel level){int size=PlanetConfig.PLANET_SIZE.get();if(Objects.equals(APPLIED.get(level),size))return;APPLIED.put(level,size);
+    private record Settings(int size,double period,double gravity,double atmosphere){}
+    private static final Map<ServerLevel,Settings> APPLIED=new WeakHashMap<>();
+    public static void check(ServerLevel level){int size=PlanetConfig.PLANET_SIZE.get();double period=PlanetDaylight.periodSeconds();var settings=new Settings(size,period,PlanetConfig.SPACE_GRAVITY.get(),SpaceAtmosphere.model().top());if(Objects.equals(APPLIED.get(level),settings))return;APPLIED.put(level,settings);
         var data=SpaceOrbitData.get(level.getServer());var planet=new PlanetScale(size).geometry();
-        double gravity=PlanetConfig.SPACE_GRAVITY.get(),spinRatio=PlanetSpin.circularToSpinRatio(planet.radius(),SpaceAtmosphere.model().top(),gravity);
-        io.github.astelev.around_planet.AroundPlanet.LOGGER.info("PLANET_SPIN periodSeconds={} radius={} equatorSpeed={} circularSpeed={} upperAtmosphereRatio={}",PlanetSpin.PERIOD_SECONDS,planet.radius(),PlanetSpin.OMEGA*planet.radius(),Math.sqrt(gravity*planet.radius()),spinRatio);
+        double gravity=PlanetConfig.SPACE_GRAVITY.get(),spinRatio=PlanetSpin.circularToSpinRatio(planet.radius(),SpaceAtmosphere.model().top(),gravity,period);
+        io.github.astelev.around_planet.AroundPlanet.LOGGER.info("PLANET_SPIN periodSeconds={} radius={} equatorSpeed={} circularSpeed={} upperAtmosphereRatio={}",period,planet.radius(),2*Math.PI/period*planet.radius(),Math.sqrt(gravity*planet.radius()),spinRatio);
         if(gravity>0 && spinRatio<3)io.github.astelev.around_planet.AroundPlanet.LOGGER.warn("Custom planet size/gravity gives circular-to-spin speed ratio below 3 at the atmosphere top: {}. Rotation period and configured gravity were retained.",spinRatio);
         for(var id:data.ids()){var old=data.navigation(id);if(old.isEmpty() || old.get().planet().equals(planet))continue;
             var nav=old.get();var state=data.sample(id,level.getGameTime());boolean moon=CelestialSystem.MOON.equals(data.get(id).orElseThrow().primary());double oldRadius=nav.planet().radius()*(moon?.2724:1),newRadius=planet.radius()*(moon?.2724:1);double distance=state.position().length(),altitude=distance-oldRadius;

@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.56: [автоматические/ручные сутки и общий множитель эффективности топлива](docs/configurable-day-and-fuel-effectiveness.md).
+
 Обновление 0.11.0-alpha.55: [скорость истечения 2,08 км/с, расход 10 кг/с и параметры смеси](docs/hydrolox-exhaust-balance.md).
 
 Обновление 0.11.0-alpha.54: [исправление освещения Blender-модели и свечения внутренних граней](docs/blender-nozzle-lighting.md).

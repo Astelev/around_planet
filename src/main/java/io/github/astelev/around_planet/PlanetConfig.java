@@ -6,7 +6,7 @@ public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.ConfigValue<Integer> PLANET_SIZE;
     public static final java.util.function.IntSupplier BOUNDARY=()->PlanetConfig.PLANET_SIZE.get()/2,BOUNDARY_Z=BOUNDARY;
-    public static final ModConfigSpec.DoubleValue HYDROLOX_ENERGY,HYDROLOX_EFFICIENCY;
+    public static final ModConfigSpec.DoubleValue HYDROLOX_ENERGY,HYDROLOX_EFFICIENCY,FUEL_EFFICIENCY_MULTIPLIER,DAY_LENGTH_MINUTES;
     public static final ModConfigSpec.DoubleValue SPACE_GRAVITY,SPACE_UNLOAD_SPEED,RENDEZVOUS_DISTANCE,RENDEZVOUS_SPEED,ATMOSPHERE_DRAG,REENTRY_SPEED;
     public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS,PROGRESSIVE,SPACE,SURFACE_CURVE,SURFACE_SKY;
     public static final ModConfigSpec.IntValue MOON_LANDING,SPACE_ENTRY,SPACE_Y,SKY_DARKEN,ATMOSPHERE_TOP,ATMOSPHERE_BOTTOM, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
@@ -15,6 +15,7 @@ public final class PlanetConfig {
         b.push("planet");
         PLANET_SIZE=b.comment("Equatorial circumference in blocks. Single source for both world borders (+/- half) and cosmic radius (circumference / 2pi).",
                 "Multiple of 32, from 256 to 59000000. Default preserves +/-65536 borders. Restart required.").define("circumferenceBlocks",131072,v->v instanceof Integer n && n>=256 && n<=59000000 && n%32==0);
+        DAY_LENGTH_MINUTES=b.comment("Real minutes per solar day. 0 = auto from circumference, gravity and atmosphere top: circular speed at atmosphere top stays >= 3 times rotation speed, rounded UP to 5 whole minutes. Stock gravity/atmosphere: 1x=20, 2x=25, 3x=30 minutes. Positive value overrides auto.").defineInRange("dayLengthMinutes",0.0,0.0,10080.0);
         b.pop();b.push("surfaceVisuals");
         SURFACE_CURVE=b.comment("Render camera-relative world curvature using the configured planet radius. Physics and world coordinates remain flat.").define("curvature",true);
         SURFACE_SKY=b.comment("Shared round Sun/Moon and stars with ordinary day/night cycle on the surface.").define("sky",true);
@@ -74,9 +75,11 @@ public final class PlanetConfig {
         SPACE_Y=b.comment("Physical space-cell center Y, independent of entryY and orbital altitude. Loaded cells safely relocate to this height; unloaded owners wait for activation. Restart recommended. Native ship blocks remain in Sable plots.").defineInRange("cellY",6144,3072,30000);
         b.defineInRange("heightLayoutRevision",2,2,2);
         b.pop();b.push("moon");MOON_LANDING=b.comment("Lunar altitude for transfer to the Moon dimension. No atmospheric braking or speed clamp. Requires Dimensional Sable 1.1.0.").defineInRange("landingAltitude",800,400,3000);b.pop();
-        b.push("fuel");b.push("hydrolox");
+        b.push("fuel");
+        FUEL_EFFICIENCY_MULTIPLIER=b.comment("Global useful fuel energy multiplier, applied after mixture energy/efficiency. Exhaust speed scales with its square root. Default 0.25 halves alpha.55 exhaust speed to about 1041 m/s; 1 restores about 2082 m/s. Does not change Pondus mass.").defineInRange("efficiencyMultiplier",.25,.000001,100.0);
+        b.push("hydrolox");
         HYDROLOX_ENERGY=b.comment("Chemical energy per kilogram of the complete hydrogen/oxygen mixture (not hydrogen alone). Exhaust speed = sqrt(2 * energy * efficiency). Does not change Pondus mass.").defineInRange("energyJoulesPerKg",120_000_000.0/9,1.0,1.0e9);
-        HYDROLOX_EFFICIENCY=b.comment("Mixture energy conversion efficiency. Default 0.1625 gives about 2082 m/s; 0.65 restores the previous 4163 m/s. Fuel parameter, not an engine upgrade.").defineInRange("efficiency",.1625,.000001,1.0);
+        HYDROLOX_EFFICIENCY=b.comment("Mixture energy conversion efficiency. Before the global multiplier: 0.1625 gives about 2082 m/s; 0.65 gives about 4163 m/s. Fuel parameter, not an engine upgrade.").defineInRange("efficiency",.1625,.000001,1.0);
         b.pop();b.pop();SPEC = b.build();
     }
     private PlanetConfig() {}

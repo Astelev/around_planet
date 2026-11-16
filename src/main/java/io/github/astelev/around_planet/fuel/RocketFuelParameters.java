@@ -7,7 +7,7 @@ public final class RocketFuelParameters {
     private static volatile Bipropellant hydrolox=Bipropellant.HYDROLOX;
     public static Bipropellant hydrolox(){
         if(!PlanetConfig.SPEC.isLoaded())return Bipropellant.HYDROLOX;
-        double energy=PlanetConfig.HYDROLOX_ENERGY.get(),efficiency=PlanetConfig.HYDROLOX_EFFICIENCY.get();
+        double energy=PlanetConfig.HYDROLOX_ENERGY.get()*PlanetConfig.FUEL_EFFICIENCY_MULTIPLIER.get(),efficiency=PlanetConfig.HYDROLOX_EFFICIENCY.get();
         var mixture=hydrolox;
         if(mixture.energyPerKg()!=energy||mixture.efficiency()!=efficiency){
             var base=Bipropellant.HYDROLOX;
