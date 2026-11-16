@@ -9,7 +9,7 @@ public final class RocketReservoir implements IFluidHandler {
  public double fuel(){return fuel;}public double oxidizer(){return oxidizer;}
  public void restore(double f,double o){fuel=valid(f);oxidizer=valid(o);}
  private static double valid(double n){return Double.isFinite(n)?Math.clamp(n,0,CAPACITY):0;}
- public Bipropellant.Burn burn(double requested,double fuelMass,double oxMass){var burn=Bipropellant.HYDROLOX.burn(fuel,oxidizer,requested,fuelMass,oxMass);if(burn.mass()>0){fuel=Math.max(0,fuel-burn.fuel());oxidizer=Math.max(0,oxidizer-burn.oxidizer());changed.accept(-burn.fuel(),-burn.oxidizer());}return burn;}
+ public Bipropellant.Burn burn(double requested,double fuelMass,double oxMass){var burn=RocketFuelParameters.hydrolox().burn(fuel,oxidizer,requested,fuelMass,oxMass);if(burn.mass()>0){fuel=Math.max(0,fuel-burn.fuel());oxidizer=Math.max(0,oxidizer-burn.oxidizer());changed.accept(-burn.fuel(),-burn.oxidizer());}return burn;}
  @Override public int getTanks(){return 2;}
  @Override public int getTankCapacity(int tank){return tank>=0&&tank<2?CAPACITY:0;}
  @Override public FluidStack getFluidInTank(int tank){return tank==0?new FluidStack(CryogenicFluids.HYDROGEN.get(),(int)Math.floor(fuel)):tank==1?new FluidStack(CryogenicFluids.OXYGEN.get(),(int)Math.floor(oxidizer)):FluidStack.EMPTY;}

@@ -6,6 +6,7 @@ public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.ConfigValue<Integer> PLANET_SIZE;
     public static final java.util.function.IntSupplier BOUNDARY=()->PlanetConfig.PLANET_SIZE.get()/2,BOUNDARY_Z=BOUNDARY;
+    public static final ModConfigSpec.DoubleValue HYDROLOX_ENERGY,HYDROLOX_EFFICIENCY;
     public static final ModConfigSpec.DoubleValue SPACE_GRAVITY,SPACE_UNLOAD_SPEED,RENDEZVOUS_DISTANCE,RENDEZVOUS_SPEED,ATMOSPHERE_DRAG,REENTRY_SPEED;
     public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS,PROGRESSIVE,SPACE,SURFACE_CURVE,SURFACE_SKY;
     public static final ModConfigSpec.IntValue MOON_LANDING,SPACE_ENTRY,SPACE_Y,SKY_DARKEN,ATMOSPHERE_TOP,ATMOSPHERE_BOTTOM, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
@@ -72,7 +73,11 @@ public final class PlanetConfig {
         SPACE_GRAVITY=b.comment("Planet surface gravity in blocks/s^2 for virtual two-body trajectories; zero selects straight inertial motion. Captured on entry.").defineInRange("surfaceGravity",9.81,0.0,50.0);
         SPACE_Y=b.comment("Physical space-cell center Y, independent of entryY and orbital altitude. Loaded cells safely relocate to this height; unloaded owners wait for activation. Restart recommended. Native ship blocks remain in Sable plots.").defineInRange("cellY",6144,3072,30000);
         b.defineInRange("heightLayoutRevision",2,2,2);
-        b.pop();b.push("moon");MOON_LANDING=b.comment("Lunar altitude for transfer to the Moon dimension. No atmospheric braking or speed clamp. Requires Dimensional Sable 1.1.0.").defineInRange("landingAltitude",800,400,3000);b.pop(); SPEC = b.build();
+        b.pop();b.push("moon");MOON_LANDING=b.comment("Lunar altitude for transfer to the Moon dimension. No atmospheric braking or speed clamp. Requires Dimensional Sable 1.1.0.").defineInRange("landingAltitude",800,400,3000);b.pop();
+        b.push("fuel");b.push("hydrolox");
+        HYDROLOX_ENERGY=b.comment("Chemical energy per kilogram of the complete hydrogen/oxygen mixture (not hydrogen alone). Exhaust speed = sqrt(2 * energy * efficiency). Does not change Pondus mass.").defineInRange("energyJoulesPerKg",120_000_000.0/9,1.0,1.0e9);
+        HYDROLOX_EFFICIENCY=b.comment("Mixture energy conversion efficiency. Default 0.1625 gives about 2082 m/s; 0.65 restores the previous 4163 m/s. Fuel parameter, not an engine upgrade.").defineInRange("efficiency",.1625,.000001,1.0);
+        b.pop();b.pop();SPEC = b.build();
     }
     private PlanetConfig() {}
 }
