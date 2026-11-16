@@ -65,7 +65,6 @@
     "ShipLoaderNativeActorMixin",
     "ShipLoaderTicketsMixin",
     "SpaceHeldDiscardMixin",
-    "RocketPondusMassMixin",
     "RocketFallbackMassMixin",
     "RocketAssemblyMassMixin",
     "PondusRemovalMassMixin"

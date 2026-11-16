@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.50: [базовая масса топлива и штатный расчёт Pondus](docs/stock-pondus-fuel-accounting.md).
+
 Обновление 0.11.0-alpha.49: [исправление остаточной массы баков, облегчённое топливо и предел 30 кг/с](docs/fuel-mass-removal-and-flow-cap.md).
 
 Обновление 0.11.0-alpha.48: [собственные криогенные жидкости и жидкостный ракетный двигатель](docs/cryogenic-fluids-and-liquid-engine.md).
