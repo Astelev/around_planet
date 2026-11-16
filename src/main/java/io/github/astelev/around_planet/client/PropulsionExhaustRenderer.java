@@ -31,9 +31,9 @@ public final class PropulsionExhaustRenderer implements BlockEntityRenderer<Prop
             pose.pushPose();var direction=new org.joml.Vector3f(0,-1,0);
             if(rsu){float x=0,z=0;switch(i){case 0->z=-1;case 1->x=1;case 2->z=1;default->x=-1;}pose.translate(x*(1+cos)/8,(1.75+2*sin)/16-.5,z*(1+cos)/8);direction.set((float)(x*cos),(float)sin,(float)(z*cos));}
             // The liquid bell extends 10 model pixels below the block; start just beyond its lip.
-            else pose.translate(0,be.kind()==PropulsionRegistry.Kind.LIQUID?LiquidNozzleProfile.outlet():-.505,0);
+            else pose.translate(0,be.kind()==PropulsionRegistry.Kind.LIQUID?LiquidNozzleMesh.current().outlet():-.505,0);
             pose.mulPose(new org.joml.Quaternionf().rotationTo(new org.joml.Vector3f(0,1,0),direction));
-            if(be.kind()==PropulsionRegistry.Kind.LIQUID)pose.scale(LiquidNozzleProfile.plumeScale(),1,LiquidNozzleProfile.plumeScale());
+            if(be.kind()==PropulsionRegistry.Kind.LIQUID)pose.scale(LiquidNozzleMesh.current().plumeScale(),1,LiquidNozzleMesh.current().plumeScale());
             plume(pose,vertices,jet,rsu);quads+=rsu?2*SIDES:3*16*SIDES;pose.popPose();
         }
         pose.popPose();frames++;io.github.astelev.around_planet.diagnostics.SeamDiagnostics.time("client","propulsion.exhaust",start);
@@ -44,23 +44,16 @@ public final class PropulsionExhaustRenderer implements BlockEntityRenderer<Prop
         nozzleGlowFrames++;
         var v=buffers.getBuffer(RenderType.eyes(net.minecraft.resources.ResourceLocation.withDefaultNamespace("textures/block/white_concrete.png")));
         float brightness=(float)Math.clamp(be.actualThrust()/1000,.25,1);
-        for(int ring=0;ring<LiquidNozzleProfile.rings()-1;ring++)for(int side=0;side<4;side++){
-            // Move toward the cavity to avoid z-fighting with the static inner wall.
-            int next=(side+1)%4;
-            glowVertex(pose,v,ring,next,0,0,brightness);
-            glowVertex(pose,v,ring+1,next,0,1,brightness);
-            glowVertex(pose,v,ring+1,side,1,1,brightness);
-            glowVertex(pose,v,ring,side,1,0,brightness);
+        var lining=LiquidNozzleMesh.current();
+        for(var face:lining.faces())for(int corner=0;corner<4;corner++){
+            var point=face.points().get(corner);var n=face.normal();
+            float fade=Math.clamp((point.y()-lining.bottom())/Math.max(.001f,lining.top()-lining.bottom()),0,1);
+            v.addVertex(pose.last().pose(),point.x()+n.x()*.0008f,point.y()+n.y()*.0008f,point.z()+n.z()*.0008f)
+                .setColor(255,(int)(95+100*fade),(int)(25+90*fade),(int)((65+150*fade)*brightness))
+                .setUv(corner>=2?1:0,corner==1||corner==2?1:0)
+                .setOverlay(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY).setLight(LightTexture.FULL_BRIGHT)
+                .setNormal(pose.last(),n.x(),n.y(),n.z());
         }
-    }
-    private static void glowVertex(PoseStack pose,VertexConsumer v,int ring,int side,float u,float w,float brightness){
-        float radius=LiquidNozzleProfile.inner(ring)-.001f;
-        float x=(side<2?-1:1)*radius,z=(side==0||side==3?-1:1)*radius;
-        float fade=1-ring/(float)(LiquidNozzleProfile.rings()-1);
-        v.addVertex(pose.last().pose(),x,LiquidNozzleProfile.y(ring),z)
-            .setColor(255,(int)(95+100*fade),(int)(25+90*fade),(int)((65+150*fade)*brightness))
-            .setUv(u,w).setOverlay(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY).setLight(LightTexture.FULL_BRIGHT)
-            .setNormal(pose.last(),-x,0,-z);
     }
     private static void plume(PoseStack pose,VertexConsumer v,ExhaustMath.Jet jet,boolean rsu){
         if(!rsu){enginePlume(pose,v,jet);return;}

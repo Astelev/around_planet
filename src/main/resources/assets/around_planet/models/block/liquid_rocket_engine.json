@@ -3,6 +3,7 @@
   "model": "around_planet:models/block/liquid_rocket_engine.obj",
   "automatic_culling": false,
   "shade_quads": true,
+  "emissive_ambient": false,
   "flip_v": true,
   "textures": {
     "nozzle": "minecraft:block/polished_deepslate",

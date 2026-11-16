@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.54: [исправление освещения Blender-модели и свечения внутренних граней](docs/blender-nozzle-lighting.md).
+
 Обновление 0.11.0-alpha.53: [более узкое и тёмное сопло](docs/liquid-engine-narrow-dark-nozzle.md).
 
 Обновление 0.11.0-alpha.52: [наклонные стенки сопла Лаваля и свечение при работе](docs/liquid-engine-laval-lining.md).
