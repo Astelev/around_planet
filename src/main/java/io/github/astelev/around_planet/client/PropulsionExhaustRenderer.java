@@ -29,8 +29,11 @@ public final class PropulsionExhaustRenderer implements BlockEntityRenderer<Prop
             var jet=ExhaustMath.jet(be.thrust(),be.signal(i),rsu,time*.8+((be.getBlockPos().asLong()+i*31)&255));if(!jet.visible())continue;
             pose.pushPose();var direction=new org.joml.Vector3f(0,-1,0);
             if(rsu){float x=0,z=0;switch(i){case 0->z=-1;case 1->x=1;case 2->z=1;default->x=-1;}pose.translate(x*(1+cos)/8,(1.75+2*sin)/16-.5,z*(1+cos)/8);direction.set((float)(x*cos),(float)sin,(float)(z*cos));}
-            else pose.translate(0,-.505,0);
-            pose.mulPose(new org.joml.Quaternionf().rotationTo(new org.joml.Vector3f(0,1,0),direction));plume(pose,vertices,jet,rsu);quads+=rsu?2*SIDES:3*16*SIDES;pose.popPose();
+            // The liquid bell extends 10 model pixels below the block; start just beyond its lip.
+            else pose.translate(0,be.kind()==PropulsionRegistry.Kind.LIQUID?-1.13:-.505,0);
+            pose.mulPose(new org.joml.Quaternionf().rotationTo(new org.joml.Vector3f(0,1,0),direction));
+            if(be.kind()==PropulsionRegistry.Kind.LIQUID)pose.scale(2.1f,1,2.1f);
+            plume(pose,vertices,jet,rsu);quads+=rsu?2*SIDES:3*16*SIDES;pose.popPose();
         }
         pose.popPose();frames++;io.github.astelev.around_planet.diagnostics.SeamDiagnostics.time("client","propulsion.exhaust",start);
     }

@@ -2,7 +2,7 @@ package io.github.astelev.around_planet.propulsion;
 /** Newtons, seconds and joules. FE cost is proportional to removed rotational energy. */
 public final class PropulsionMath {
     public static final double RSU_MAX_THRUST=500;
-    public static final double LIQUID_MAX_FLOW=30;
+    public static final double LIQUID_MAX_FLOW=5;
     public static final double LIQUID_DEFAULT_FLOW=1;
     public static final int CAPACITY=1_000_000;
     public static final double FE_PER_JOULE=.1;

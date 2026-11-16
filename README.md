@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.51: [расход 5 кг/с, квадратное сопло и более широкая струя](docs/liquid-engine-square-nozzle.md).
+
 Обновление 0.11.0-alpha.50: [базовая масса топлива и штатный расчёт Pondus](docs/stock-pondus-fuel-accounting.md).
 
 Обновление 0.11.0-alpha.49: [исправление остаточной массы баков, облегчённое топливо и предел 30 кг/с](docs/fuel-mass-removal-and-flow-cap.md).
