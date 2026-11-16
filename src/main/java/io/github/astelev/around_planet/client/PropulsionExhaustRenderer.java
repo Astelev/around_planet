@@ -10,7 +10,7 @@ import net.neoforged.api.distmarker.Dist;
 /** Smooth dense engine exhaust and two-section RSU exhaust with GPU-advected gas; fixed geometry and no particles. */
 @EventBusSubscriber(modid="around_planet",value=Dist.CLIENT,bus=EventBusSubscriber.Bus.MOD)
 public final class PropulsionExhaustRenderer implements BlockEntityRenderer<PropulsionBlockEntity> {
-    public static long frames,quads;public static float lastFlowTime;
+    public static long frames,quads,nozzleGlowFrames;public static float lastFlowTime;
     public static ShaderInstance shader;
     private static final int SIDES=8;
     private static final float[] ENGINE_RADII={.45f,.75f,1},ENGINE_DENSITIES={1.1f,.65f,.40f};
@@ -24,18 +24,43 @@ public final class PropulsionExhaustRenderer implements BlockEntityRenderer<Prop
         boolean rsu=be.kind()==PropulsionRegistry.Kind.RSU;int count=rsu?4:1;boolean active=false;for(int i=0;i<count;i++)active|=be.signal(i)>0;if(!active)return;
         long start=io.github.astelev.around_planet.diagnostics.SeamDiagnostics.start();var frame=OrbitalSensorBlock.frame(be.getBlockState());var r=frame.right();var f=frame.forward();var u=frame.up();var vertices=DeferredExhaust.vertices();
         pose.pushPose();pose.translate(.5,.5,.5);pose.mulPose(new org.joml.Quaternionf().setFromNormalized(new org.joml.Matrix3f((float)r.x(),(float)r.y(),(float)r.z(),(float)f.x(),(float)f.y(),(float)f.z(),(float)u.x(),(float)u.y(),(float)u.z())));
+        if(be.kind()==PropulsionRegistry.Kind.LIQUID)nozzleGlow(pose,buffers,be);
         double time=be.getLevel().getGameTime()+partial;lastFlowTime=(float)((time%24000)/20.0);shader.safeGetUniform("FlowTime").set(lastFlowTime);double sin=Math.sin(Math.PI/8),cos=Math.cos(Math.PI/8);
         for(int i=0;i<count;i++){
             var jet=ExhaustMath.jet(be.thrust(),be.signal(i),rsu,time*.8+((be.getBlockPos().asLong()+i*31)&255));if(!jet.visible())continue;
             pose.pushPose();var direction=new org.joml.Vector3f(0,-1,0);
             if(rsu){float x=0,z=0;switch(i){case 0->z=-1;case 1->x=1;case 2->z=1;default->x=-1;}pose.translate(x*(1+cos)/8,(1.75+2*sin)/16-.5,z*(1+cos)/8);direction.set((float)(x*cos),(float)sin,(float)(z*cos));}
             // The liquid bell extends 10 model pixels below the block; start just beyond its lip.
-            else pose.translate(0,be.kind()==PropulsionRegistry.Kind.LIQUID?-1.13:-.505,0);
+            else pose.translate(0,be.kind()==PropulsionRegistry.Kind.LIQUID?LiquidNozzleProfile.outlet():-.505,0);
             pose.mulPose(new org.joml.Quaternionf().rotationTo(new org.joml.Vector3f(0,1,0),direction));
-            if(be.kind()==PropulsionRegistry.Kind.LIQUID)pose.scale(2.1f,1,2.1f);
+            if(be.kind()==PropulsionRegistry.Kind.LIQUID)pose.scale(LiquidNozzleProfile.plumeScale(),1,LiquidNozzleProfile.plumeScale());
             plume(pose,vertices,jet,rsu);quads+=rsu?2*SIDES:3*16*SIDES;pose.popPose();
         }
         pose.popPose();frames++;io.github.astelev.around_planet.diagnostics.SeamDiagnostics.time("client","propulsion.exhaust",start);
+    }
+    /** Full-bright inner lining only while fuel is actually burning; no world-light updates. */
+    private static void nozzleGlow(PoseStack pose,MultiBufferSource buffers,PropulsionBlockEntity be){
+        if(be.actualThrust()<=0||be.signal(0)<=0)return;
+        nozzleGlowFrames++;
+        var v=buffers.getBuffer(RenderType.eyes(net.minecraft.resources.ResourceLocation.withDefaultNamespace("textures/block/white_concrete.png")));
+        float brightness=(float)Math.clamp(be.actualThrust()/1000,.25,1);
+        for(int ring=0;ring<LiquidNozzleProfile.rings()-1;ring++)for(int side=0;side<4;side++){
+            // Move toward the cavity to avoid z-fighting with the static inner wall.
+            int next=(side+1)%4;
+            glowVertex(pose,v,ring,next,0,0,brightness);
+            glowVertex(pose,v,ring+1,next,0,1,brightness);
+            glowVertex(pose,v,ring+1,side,1,1,brightness);
+            glowVertex(pose,v,ring,side,1,0,brightness);
+        }
+    }
+    private static void glowVertex(PoseStack pose,VertexConsumer v,int ring,int side,float u,float w,float brightness){
+        float radius=LiquidNozzleProfile.inner(ring)-.001f;
+        float x=(side<2?-1:1)*radius,z=(side==0||side==3?-1:1)*radius;
+        float fade=1-ring/(float)(LiquidNozzleProfile.rings()-1);
+        v.addVertex(pose.last().pose(),x,LiquidNozzleProfile.y(ring),z)
+            .setColor(255,(int)(95+100*fade),(int)(25+90*fade),(int)((65+150*fade)*brightness))
+            .setUv(u,w).setOverlay(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY).setLight(LightTexture.FULL_BRIGHT)
+            .setNormal(pose.last(),-x,0,-z);
     }
     private static void plume(PoseStack pose,VertexConsumer v,ExhaustMath.Jet jet,boolean rsu){
         if(!rsu){enginePlume(pose,v,jet);return;}

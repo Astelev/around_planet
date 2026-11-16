@@ -1,0 +1,25 @@
+newmtl body
+Kd 1 1 1
+Ka 0 0 0
+map_Kd #body
+
+newmtl band
+Kd 1 1 1
+Ka 0 0 0
+map_Kd #band
+
+newmtl pipe
+Kd 1 1 1
+Ka 0 0 0
+map_Kd #pipe
+
+newmtl inner
+Kd 1 1 1
+Ka 0 0 0
+map_Kd #inner
+
+newmtl dark
+Kd 1 1 1
+Ka 0 0 0
+map_Kd #dark
+
