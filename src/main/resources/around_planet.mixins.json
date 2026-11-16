@@ -67,7 +67,8 @@
     "SpaceHeldDiscardMixin",
     "RocketPondusMassMixin",
     "RocketFallbackMassMixin",
-    "RocketAssemblyMassMixin"
+    "RocketAssemblyMassMixin",
+    "PondusRemovalMassMixin"
   ],
   "injectors": {
     "defaultRequire": 1

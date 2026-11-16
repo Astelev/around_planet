@@ -13,8 +13,8 @@ public final class CryogenicFluids {
  private static final DeferredRegister<Fluid> FLUIDS=DeferredRegister.create(Registries.FLUID,"around_planet");
  private static final DeferredRegister.Blocks BLOCKS=DeferredRegister.createBlocks("around_planet");
  private static final DeferredRegister.Items ITEMS=DeferredRegister.createItems("around_planet");
- public static final Supplier<FluidType> HYDROGEN_TYPE=TYPES.register("liquid_hydrogen",()->new FluidType(FluidType.Properties.create().density(71).viscosity(150).temperature(20)){});
- public static final Supplier<FluidType> OXYGEN_TYPE=TYPES.register("liquid_oxygen",()->new FluidType(FluidType.Properties.create().density(1141).viscosity(200).temperature(90)){});
+ public static final Supplier<FluidType> HYDROGEN_TYPE=TYPES.register("liquid_hydrogen",()->new FluidType(FluidType.Properties.create().density(1).viscosity(150).temperature(20)){});
+ public static final Supplier<FluidType> OXYGEN_TYPE=TYPES.register("liquid_oxygen",()->new FluidType(FluidType.Properties.create().density(16).viscosity(200).temperature(90)){});
  public static final Supplier<BaseFlowingFluid.Source> HYDROGEN=FLUIDS.register("liquid_hydrogen",()->new BaseFlowingFluid.Source(hydrogen()));
  public static final Supplier<BaseFlowingFluid.Flowing> HYDROGEN_FLOWING=FLUIDS.register("flowing_liquid_hydrogen",()->new BaseFlowingFluid.Flowing(hydrogen()));
  public static final Supplier<BaseFlowingFluid.Source> OXYGEN=FLUIDS.register("liquid_oxygen",()->new BaseFlowingFluid.Source(oxygen()));
