@@ -4,7 +4,11 @@
   "attributes": [
     "Position"
   ],
-  "samplers": [],
+  "samplers": [
+    {
+      "name": "PlanetAtlas"
+    }
+  ],
   "uniforms": [
     {
       "name": "InverseProjection",
@@ -145,6 +149,60 @@
     },
     {
       "name": "MoonTextureZ",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "name": "HasAtlas",
+      "type": "int",
+      "count": 1,
+      "values": [
+        0
+      ]
+    },
+    {
+      "name": "PlanetBlend",
+      "type": "float",
+      "count": 1,
+      "values": [
+        0
+      ]
+    },
+    {
+      "name": "PlanetObserver",
+      "type": "float",
+      "count": 1,
+      "values": [
+        1.1
+      ]
+    },
+    {
+      "name": "PlanetEast",
+      "type": "float",
+      "count": 3,
+      "values": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "PlanetUp",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "name": "PlanetSouth",
       "type": "float",
       "count": 3,
       "values": [

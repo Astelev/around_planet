@@ -15,7 +15,7 @@ import org.joml.Matrix4f;
 import java.io.IOException;
 @EventBusSubscriber(modid="around_planet",value=Dist.CLIENT,bus=EventBusSubscriber.Bus.MOD)
 public final class SurfaceSkyRenderer {
-    private static ShaderInstance shader;private static VertexBuffer quad;
+    private static ShaderInstance shader;private static VertexBuffer quad;public static long planetBackdropFrames;
     @SubscribeEvent public static void shaders(RegisterShadersEvent event)throws IOException{
         CurvatureShaders.clear();event.registerShader(new ShaderInstance(event.getResourceProvider(),ResourceLocation.fromNamespaceAndPath("around_planet","surface_sky"),DefaultVertexFormat.POSITION),s->shader=s);
     }
@@ -27,6 +27,15 @@ public final class SurfaceSkyRenderer {
             var sky=mc.level.getSkyColor(camera.getPosition(),partial);double dark=SurfaceRenderState.darkness(camera.getPosition().y);var surfaceFrame=PlanetDaylight.spin(mc.level,partial).frame(new PlanetScale(PlanetConfig.PLANET_SIZE.get()).geometry(),camera.getPosition().x,camera.getPosition().z);var sun=surfaceFrame.toLocal(SpaceEnvironment.SUN_DIRECTION);
             shader.safeGetUniform("InverseProjection").set(new Matrix4f(projection).invert());shader.safeGetUniform("RayTransform").set(new Matrix4f(view).invert());
             shader.safeGetUniform("SkyColor").set((float)sky.x,(float)sky.y,(float)sky.z);shader.safeGetUniform("SunDirection").set((float)sun.x(),(float)sun.y(),(float)sun.z());
+            var geometry=new PlanetScale(PlanetConfig.PLANET_SIZE.get()).geometry();
+            var fixedFrame=geometry.frame(camera.getPosition().x,camera.getPosition().z);
+            PlanetAtlasTexture.bind(shader);shader.safeGetUniform("PlanetBlend").set((float)dark);
+            shader.safeGetUniform("PlanetObserver").set((float)(1+Math.max(0,camera.getPosition().y)/geometry.radius()));
+            var east=fixedFrame.east();var up=fixedFrame.up();var south=fixedFrame.south();
+            shader.safeGetUniform("PlanetEast").set((float)east.x(),(float)east.y(),(float)east.z());
+            shader.safeGetUniform("PlanetUp").set((float)up.x(),(float)up.y(),(float)up.z());
+            shader.safeGetUniform("PlanetSouth").set((float)south.x(),(float)south.y(),(float)south.z());
+            if(dark>0)planetBackdropFrames++;
             shader.safeGetUniform("Darkness").set((float)dark);shader.safeGetUniform("Horizon").set(PlanetConfig.SURFACE_CURVE.getAsBoolean()?(float)SurfaceVisualMath.horizon(camera.getPosition().y,new PlanetScale(PlanetConfig.PLANET_SIZE.get()).radius()):0);
             float legacyFog=AeroFogBridge.legacySkyStrength();float[] fogColor=RenderSystem.getShaderFogColor();shader.safeGetUniform("CloudFog").set(fogColor[0],fogColor[1],fogColor[2],legacyFog);
             var system=CelestialSky.current();if(system!=null){var position=camera.getPosition();var moon=MoonAppearance.at(system,new PlanetScale(PlanetConfig.PLANET_SIZE.get()).geometry(),PlanetDaylight.spin(mc.level,partial),new SpaceVector(position.x,position.y,position.z),mc.level.getGameTime()+partial);shader.safeGetUniform("MoonCenter").set((float)moon.center().x(),(float)moon.center().y(),(float)moon.center().z());shader.safeGetUniform("MoonRadius").set((float)moon.radius());}else shader.safeGetUniform("MoonRadius").set(0f);
