@@ -26,6 +26,15 @@ public final class SpaceSensorNavigation {
         var targetDirection=RendezvousMath.targetMode(mode)?data.target(id).flatMap(target->RendezvousMath.direction(mode,atPoint,data.targetState(id,target,level.getGameTime()))):mode==OrbitalAttitude.Mode.MANEUVER?ManeuverGuidance.next(data.maneuvers(id),level.getGameTime()).flatMap(node->ManeuverGuidance.direction(PatchedConics.trace(data.get(id).orElseThrow(),level.getGameTime(),node.tick(),data.system()).finalPath(),node)):OrbitalAttitude.target(mode,atPoint);
         return targetDirection.map(target->{var local=nav.frame().toLocal(target);var v=ship.logicalPose().orientation().transformInverse(new Vector3d(local.x(),local.y(),local.z()));return new Sample(new SpaceVector(v.x,v.y,v.z),local,nav.frame().toLocal(atPoint.position().scale(1/atPoint.position().length())));});
     }
+    public record SurfaceMotion(double speed,double altitude){}
+    public static SurfaceMotion surfaceMotion(ServerLevel level,BlockPos pos){
+        var point=worldPoint(level,pos);var container=SubLevelContainer.getContainer(level);
+        if(!(Sable.HELPER.getContaining(level,pos) instanceof ServerSubLevel ship)||container==null||!container.physicsSystem().getPhysicsHandle(ship).isValid())return new SurfaceMotion(0,point.y);
+        var pipeline=container.physicsSystem().getPipeline();var velocity=pipeline.getLinearVelocity(ship,new Vector3d());
+        var center=ship.logicalPose().transformPosition(new Vector3d(ship.getSelfMassTracker().getCenterOfMass()));
+        velocity.add(pipeline.getAngularVelocity(ship,new Vector3d()).cross(new Vector3d(point).sub(center)));
+        return new SurfaceMotion(velocity.length(),point.y);
+    }
     public static Vector3d worldPoint(net.minecraft.world.level.Level level,BlockPos pos){var ship=Sable.HELPER.getContaining(level,pos);return ship==null?new Vector3d(pos.getX()+.5,pos.getY()+.5,pos.getZ()+.5):ship.logicalPose().transformPosition(new Vector3d(pos.getX()+.5,pos.getY()+.5,pos.getZ()+.5));}
     private SpaceSensorNavigation(){}
 }

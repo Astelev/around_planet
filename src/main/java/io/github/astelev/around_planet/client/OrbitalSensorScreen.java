@@ -24,6 +24,7 @@ public final class OrbitalSensorScreen extends Screen {
     @Override public void renderBackground(GuiGraphics g,int x,int y,float partial){}
     @Override public void render(GuiGraphics g,int x,int y,float partial){g.fill(left,top,left+w,top+210+extra(),0xEE111D2D);g.drawCenteredString(font,title,left+w/2,top+9,0xFFFFFF);super.render(g,x,y,partial);
         g.drawCenteredString(font,name(sensor.mode()),left+w/2,top+122+extra(),0x72D5FF);g.drawCenteredString(font,Component.translatable(sensor.active()?"around_planet.sensor.error":"around_planet.sensor.inactive",String.format(java.util.Locale.ROOT,"%.1f",sensor.yaw()),String.format(java.util.Locale.ROOT,"%.1f",sensor.pitch())),left+w/2,top+136+extra(),sensor.active()?0xAAFFAA:0xFFCC66);
+        if(!sensor.active())g.drawCenteredString(font,Component.translatable("around_planet.helmet.surface_speed",String.format(java.util.Locale.ROOT,"%.2f",sensor.surfaceSpeed())),left+w/2,top+170+extra(),0x9ee9df);
         g.drawCenteredString(font,Component.translatable("around_planet.sensor.ports.pitch"),left+w/2,top+150+extra(),0xCCCCCC);g.drawCenteredString(font,Component.translatable("around_planet.sensor.ports.yaw"),left+w/2,top+160+extra(),0xCCCCCC);
     }
 }

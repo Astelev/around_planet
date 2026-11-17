@@ -28,6 +28,8 @@ public final class SpaceOrbitData extends SavedData {
     public SpaceState targetState(UUID focus,UUID target,long tick){var own=require(focus);if(CelestialSystem.body(target)){if(system==null)throw new IllegalArgumentException("Missing celestial system");return system.target(target,own.primary(),tick);}var state=sample(target,tick);var other=require(target);return system!=null&&system.managed(own.primary())&&system.managed(other.primary())?system.relative(own.primary(),system.global(other.primary(),state,tick),tick):state;}
     public Optional<UUID> target(UUID id){return Optional.ofNullable(targets.get(id)).filter(key->objects.containsKey(key)||CelestialSystem.body(key));}
     public void target(UUID id,UUID target){require(id);if(target==null)targets.remove(id);else{if(!CelestialSystem.body(target))require(target);if(id.equals(target))throw new IllegalArgumentException("Self target");targets.put(id,target);}setDirty();}
+    private final Map<UUID,Long> warningFallback=new HashMap<>();
+    public void warningFallback(UUID id,long ticks){warningFallback.put(id,ticks);}
     private final Map<UUID,List<ManeuverNode>> maneuvers=new HashMap<>();
     public List<ManeuverNode> maneuvers(UUID id){return maneuvers.getOrDefault(id,List.of());}
     public void maneuver(UUID orbit,ManeuverNode node){require(orbit);var nodes=new ArrayList<>(maneuvers(orbit));nodes.removeIf(n->n.id().equals(node.id()));if(nodes.size()>=ManeuverNode.MAX_NODES)throw new IllegalArgumentException("Too many maneuvers");nodes.add(node);nodes.sort(Comparator.comparingLong(ManeuverNode::tick).thenComparing(ManeuverNode::id));maneuvers.put(orbit,List.copyOf(nodes));setDirty();}
@@ -66,8 +68,15 @@ public final class SpaceOrbitData extends SavedData {
         Objects.requireNonNull(id);Objects.requireNonNull(trajectory);if(CelestialSystem.body(id))throw new IllegalArgumentException("Celestial bodies have prescribed ephemerides");
         if(!trajectory.equals(objects.put(id,trajectory)))setDirty();
     }
-    public void remove(UUID id){forecastTurns.remove(id);previewDepths.remove(id);targets.remove(id);targets.values().removeIf(id::equals);if(maneuvers.remove(id)!=null | objects.remove(id)!=null | navigation.remove(id)!=null | reentries.remove(id)!=null | surfaceContacts.remove(id)!=null)setDirty();}
-    public void impulse(UUID id,long gameTick,SpaceVector deltaVelocity){var state=sample(id,gameTick);var parked=surfaceContacts.get(id);if(parked!=null){var p=navigation.get(id).planet();double phase=Math.atan2(state.position().x(),state.position().y())-parked.world().x()/p.radius();var frame=new PlanetSpin(phase,0).frame(p,parked.world().x(),parked.world().z());surfaceContacts.put(id,new SurfaceContact(parked.world(),parked.relativeVelocity().add(frame.toLocal(deltaVelocity))));}put(id,new SpaceTrajectory(require(id).primary(),gameTick,new SpaceState(state.position(),state.velocity().add(deltaVelocity)),require(id).mu()));}
+    public void remove(UUID id){warningFallback.remove(id);forecastTurns.remove(id);previewDepths.remove(id);targets.remove(id);targets.values().removeIf(id::equals);if(maneuvers.remove(id)!=null | objects.remove(id)!=null | navigation.remove(id)!=null | reentries.remove(id)!=null | surfaceContacts.remove(id)!=null)setDirty();}
+    public void impulse(UUID id,long gameTick,SpaceVector deltaVelocity){var before=require(id);var state=sample(id,gameTick);var parked=surfaceContacts.get(id);if(parked!=null){var p=navigation.get(id).planet();double phase=Math.atan2(state.position().x(),state.position().y())-parked.world().x()/p.radius();var frame=new PlanetSpin(phase,0).frame(p,parked.world().x(),parked.world().z());surfaceContacts.put(id,new SurfaceContact(parked.world(),parked.relativeVelocity().add(frame.toLocal(deltaVelocity))));}put(id,new SpaceTrajectory(require(id).primary(),gameTick,new SpaceState(state.position(),state.velocity().add(deltaVelocity)),require(id).mu()));
+        var next=ManeuverGuidance.next(maneuvers(id),gameTick);
+        if(next.isPresent()&&next.get().warningTicks(warningFallback.getOrDefault(id,600L))>0&&next.get().tick()-gameTick<=next.get().warningTicks(warningFallback.getOrDefault(id,600L))&&next.get().magnitude()>0){
+            var node=next.get();var oldRef=PatchedConics.trace(before,gameTick,node.tick(),system).finalPath().at(node.tick());
+            var newRef=PatchedConics.trace(require(id),gameTick,node.tick(),system).finalPath().at(node.tick());
+            maneuver(id,node.afterImpulse(oldRef,newRef,deltaVelocity));
+        }
+    }
     /** New object inherits origin velocity plus local relative velocity, once, in one inertial chart. */
     public SpaceTrajectory detach(UUID source,UUID detached,long gameTick,SpaceFrame frame,SpaceState local) {
         if(objects.containsKey(detached))throw new IllegalArgumentException("Detached object ID already exists");

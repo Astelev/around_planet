@@ -7,6 +7,6 @@ import java.util.List;
 public abstract class SensorGogglesMixin implements com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation {
     @Override public boolean addToGoggleTooltip(List<Component> lines,boolean sneaking){var be=(OrbitalSensorBlockEntity)(Object)this;
         lines.add(Component.translatable("block.around_planet.orbital_sensor"));lines.add(Component.translatable("around_planet.sensor.mode."+be.mode().name().toLowerCase(java.util.Locale.ROOT)));
-        lines.add(Component.translatable(be.active()?"around_planet.sensor.error":"around_planet.sensor.inactive",String.format(java.util.Locale.ROOT,"%.1f",be.yaw()),String.format(java.util.Locale.ROOT,"%.1f",be.pitch())));return true;
+        lines.add(Component.translatable(be.active()?"around_planet.sensor.error":"around_planet.sensor.inactive",String.format(java.util.Locale.ROOT,"%.1f",be.yaw()),String.format(java.util.Locale.ROOT,"%.1f",be.pitch())));lines.add(Component.translatable("around_planet.helmet.surface_speed",String.format(java.util.Locale.ROOT,"%.2f",be.surfaceSpeed())));return true;
     }
 }

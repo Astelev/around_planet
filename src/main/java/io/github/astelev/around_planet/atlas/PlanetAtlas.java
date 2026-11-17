@@ -1,7 +1,7 @@
 package io.github.astelev.around_planet.atlas;
 /** Planet-fixed equirectangular RGB atlas. Its chart is the same as PlanetGeometry. */
 public final class PlanetAtlas {
-    public static final int WIDTH=512,HEIGHT=256,SIZE=WIDTH*HEIGHT;
+    public static final int WIDTH=1024,HEIGHT=512,SIZE=WIDTH*HEIGHT;
     public static double worldX(int column,int circumference){return ((column+.5)/WIDTH-.5)*circumference;}
     public static double worldZ(int row,int circumference){return ((row+.5)/HEIGHT-.5)*circumference;}
     public static int sample(int[] pixels,double nx,double ny,double nz){

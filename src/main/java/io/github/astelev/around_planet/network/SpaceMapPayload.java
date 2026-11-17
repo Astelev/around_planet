@@ -21,17 +21,22 @@ public record SpaceMapPayload(UUID focus,long now,int total,List<Body> bodies) i
         public static final StreamCodec<RegistryFriendlyByteBuf,Request> CODEC=StreamCodec.of((b,p)->b.writeBoolean(p.open),b->new Request(b.readBoolean()));
         @Override public Type<Request> type(){return TYPE;}
     }
+    public record OpenTelescope() implements CustomPacketPayload {
+        public static final Type<OpenTelescope> TYPE=new Type<>(ResourceLocation.fromNamespaceAndPath("around_planet","open_telescope"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,OpenTelescope> CODEC=StreamCodec.unit(new OpenTelescope());
+        @Override public Type<OpenTelescope> type(){return TYPE;}
+    }
     private static final Map<ServerPlayer,Long> SUBSCRIBERS=new WeakHashMap<>();
     @Override public Type<SpaceMapPayload> type(){return TYPE;}
-    public static void register(RegisterPayloadHandlersEvent event){var r=event.registrar("3").optional();r.playToClient(TYPE,CODEC,(p,c)->c.enqueueWork(()->io.github.astelev.around_planet.client.SpaceMapCatalog.accept(p)));
-        r.playToServer(Request.TYPE,Request.CODEC,(p,c)->c.enqueueWork(()->{var player=(ServerPlayer)c.player();if(p.open && net.neoforged.fml.ModList.get().isLoaded("sable"))SUBSCRIBERS.put(player,player.serverLevel().getGameTime()+200);else {SUBSCRIBERS.remove(player);ManeuverPayload.close(player);}}));
+    public static void register(RegisterPayloadHandlersEvent event){var r=event.registrar("4").optional();r.playToClient(OpenTelescope.TYPE,OpenTelescope.CODEC,(p,c)->c.enqueueWork(()->io.github.astelev.around_planet.client.SpaceMapCatalog.openTelescope()));r.playToClient(TYPE,CODEC,(p,c)->c.enqueueWork(()->io.github.astelev.around_planet.client.SpaceMapCatalog.accept(p)));
+        r.playToServer(Request.TYPE,Request.CODEC,(p,c)->c.enqueueWork(()->{var player=(ServerPlayer)c.player();if(p.open && net.neoforged.fml.ModList.get().isLoaded("sable"))SUBSCRIBERS.put(player,player.serverLevel().getGameTime()+200);else {SUBSCRIBERS.remove(player);io.github.astelev.around_planet.compat.TelescopeAccess.close(player);ManeuverPayload.close(player);}}));
     }
-    public static void refreshNow(net.minecraft.server.level.ServerLevel level){for(var p:level.players())if(SUBSCRIBERS.containsKey(p)&&p.connection.hasChannel(TYPE)){var packet=io.github.astelev.around_planet.compat.SpaceMapSnapshot.sample(p);if(packet!=null){PacketDistributor.sendToPlayer(p,packet);ManeuverPayload.refresh(p,packet.focus());}}}
+    public static void refreshNow(net.minecraft.server.level.ServerLevel level){for(var p:level.players())if(SUBSCRIBERS.containsKey(p)&&p.connection.hasChannel(TYPE)){var packet=io.github.astelev.around_planet.compat.TelescopeAccess.active(p)?io.github.astelev.around_planet.compat.TelescopeAccess.snapshot(p):io.github.astelev.around_planet.compat.SpaceMapSnapshot.sample(p);if(packet!=null){PacketDistributor.sendToPlayer(p,packet);if(io.github.astelev.around_planet.compat.TelescopeAccess.active(p))io.github.astelev.around_planet.compat.TelescopeAccess.context(p);else ManeuverPayload.refresh(p,packet.focus());}}}
     @SubscribeEvent public static void tick(LevelTickEvent.Post event){
-        if(!(event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) || !level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD) || level.getGameTime()%20!=0 || !net.neoforged.fml.ModList.get().isLoaded("sable"))return;
+        if(!(event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) || level.getGameTime()%20!=0 || !net.neoforged.fml.ModList.get().isLoaded("sable"))return;
         for(var p:level.players())if(SUBSCRIBERS.containsKey(p)){
-            if(SUBSCRIBERS.get(p)<level.getGameTime() || !io.github.astelev.around_planet.space.SpaceCells.contains(p) || !p.connection.hasChannel(TYPE)){SUBSCRIBERS.remove(p);continue;}
-            var packet=io.github.astelev.around_planet.compat.SpaceMapSnapshot.sample(p);if(packet!=null){PacketDistributor.sendToPlayer(p,packet);ManeuverPayload.refresh(p,packet.focus());}
+            if(SUBSCRIBERS.get(p)<level.getGameTime() || !io.github.astelev.around_planet.space.SpaceCells.contains(p)&&!io.github.astelev.around_planet.compat.TelescopeAccess.active(p) || !p.connection.hasChannel(TYPE)){SUBSCRIBERS.remove(p);continue;}
+            var packet=io.github.astelev.around_planet.compat.TelescopeAccess.active(p)?io.github.astelev.around_planet.compat.TelescopeAccess.snapshot(p):io.github.astelev.around_planet.compat.SpaceMapSnapshot.sample(p);if(packet!=null){PacketDistributor.sendToPlayer(p,packet);if(io.github.astelev.around_planet.compat.TelescopeAccess.active(p))io.github.astelev.around_planet.compat.TelescopeAccess.context(p);else ManeuverPayload.refresh(p,packet.focus());}
         }
     }
 }

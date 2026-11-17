@@ -45,8 +45,8 @@ public final class PlanetAtlasData extends SavedData {
     }
     public static PlanetAtlasData load(CompoundTag tag,HolderLookup.Provider lookup){
         var data=new PlanetAtlasData();int[] pixels=tag.getIntArray("Pixels");
-        if(tag.getInt("Version")==2&&pixels.length==PlanetAtlas.SIZE){data.pixels=pixels;data.progress=Math.clamp(tag.getInt("Progress"),0,PlanetAtlas.SIZE);data.seed=tag.getLong("Seed");data.circumference=tag.getInt("Circumference");}
+        if(tag.getInt("Version")==3&&pixels.length==PlanetAtlas.SIZE){data.pixels=pixels;data.progress=Math.clamp(tag.getInt("Progress"),0,PlanetAtlas.SIZE);data.seed=tag.getLong("Seed");data.circumference=tag.getInt("Circumference");}
         return data;
     }
-    @Override public CompoundTag save(CompoundTag tag,HolderLookup.Provider lookup){tag.putInt("Version",2);tag.putInt("Circumference",circumference);tag.putLong("Seed",seed);tag.putInt("Progress",progress);tag.putIntArray("Pixels",pixels);return tag;}
+    @Override public CompoundTag save(CompoundTag tag,HolderLookup.Provider lookup){tag.putInt("Version",3);tag.putInt("Circumference",circumference);tag.putLong("Seed",seed);tag.putInt("Progress",progress);tag.putIntArray("Pixels",pixels);return tag;}
 }

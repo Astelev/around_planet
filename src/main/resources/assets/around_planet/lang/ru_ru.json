@@ -145,5 +145,8 @@
   "item.around_planet.liquid_oxygen_bucket": "Ведро жидкого кислорода",
   "around_planet.propulsion.mass_flow": "Расход смеси: %s кг/с",
   "block.around_planet.liquid_hydrogen": "Жидкий водород",
-  "block.around_planet.liquid_oxygen": "Жидкий кислород"
+  "block.around_planet.liquid_oxygen": "Жидкий кислород",
+  "block.around_planet.telescope": "Телескоп",
+  "around_planet.helmet.surface_speed": "Скорость над поверхностью: %s м/с",
+  "around_planet.propulsion.configured_thrust": "Заданная тяга: %s Н | %s м/с"
 }

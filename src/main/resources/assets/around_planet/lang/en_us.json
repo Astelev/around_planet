@@ -145,5 +145,8 @@
   "item.around_planet.liquid_oxygen_bucket": "Liquid Oxygen Bucket",
   "around_planet.propulsion.mass_flow": "Mixture flow: %s kg/s",
   "block.around_planet.liquid_hydrogen": "Liquid Hydrogen",
-  "block.around_planet.liquid_oxygen": "Liquid Oxygen"
+  "block.around_planet.liquid_oxygen": "Liquid Oxygen",
+  "block.around_planet.telescope": "Telescope",
+  "around_planet.helmet.surface_speed": "Surface speed: %s m/s",
+  "around_planet.propulsion.configured_thrust": "Configured: %s N | %s m/s"
 }
