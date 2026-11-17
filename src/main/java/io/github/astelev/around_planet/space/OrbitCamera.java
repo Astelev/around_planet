@@ -4,11 +4,12 @@ public final class OrbitCamera {
     public record Point(double x,double y,double depth){}
     public double yaw,pitch,zoom=1;public long basisVersion;private double extent=1;
     public SpaceVector focus=SpaceVector.ZERO;
-    private SpaceVector right=new SpaceVector(1,0,0),up=new SpaceVector(0,1,0),forward=new SpaceVector(0,0,1);
-    public void fit(SpaceState state,double extent){basisVersion++;this.extent=Math.max(1,extent);yaw=pitch=0;focus=SpaceVector.ZERO;zoom=1;
-        var r=state.position();if(r.length()<1e-9)return;right=r.scale(1/r.length());var h=r.cross(state.velocity());
-        if(h.length()<1e-9)h=right.cross(Math.abs(right.y())<.9?new SpaceVector(0,1,0):new SpaceVector(0,0,1));
-        forward=h.scale(1/h.length());up=forward.cross(right);
+    private SpaceVector right=new SpaceVector(1,0,0),up=new SpaceVector(0,0,1),forward=new SpaceVector(0,-1,0);
+    /** Keep geographic +Z upright: horizontal drag orbits the planet spin axis, even for inclined vessels. */
+    public void fit(SpaceState state,double extent){basisVersion++;this.extent=Math.max(1,extent);yaw=0;pitch=.45;focus=SpaceVector.ZERO;zoom=1;
+        var equatorial=new SpaceVector(state.position().x(),state.position().y(),0);
+        right=equatorial.length()>1e-9?equatorial.scale(1/equatorial.length()):new SpaceVector(1,0,0);
+        up=new SpaceVector(0,0,1);forward=right.cross(up);
     }
     public double scale(double viewportSize){return viewportSize*.42*zoom/extent;}
     public Point project(SpaceVector p,double cx,double cy,double viewportSize){

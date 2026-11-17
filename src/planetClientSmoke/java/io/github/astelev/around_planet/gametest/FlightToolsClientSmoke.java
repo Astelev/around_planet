@@ -30,13 +30,13 @@ public final class FlightToolsClientSmoke {
             if(be.actualThrust()!=0||be.configuredThrust()<20000)throw new AssertionError("Idle engine lost configured thrust");
             PropulsionScreen.open(be);phase=2;start=ticks;return;
         }
-        if(phase==2&&ticks-start>30){shot(mc,"idle-engine-thrust-alpha58.png");mc.setScreen(null);phase=3;start=ticks;mc.getSingleplayerServer().execute(()->{try{TelescopeAccess.open(mc.getSingleplayerServer().overworld().players().getFirst(),BLOCK);}catch(Throwable t){failure=t;}});return;}
+        if(phase==2&&ticks-start>30){shot(mc,"idle-engine-thrust-alpha59.png");mc.setScreen(null);phase=3;start=ticks;mc.getSingleplayerServer().execute(()->{try{TelescopeAccess.open(mc.getSingleplayerServer().overworld().players().getFirst(),BLOCK);}catch(Throwable t){failure=t;}});return;}
         if(phase==3&&ticks-start>70&&mc.screen instanceof OrbitMapScreen){var catalog=SpaceMapCatalog.current();if(catalog==null||catalog.bodies().stream().noneMatch(b->b.id().equals(object)))return;
             if(SpaceHud.current()==null||SpaceHud.current().active())throw new AssertionError("Telescope requires an orbital cell");
             if(!PlanetAtlasTexture.ready())return;
-            shot(mc,"telescope-earth-map-alpha58.png");mc.screen.mouseClicked(mc.screen.width-246,18,0);phase=4;start=ticks;return;
+            shot(mc,"telescope-earth-map-alpha59.png");mc.screen.mouseClicked(mc.screen.width-246,18,0);phase=4;start=ticks;return;
         }
-        if(phase==4&&ticks-start>50){if(!(mc.screen instanceof OrbitMapScreen))throw new AssertionError("Ground map closed unexpectedly");shot(mc,"telescope-moon-map-alpha58.png");AroundPlanet.LOGGER.info("FLIGHT_TOOLS_CLIENT_PASS atlas={}x{} groundRadius={} catalogObjects={} idleThrust={} telescopeMap=true",io.github.astelev.around_planet.atlas.PlanetAtlas.WIDTH,io.github.astelev.around_planet.atlas.PlanetAtlas.HEIGHT,SpaceHud.current().radius(),SpaceMapCatalog.current().bodies().size(),((io.github.astelev.around_planet.propulsion.PropulsionBlockEntity)mc.level.getBlockEntity(ENGINE)).configuredThrust());phase=5;mc.stop();}
+        if(phase==4&&ticks-start>50){if(!(mc.screen instanceof OrbitMapScreen))throw new AssertionError("Ground map closed unexpectedly");shot(mc,"telescope-moon-map-alpha59.png");AroundPlanet.LOGGER.info("FLIGHT_TOOLS_CLIENT_PASS atlas={}x{} groundRadius={} catalogObjects={} idleThrust={} telescopeMap=true",io.github.astelev.around_planet.atlas.PlanetAtlas.WIDTH,io.github.astelev.around_planet.atlas.PlanetAtlas.HEIGHT,SpaceHud.current().radius(),SpaceMapCatalog.current().bodies().size(),((io.github.astelev.around_planet.propulsion.PropulsionBlockEntity)mc.level.getBlockEntity(ENGINE)).configuredThrust());phase=5;mc.stop();}
     }
     private static void shot(Minecraft mc,String name){net.minecraft.client.Screenshot.grab(mc.gameDirectory,name,mc.getMainRenderTarget(),m->{});}
 }
