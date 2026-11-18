@@ -156,5 +156,10 @@
   "around_planet.solid.column_occupied": "Секция уже заряжена или горит.",
   "around_planet.solid.remaining": "Остаток твёрдого топлива: %s%%",
   "around_planet.solid.burning": "Двигатель горит — выключить его нельзя.",
-  "around_planet.solid.ignite": "Установите и зарядите колонны над соплом. Запуск — редстоуном."
+  "around_planet.solid.ignite": "Установите и зарядите колонны над соплом. Запуск — редстоуном.",
+  "around_planet.vacuum.room": "Герметичный отсек — воздух доступен",
+  "around_planet.vacuum.supplied": "Вакуум — подача воздуха работает",
+  "around_planet.vacuum.exposed": "Вакуум — нет подачи воздуха",
+  "death.attack.around_planet.vacuum": "%1$s задохнулся в вакууме",
+  "death.attack.around_planet.vacuum.player": "%1$s задохнулся в вакууме, спасаясь от %2$s"
 }

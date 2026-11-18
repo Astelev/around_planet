@@ -54,3 +54,10 @@ type="optional"
 versionRange="[1.1.0]"
 ordering="AFTER"
 side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="create_submarine"
+type="optional"
+versionRange="[3.4.8,4.0)"
+ordering="AFTER"
+side="BOTH"

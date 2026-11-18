@@ -8,7 +8,7 @@ public final class PlanetConfig {
     public static final java.util.function.IntSupplier BOUNDARY=()->PlanetConfig.PLANET_SIZE.get()/2,BOUNDARY_Z=BOUNDARY;
     public static final ModConfigSpec.DoubleValue HYDROLOX_ENERGY,HYDROLOX_EFFICIENCY,FUEL_EFFICIENCY_MULTIPLIER,DAY_LENGTH_MINUTES;
     public static final ModConfigSpec.DoubleValue SPACE_GRAVITY,SPACE_UNLOAD_SPEED,RENDEZVOUS_DISTANCE,RENDEZVOUS_SPEED,ATMOSPHERE_DRAG,REENTRY_SPEED;
-    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS,PROGRESSIVE,SPACE,SURFACE_CURVE,SURFACE_SKY;
+    public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS,PROGRESSIVE,SPACE,SURFACE_CURVE,SURFACE_SKY,VACUUM;
     public static final ModConfigSpec.IntValue MOON_LANDING,SPACE_ENTRY,SPACE_Y,SKY_DARKEN,ATMOSPHERE_TOP,ATMOSPHERE_BOTTOM, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
     static {
         var b = new ModConfigSpec.Builder();
@@ -80,7 +80,7 @@ public final class PlanetConfig {
         b.push("hydrolox");
         HYDROLOX_ENERGY=b.comment("Chemical energy per kilogram of the complete hydrogen/oxygen mixture (not hydrogen alone). Exhaust speed = sqrt(2 * energy * efficiency). Does not change Pondus mass.").defineInRange("energyJoulesPerKg",120_000_000.0/9,1.0,1.0e9);
         HYDROLOX_EFFICIENCY=b.comment("Mixture energy conversion efficiency. Before the global multiplier: 0.1625 gives about 2082 m/s; 0.65 gives about 4163 m/s. Fuel parameter, not an engine upgrade.").defineInRange("efficiency",.1625,.000001,1.0);
-        b.pop();b.pop();SPEC = b.build();
+        b.pop();b.pop();b.push("lifeSupport");VACUUM=b.comment("Players need breathable air in space cells, above surface space-entry height and on the Moon. Optional Deep Seas sealed rooms with powered oxygen diffusers supply air; Create diving equipment can use its usual backtank. Does not change other dimensions or underwater breathing.").define("vacuum",true);b.pop();SPEC = b.build();
     }
     private PlanetConfig() {}
 }

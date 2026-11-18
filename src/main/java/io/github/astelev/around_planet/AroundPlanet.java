@@ -19,6 +19,7 @@ public final class AroundPlanet {
         bus.addListener(io.github.astelev.around_planet.network.SeamShipTransferPayload::register);
         bus.addListener(io.github.astelev.around_planet.network.SpaceTransferPayload::register);
         bus.addListener(io.github.astelev.around_planet.network.SpaceStatusPayload::register);
+        bus.addListener(io.github.astelev.around_planet.network.VacuumPayload::register);
         bus.addListener(io.github.astelev.around_planet.network.PlasmaPayload::register);
         bus.addListener(io.github.astelev.around_planet.network.CelestialSkyPayload::register);
         bus.addListener(io.github.astelev.around_planet.network.SpaceMapPayload::register);

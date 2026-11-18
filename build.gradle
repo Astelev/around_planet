@@ -65,6 +65,7 @@ dependencies {
     createCompileBundle('maven.modrinth:create:UjX6dr61') { transitive = false }
     compileOnly files(extractCreateApi.map { it.destinationDir }).asFileTree.matching { include '*.jar' }
     sableCompileBundle('maven.modrinth:sable:fg9dTRz9') { transitive = false }
+    compileOnly('maven.modrinth:create-deep-seas:ZL3n46XL') { transitive = false } // optional sealed-room API, never bundled
     compileOnly('maven.modrinth:sable:fg9dTRz9') { transitive = false }
     compileOnly files(extractSableApi.map { it.destinationDir }).asFileTree.matching { include '*.jar' }
     compileOnly('maven.modrinth:distanthorizons:9w34y8ai') { transitive = false } // DH 3.3.3 / 1.21.1
@@ -124,6 +125,7 @@ if (providers.gradleProperty('planetTests').isPresent()) {
         gameTestServer {
             type = 'gameTestServer'
             systemProperty 'around_planet.gameTestDimensions', 'true'
+            if (providers.gradleProperty('planetVacuumTests').isPresent()) systemProperty 'around_planet.vacuumTests', 'true'
             if (providers.gradleProperty('planetSolidTests').isPresent()) systemProperty 'around_planet.solidTests', 'true'
             if (providers.gradleProperty('planetRocketTests').isPresent()) systemProperty 'around_planet.rocketTests', 'true'
             if (providers.gradleProperty('planetShipLoaderTests').isPresent()) systemProperty 'around_planet.shipLoaderTests', 'true'
@@ -137,7 +139,8 @@ if (providers.gradleProperty('planetTests').isPresent()) {
 if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     sourceSets {
         planetClientSmoke {
-            if (project.providers.gradleProperty('planetSolidRocketSmoke').isPresent()) java.include('**/SolidRocketClientSmoke.java')
+            if (project.providers.gradleProperty('planetVacuumSmoke').isPresent()) java.include('**/VacuumClientSmoke.java')
+            else if (project.providers.gradleProperty('planetSolidRocketSmoke').isPresent()) java.include('**/SolidRocketClientSmoke.java')
             else if (project.providers.gradleProperty('planetPlasmaSmoke').isPresent()) java.include('**/PlasmaClientSmoke.java')
             else if (project.providers.gradleProperty('planetFlightToolsSmoke').isPresent()) java.include('**/FlightToolsClientSmoke.java')
             else if (project.providers.gradleProperty('planetSurfacePlanetSmoke').isPresent()) java.include('**/SurfacePlanetSmoke.java')

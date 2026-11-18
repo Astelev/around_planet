@@ -156,5 +156,10 @@
   "around_planet.solid.column_occupied": "This section is loaded or burning.",
   "around_planet.solid.remaining": "Solid fuel: %s%%",
   "around_planet.solid.burning": "Solid motor burning — cannot be shut down.",
-  "around_planet.solid.ignite": "Load aligned columns above the nozzle. Apply redstone to ignite."
+  "around_planet.solid.ignite": "Load aligned columns above the nozzle. Apply redstone to ignite.",
+  "around_planet.vacuum.room": "Sealed compartment — air available",
+  "around_planet.vacuum.supplied": "Vacuum — breathing supply active",
+  "around_planet.vacuum.exposed": "Vacuum — no breathing supply",
+  "death.attack.around_planet.vacuum": "%1$s suffocated in vacuum",
+  "death.attack.around_planet.vacuum.player": "%1$s suffocated in vacuum while escaping %2$s"
 }
