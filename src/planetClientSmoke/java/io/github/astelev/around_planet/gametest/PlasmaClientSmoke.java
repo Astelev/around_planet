@@ -37,19 +37,23 @@ public final class PlasmaClientSmoke {
         if(phase==2&&ticks-start>110){
             if(PlasmaHullCache.builds!=builds)throw new AssertionError("Hull rebuilt without block edits: "+builds+" -> "+PlasmaHullCache.builds);
             if(PlasmaRenderer.draws<=draws)throw new AssertionError("Plasma stopped drawing");
-            shot(mc,"plasma-heated-alpha60.png");phase=3;start=ticks;
+            shot(mc,"plasma-heated-alpha61.png");phase=3;start=ticks;
             mc.getSingleplayerServer().execute(()->{try{var p=ship.getSelfMassTracker().getCenterOfMass();changed=BlockPos.containing(p.x()+3,p.y(),p.z());ship.getLevel().setBlockAndUpdate(changed,Blocks.GOLD_BLOCK.defaultBlockState());}catch(Throwable t){failure=t;}});return;
         }
         if(phase==3&&changed!=null&&mc.level.getBlockState(changed).is(Blocks.GOLD_BLOCK)&&ticks-start>40){
             if(PlasmaHullCache.builds<=builds)throw new AssertionError("Edited hull was not invalidated by block packet");
-            shot(mc,"plasma-updated-hull-alpha60.png");builds=PlasmaHullCache.builds;speed=150;phase=4;start=ticks;return;
+            shot(mc,"plasma-updated-hull-alpha61.png");builds=PlasmaHullCache.builds;speed=180;draws=PlasmaRenderer.draws;phase=30;start=ticks;return;
+        }
+        if(phase==30&&ticks-start>60){
+            if(PlasmaRenderer.draws<=draws)throw new AssertionError("No plasma between 150 and 200 m/s");
+            shot(mc,"plasma-180mps-alpha61.png");speed=149;phase=4;start=ticks;return;
         }
         if(phase==4&&ticks-start>40){draws=PlasmaRenderer.draws;phase=5;start=ticks;return;}
         if(phase==5&&ticks-start>60){
-            if(PlasmaRenderer.draws!=draws)throw new AssertionError("Plasma below 200 m/s");
+            if(PlasmaRenderer.draws!=draws)throw new AssertionError("Plasma below 150 m/s");
             if(PlasmaHullCache.builds!=builds)throw new AssertionError("Cold flight rebuilt the hull");
-            shot(mc,"plasma-below-threshold-alpha60.png");
-            AroundPlanet.LOGGER.info("PLASMA_CLIENT_PASS hotRender=true cold150mps=false eventInvalidation=true idleCacheStable=true hullBuilds={} triangles={}",PlasmaHullCache.builds,PlasmaRenderer.triangles);phase=6;mc.stop();
+            shot(mc,"plasma-below-threshold-alpha61.png");
+            AroundPlanet.LOGGER.info("PLASMA_CLIENT_PASS hotRender=true hot180mps=true cold149mps=false eventInvalidation=true idleCacheStable=true hullBuilds={} triangles={}",PlasmaHullCache.builds,PlasmaRenderer.triangles);phase=6;mc.stop();
         }
     }
     private static void hold(Minecraft mc){

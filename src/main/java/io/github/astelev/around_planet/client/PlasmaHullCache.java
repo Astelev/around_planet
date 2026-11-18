@@ -2,12 +2,13 @@ package io.github.astelev.around_planet.client;
 
 import dev.ryanhcode.sable.sublevel.ClientSubLevel;
 import io.github.astelev.around_planet.plasma.ProjectedHull;
+import io.github.astelev.around_planet.plasma.RoundedHull;
 import net.minecraft.core.BlockPos;
 import java.util.*;
 
 /** Event-invalidated local geometry. No polling, pose comparisons, server scans or chunk requests. */
 public final class PlasmaHullCache {
-    public record Mesh(BlockPos origin, ProjectedHull hull) {}
+    public record Mesh(BlockPos origin, RoundedHull hull) {}
     private static final Map<ClientSubLevel, Entry> CACHE = new WeakHashMap<>();
     private static final class Entry { boolean dirty = true; Mesh mesh; }
     public static long builds;
@@ -26,7 +27,7 @@ public final class PlasmaHullCache {
                     if (!section.getBlockState(x, y, z).isAir()) builder.block(dx + x, dy + y, dz + z);
             }
         }
-        entry.mesh = new Mesh(origin.immutable(), builder.build(.22)); entry.dirty = false; builds++;
+        entry.mesh = new Mesh(origin.immutable(), RoundedHull.of(builder.build(.08))); entry.dirty = false; builds++;
         return entry.mesh;
     }
     private PlasmaHullCache() {}

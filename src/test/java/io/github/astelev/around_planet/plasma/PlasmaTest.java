@@ -6,15 +6,15 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PlasmaTest {
     @Test void thresholdAndVacuumAreStrictlyDark() {
-        for (double v : new double[]{0, 100, 199.999, 200}) assertEquals(0, PlasmaMath.intensity(v, 1));
+        for (double v : new double[]{0, 100, 149.999, 150}) assertEquals(0, PlasmaMath.intensity(v, 1));
         assertEquals(0, PlasmaMath.intensity(2000, 0));
         assertEquals(0, PlasmaMath.intensity(Double.NaN, 1));
-        assertTrue(PlasmaMath.intensity(200.001, 1) > 0);
+        assertTrue(PlasmaMath.intensity(150.001, 1) > 0);
     }
     @Test void pressureIsQuadraticAndDensityScalesIt() {
         double a = -Math.log1p(-PlasmaMath.intensity(300, .05));
         double b = -Math.log1p(-PlasmaMath.intensity(400, .05));
-        assertEquals((400.0*400-200*200)/(300.0*300-200*200), b/a, 1e-12);
+        assertEquals((400.0*400-150*150)/(300.0*300-150*150), b/a, 1e-12);
         assertEquals(a*2, -Math.log1p(-PlasmaMath.intensity(300, .1)), 1e-12);
         assertTrue(PlasmaMath.intensity(600, .16) > .98);
     }

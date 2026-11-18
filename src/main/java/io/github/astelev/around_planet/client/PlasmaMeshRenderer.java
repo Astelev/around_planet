@@ -5,6 +5,7 @@ import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.sublevel.ClientSubLevel;
 import io.github.astelev.around_planet.network.PlasmaPayload;
 import io.github.astelev.around_planet.plasma.PlasmaMath;
+import io.github.astelev.around_planet.plasma.RoundedHull;
 import io.github.astelev.around_planet.space.SpaceVector;
 import net.minecraft.client.Minecraft;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
@@ -24,7 +25,7 @@ final class PlasmaMeshRenderer {
             double heat = PlasmaMath.intensity(sample.velocity().length(), sample.density()); if (heat <= .001) continue;
             var bounds = ship.boundingBox();
             if (!event.getFrustum().isVisible(new net.minecraft.world.phys.AABB(bounds.minX() - 2, bounds.minY() - 2, bounds.minZ() - 2, bounds.maxX() + 2, bounds.maxY() + 2, bounds.maxZ() + 2))) continue;
-            var mesh = PlasmaHullCache.get((ClientSubLevel)ship); if (mesh.hull().faces().isEmpty()) continue;
+            var mesh = PlasmaHullCache.get((ClientSubLevel)ship); if (mesh.hull().triangles().isEmpty()) continue;
             var pose = ((ClientSubLevel)ship).renderPose(partial);
             var direction = new Vector3d(sample.velocity().x(), sample.velocity().y(), sample.velocity().z()).normalize();
             var localDirection = pose.orientation().transformInverse(new Vector3d(direction));
@@ -32,27 +33,24 @@ final class PlasmaMeshRenderer {
             var centerWorld = pose.transformPosition(new Vector3d(center.x() + origin.getX(), center.y() + origin.getY(), center.z() + origin.getZ()));
             var eye = new Vector3d(camera.x, camera.y, camera.z).sub(centerWorld).normalize();
             var consumer = DeferredExhaust.vertices();
-            for (int shell = 0; shell < 3; shell++) for (var face : mesh.hull().faces()) {
-                var n = face.normal(); var normal = pose.orientation().transform(new Vector3d(n.x(), n.y(), n.z()));
-                double wind = normal.dot(direction), leading = Math.max(0, wind);
-                if (wind < -.35) continue;
-                double edge = 1 - Math.abs(normal.dot(eye));
-                float alpha = (float)(heat * (.10 + .65 * leading * leading + .18 * edge * edge) * (shell == 0 ? .65 : shell == 1 ? .30 : .10));
-                var points = face.vertices();
-                for (int i = 1; i + 1 < points.size(); i++) {
-                    var a = points.getFirst(); var b = points.get(i); var c = points.get(i + 1);
-                    vertex(consumer, matrix, a, center, origin, pose, camera, localDirection, shell, leading, alpha);
-                    vertex(consumer, matrix, b, center, origin, pose, camera, localDirection, shell, leading, alpha);
-                    vertex(consumer, matrix, c, center, origin, pose, camera, localDirection, shell, leading, alpha);
-                    vertex(consumer, matrix, c, center, origin, pose, camera, localDirection, shell, leading, alpha);
-                    PlasmaRenderer.triangles++;
-                }
+            var localEye = pose.orientation().transformInverse(eye);
+            for (int shell = 0; shell < 3; shell++) for (var triangle : mesh.hull().triangles()) {
+                vertex(consumer, matrix, triangle.a(), center, origin, pose, camera, localDirection, localEye, shell, heat);
+                vertex(consumer, matrix, triangle.b(), center, origin, pose, camera, localDirection, localEye, shell, heat);
+                vertex(consumer, matrix, triangle.c(), center, origin, pose, camera, localDirection, localEye, shell, heat);
+                vertex(consumer, matrix, triangle.c(), center, origin, pose, camera, localDirection, localEye, shell, heat);
+                PlasmaRenderer.triangles++;
             }
             PlasmaRenderer.draws++;
         }
     }
-    private static void vertex(VertexConsumer out, Matrix4f matrix, SpaceVector p, SpaceVector center, net.minecraft.core.BlockPos origin,
-            dev.ryanhcode.sable.companion.math.Pose3dc pose, net.minecraft.world.phys.Vec3 camera, Vector3d airflow, int shell, double leading, float alpha) {
+    private static void vertex(VertexConsumer out, Matrix4f matrix, RoundedHull.Vertex vertex, SpaceVector center, net.minecraft.core.BlockPos origin,
+            dev.ryanhcode.sable.companion.math.Pose3dc pose, net.minecraft.world.phys.Vec3 camera, Vector3d airflow, Vector3d eye, int shell, double heat) {
+        var p = vertex.position(); var n = vertex.normal();
+        double wind = n.x()*airflow.x + n.y()*airflow.y + n.z()*airflow.z;
+        double leading = Math.max(0, wind), edge = 1 - Math.abs(n.x()*eye.x + n.y()*eye.y + n.z()*eye.z);
+        double fade = Math.clamp((wind + .35)/.35,0,1); fade = fade*fade*(3-2*fade);
+        float alpha = (float)(heat * fade * (.10 + .65*leading*leading + .18*edge*edge) * (shell == 0 ? .65 : shell == 1 ? .30 : .10));
         double scale = 1 + shell * .025;
         double x = center.x() + (p.x() - center.x()) * scale, y = center.y() + (p.y() - center.y()) * scale, z = center.z() + (p.z() - center.z()) * scale;
         var world = pose.transformPosition(new Vector3d(x + origin.getX(), y + origin.getY(), z + origin.getZ()));
