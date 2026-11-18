@@ -136,7 +136,8 @@ if (providers.gradleProperty('planetTests').isPresent()) {
 if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     sourceSets {
         planetClientSmoke {
-            if (project.providers.gradleProperty('planetFlightToolsSmoke').isPresent()) java.include('**/FlightToolsClientSmoke.java')
+            if (project.providers.gradleProperty('planetPlasmaSmoke').isPresent()) java.include('**/PlasmaClientSmoke.java')
+            else if (project.providers.gradleProperty('planetFlightToolsSmoke').isPresent()) java.include('**/FlightToolsClientSmoke.java')
             else if (project.providers.gradleProperty('planetSurfacePlanetSmoke').isPresent()) java.include('**/SurfacePlanetSmoke.java')
             else if (project.providers.gradleProperty('planetRocketSmoke').isPresent()) java.include('**/RocketClientSmoke.java')
             else if (project.providers.gradleProperty('planetShipLoaderSmoke').isPresent()) java.include('**/ShipLoaderClientSmoke.java')
