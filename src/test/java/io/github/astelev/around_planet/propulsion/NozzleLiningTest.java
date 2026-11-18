@@ -6,6 +6,18 @@ import java.nio.file.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class NozzleLiningTest {
+    @Test void solidBellHasSlopingConvergingAndDivergingWalls()throws Exception {
+        var model=NozzleLining.read(Files.newBufferedReader(Path.of("src/main/resources/assets/around_planet/models/block/solid_rocket_nozzle.obj")));
+        assertEquals(24,model.faces().size());
+        assertEquals(-.605f,model.outlet(),1e-6);assertEquals(.37f,model.mouthRadius(),1e-6);
+        assertTrue(model.faces().stream().anyMatch(f->f.normal().y()>.01));
+        assertTrue(model.faces().stream().anyMatch(f->f.normal().y()<-.01));
+        for(var f:model.faces()){
+            assertTrue(Math.abs(f.normal().y())>.01,"Bell wall must slope, not form steps");
+            assertEquals(1,Math.sqrt(f.normal().x()*f.normal().x()+f.normal().y()*f.normal().y()+f.normal().z()*f.normal().z()),1e-6);
+            for(var p:f.points())assertTrue(Math.abs(p.x())<=.5&&Math.abs(p.z())<=.5);
+        }
+    }
     @Test void editedBlenderModelIncludesAllInnerSegmentsAndCap()throws Exception {
         var model=NozzleLining.read(Files.newBufferedReader(Path.of("src/main/resources/assets/around_planet/models/block/liquid_rocket_engine.obj")));
         assertEquals(33,model.faces().size()); // 32 inner panels plus the chamber cap, no body/pipe faces.

@@ -18,7 +18,7 @@ public final class SolidColumnRenderer implements BlockEntityRenderer<SolidColum
         if(be.fuel()<=0)return;frames++;pose.pushPose();pose.translate(.5,.5,.5);
         switch(be.getBlockState().getValue(BlockStateProperties.AXIS)){case X->pose.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(-90));case Z->pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(90));default->{}}
         pose.translate(-.5,-.5,-.5);float height=(float)(.8125*be.fraction());
-        pose.translate(.28125,be.burnPositive()?.09375:.90625-height,.28125);pose.scale(.4375f,height,.4375f);
+        pose.translate(.15,be.burnPositive()?.09375:.90625-height,.15);pose.scale(.7f,height,.7f);
         blocks.renderSingleBlock(SolidRegistry.FUEL.get().defaultBlockState(),pose,buffers,light,overlay);pose.popPose();
     }
 }

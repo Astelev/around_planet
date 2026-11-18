@@ -19,7 +19,7 @@ public final class SolidColumnBlock extends BaseEntityBlock {
     @Override protected BlockState rotate(BlockState s,Rotation r){return s.setValue(BlockStateProperties.AXIS,r.rotate(Direction.get(Direction.AxisDirection.POSITIVE,s.getValue(BlockStateProperties.AXIS))).getAxis());}
     @Override protected RenderShape getRenderShape(BlockState s){return RenderShape.MODEL;}
     @Override public BlockEntity newBlockEntity(BlockPos p,BlockState s){return new SolidColumnBlockEntity(p,s);}
-    @Override protected net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState s,BlockGetter l,BlockPos p,net.minecraft.world.phys.shapes.CollisionContext c){return switch(s.getValue(BlockStateProperties.AXIS)){case Y->Block.box(3,0,3,13,16,13);case X->Block.box(0,3,3,16,13,13);case Z->Block.box(3,3,0,13,13,16);};}
+    @Override protected net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState s,BlockGetter l,BlockPos p,net.minecraft.world.phys.shapes.CollisionContext c){return net.minecraft.world.phys.shapes.Shapes.block();}
     @Override protected ItemInteractionResult useItemOn(ItemStack stack,BlockState state,Level level,BlockPos pos,Player player,InteractionHand hand,BlockHitResult hit){
         if(!stack.is(SolidRegistry.FUEL.get().asItem()))return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         if(level.getBlockEntity(pos) instanceof SolidColumnBlockEntity be){if(level.isClientSide)return ItemInteractionResult.SUCCESS;if(be.loadFuel()){if(!player.isCreative())stack.shrink(1);}else player.displayClientMessage(net.minecraft.network.chat.Component.translatable("around_planet.solid.column_occupied"),true);}
