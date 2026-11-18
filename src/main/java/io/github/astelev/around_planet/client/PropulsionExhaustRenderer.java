@@ -101,6 +101,6 @@ public final class PropulsionExhaustRenderer implements BlockEntityRenderer<Prop
         }
     }
     private static void vertex(PoseStack pose,VertexConsumer v,float x,float y,float z,int color,int alpha,float u,float along){v.addVertex(pose.last().pose(),x,y,z).setColor((color>>16)&255,(color>>8)&255,color&255,alpha).setUv(u,along);}
-    @Override public net.minecraft.world.phys.AABB getRenderBoundingBox(PropulsionBlockEntity be){return new net.minecraft.world.phys.AABB(be.getBlockPos()).inflate((be.kind()==PropulsionRegistry.Kind.CREATIVE||be.kind()==PropulsionRegistry.Kind.LIQUID)?14:be.kind()==PropulsionRegistry.Kind.RSU?3.5:0);}
+    @Override public net.minecraft.world.phys.AABB getRenderBoundingBox(PropulsionBlockEntity be){return new net.minecraft.world.phys.AABB(be.getBlockPos()).inflate((be.kind()==PropulsionRegistry.Kind.CREATIVE||be.kind()==PropulsionRegistry.Kind.LIQUID||be.kind()==PropulsionRegistry.Kind.SOLID)?14:be.kind()==PropulsionRegistry.Kind.RSU?3.5:0);}
     @Override public int getViewDistance(){return 96;}
 }

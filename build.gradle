@@ -124,6 +124,7 @@ if (providers.gradleProperty('planetTests').isPresent()) {
         gameTestServer {
             type = 'gameTestServer'
             systemProperty 'around_planet.gameTestDimensions', 'true'
+            if (providers.gradleProperty('planetSolidTests').isPresent()) systemProperty 'around_planet.solidTests', 'true'
             if (providers.gradleProperty('planetRocketTests').isPresent()) systemProperty 'around_planet.rocketTests', 'true'
             if (providers.gradleProperty('planetShipLoaderTests').isPresent()) systemProperty 'around_planet.shipLoaderTests', 'true'
             if (providers.gradleProperty('planetMoonTests').isPresent()) systemProperty 'around_planet.moonTests', 'true'
@@ -136,7 +137,8 @@ if (providers.gradleProperty('planetTests').isPresent()) {
 if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     sourceSets {
         planetClientSmoke {
-            if (project.providers.gradleProperty('planetPlasmaSmoke').isPresent()) java.include('**/PlasmaClientSmoke.java')
+            if (project.providers.gradleProperty('planetSolidRocketSmoke').isPresent()) java.include('**/SolidRocketClientSmoke.java')
+            else if (project.providers.gradleProperty('planetPlasmaSmoke').isPresent()) java.include('**/PlasmaClientSmoke.java')
             else if (project.providers.gradleProperty('planetFlightToolsSmoke').isPresent()) java.include('**/FlightToolsClientSmoke.java')
             else if (project.providers.gradleProperty('planetSurfacePlanetSmoke').isPresent()) java.include('**/SurfacePlanetSmoke.java')
             else if (project.providers.gradleProperty('planetRocketSmoke').isPresent()) java.include('**/RocketClientSmoke.java')

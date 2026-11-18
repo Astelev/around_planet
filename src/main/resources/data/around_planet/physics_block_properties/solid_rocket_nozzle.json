@@ -1,0 +1,6 @@
+{
+  "selector": "around_planet:solid_rocket_nozzle",
+  "properties": {
+    "sable:mass": 30
+  }
+}

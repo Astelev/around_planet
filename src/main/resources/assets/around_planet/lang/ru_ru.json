@@ -148,5 +148,13 @@
   "block.around_planet.liquid_oxygen": "Жидкий кислород",
   "block.around_planet.telescope": "Телескоп",
   "around_planet.helmet.surface_speed": "Скорость над поверхностью: %s м/с",
-  "around_planet.propulsion.configured_thrust": "Заданная тяга: %s Н | %s м/с"
+  "around_planet.propulsion.configured_thrust": "Заданная тяга: %s Н | %s м/с",
+  "block.around_planet.solid_rocket_nozzle": "Сопло твердотопливного двигателя",
+  "block.around_planet.solid_fuel_column": "Топливная колонна",
+  "block.around_planet.solid_rocket_fuel": "Твёрдое ракетное топливо",
+  "item.around_planet.solid_propellant_portion": "Порция твёрдого топлива",
+  "around_planet.solid.column_occupied": "Секция уже заряжена или горит.",
+  "around_planet.solid.remaining": "Остаток твёрдого топлива: %s%%",
+  "around_planet.solid.burning": "Двигатель горит — выключить его нельзя.",
+  "around_planet.solid.ignite": "Установите и зарядите колонны над соплом. Запуск — редстоуном."
 }

@@ -3,6 +3,8 @@
   "values": [
     "around_planet:maneuver_planner",
     "around_planet:ship_loader",
-    "around_planet:liquid_rocket_engine"
+    "around_planet:liquid_rocket_engine",
+    "around_planet:solid_fuel_column",
+    "around_planet:solid_rocket_nozzle"
   ]
 }

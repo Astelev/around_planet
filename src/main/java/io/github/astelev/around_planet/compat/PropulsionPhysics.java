@@ -19,7 +19,7 @@ public final class PropulsionPhysics {
                 var brake=PropulsionMath.brake(energy,be.strength(),signal,dt,be.energy.getEnergyStored());if(brake.cost()==0)continue;
                 pipe.addLinearAndAngularVelocity(ship,new Vector3d(),w.mul(brake.factor()-1));be.spend(brake.cost());
             }else{
-                var impulse=new Vector3d();for(int i=0;i<(be.kind()==PropulsionRegistry.Kind.RSU?4:1);i++){double amount=be.kind()==PropulsionRegistry.Kind.LIQUID?be.burn(dt):PropulsionMath.impulse(be.thrust(),be.signal(i),dt);if(amount==0)continue;var d=be.direction(i);impulse.add(d.x()*amount,d.y()*amount,d.z()*amount);}
+                var impulse=new Vector3d();for(int i=0;i<(be.kind()==PropulsionRegistry.Kind.RSU?4:1);i++){double amount=(be.kind()==PropulsionRegistry.Kind.LIQUID||be.kind()==PropulsionRegistry.Kind.SOLID)?be.burn(dt):PropulsionMath.impulse(be.thrust(),be.signal(i),dt);if(amount==0)continue;var d=be.direction(i);impulse.add(d.x()*amount,d.y()*amount,d.z()*amount);}
                 if(impulse.lengthSquared()==0)continue;
                 var p=be.getBlockPos();var point=new Vector3d(p.getX()+.5,p.getY()+.5,p.getZ()+.5);if(be.kind()==PropulsionRegistry.Kind.RSU){var normal=be.getBlockState().getValue(io.github.astelev.around_planet.sensor.OrbitalSensorBlock.FACING);point.add(-.375*normal.getStepX(),-.375*normal.getStepY(),-.375*normal.getStepZ());}var torque=point.sub(mass.getCenterOfMass()).cross(impulse);
                 var dv=q.transform(new Vector3d(impulse).mul(mass.getInverseMass()));var dw=q.transform(mass.getInverseInertiaTensor().transform(torque,new Vector3d()));

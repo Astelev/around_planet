@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "axis=y": {
+      "model": "around_planet:block/solid_fuel_column"
+    },
+    "axis=x": {
+      "model": "around_planet:block/solid_fuel_column",
+      "x": 90,
+      "y": 90
+    },
+    "axis=z": {
+      "model": "around_planet:block/solid_fuel_column",
+      "x": 90
+    }
+  }
+}

@@ -148,5 +148,13 @@
   "block.around_planet.liquid_oxygen": "Liquid Oxygen",
   "block.around_planet.telescope": "Telescope",
   "around_planet.helmet.surface_speed": "Surface speed: %s m/s",
-  "around_planet.propulsion.configured_thrust": "Configured: %s N | %s m/s"
+  "around_planet.propulsion.configured_thrust": "Configured: %s N | %s m/s",
+  "block.around_planet.solid_rocket_nozzle": "Solid Rocket Nozzle",
+  "block.around_planet.solid_fuel_column": "Solid Fuel Column",
+  "block.around_planet.solid_rocket_fuel": "Solid Rocket Fuel",
+  "item.around_planet.solid_propellant_portion": "Solid propellant portion",
+  "around_planet.solid.column_occupied": "This section is loaded or burning.",
+  "around_planet.solid.remaining": "Solid fuel: %s%%",
+  "around_planet.solid.burning": "Solid motor burning — cannot be shut down.",
+  "around_planet.solid.ignite": "Load aligned columns above the nozzle. Apply redstone to ignite."
 }
