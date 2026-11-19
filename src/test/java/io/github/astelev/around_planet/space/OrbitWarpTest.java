@@ -1,0 +1,9 @@
+package io.github.astelev.around_planet.space;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+class OrbitWarpTest {
+ @Test void circularCoastCanAdvanceManyTurnsWithoutCrossingThePlanetByAChord(){double mu=4e9,r=30000;var path=new SpaceTrajectory("p",0,new SpaceState(new SpaceVector(r,0,0),new SpaceVector(0,Math.sqrt(mu/r),0)),mu);assertEquals(240000,OrbitWarp.atmosphere(path,0,240000,24000));}
+ @Test void ellipticInboundCoastStopsAtTheFirstAtmosphereEntry(){double mu=4e9,r=50000,a=35000;var path=new SpaceTrajectory("p",0,new SpaceState(new SpaceVector(r,0,0),new SpaceVector(0,Math.sqrt(mu*(2/r-1/a)),0)),mu);long t=OrbitWarp.atmosphere(path,0,200000,24000);assertTrue(t>0&&t<200000);assertTrue(path.at(t).position().length()>=24000-.1);assertTrue(path.at(t+2).position().length()<24000);}
+ @Test void linearAndRadialMotionCannotJumpAcrossTheWholeAtmosphere(){var line=new SpaceTrajectory("p",0,new SpaceState(new SpaceVector(30000,0,0),new SpaceVector(-1000,0,0)),0);assertEquals(120,OrbitWarp.atmosphere(line,0,2000,24000));var radial=new SpaceTrajectory("p",0,new SpaceState(new SpaceVector(30000,0,0),new SpaceVector(-100,0,0)),4e9);long t=OrbitWarp.atmosphere(radial,0,200000,24000);assertTrue(t>0&&t<200000);assertTrue(radial.at(t).position().length()>=24000-.1);assertTrue(radial.at(t+2).position().length()<24000);}
+ @Test void selectedTargetStopsBeforeTheCaptureRegion(){var a=new SpaceTrajectory("p",0,new SpaceState(new SpaceVector(50000,0,0),new SpaceVector(10,0,0)),0);var b=new SpaceTrajectory("p",0,new SpaceState(new SpaceVector(51000,0,0),SpaceVector.ZERO),0);long t=OrbitWarp.proximity(a,b,0,2400,96,40000);assertEquals(1808,t,1);assertTrue(a.at(t).position().subtract(b.at(t).position()).length()>=96-.001);assertEquals(100,OrbitWarp.proximity(a,b,0,100,96,40000));}
+}

@@ -40,6 +40,7 @@ neoForge {
 configurations {
     runtimeClasspath.extendsFrom localRuntime
     sableCompileBundle
+    createCompileBundle
 }
 // Exact optional API and its nested compile-time libraries; nothing is bundled in our JAR.
 var extractSableApi = tasks.register('extractSableApi', Sync) {
@@ -51,11 +52,24 @@ var extractSableApi = tasks.register('extractSableApi', Sync) {
     into layout.buildDirectory.dir('sable-compile-api')
 }
 
+var extractCreateApi = tasks.register('extractCreateApi', Sync) {
+    from({ zipTree(configurations.createCompileBundle.singleFile) }) {
+        include 'META-INF/jarjar/ponder-*.jar'
+        eachFile { path = name }
+        includeEmptyDirs = false
+    }
+    into layout.buildDirectory.dir('create-compile-api')
+}
+
 dependencies {
+    createCompileBundle('maven.modrinth:create:UjX6dr61') { transitive = false }
+    compileOnly files(extractCreateApi.map { it.destinationDir }).asFileTree.matching { include '*.jar' }
     sableCompileBundle('maven.modrinth:sable:fg9dTRz9') { transitive = false }
+    compileOnly('maven.modrinth:create-deep-seas:ZL3n46XL') { transitive = false } // optional sealed-room API, never bundled
     compileOnly('maven.modrinth:sable:fg9dTRz9') { transitive = false }
     compileOnly files(extractSableApi.map { it.destinationDir }).asFileTree.matching { include '*.jar' }
     compileOnly('maven.modrinth:distanthorizons:9w34y8ai') { transitive = false } // DH 3.3.3 / 1.21.1
+    compileOnly('maven.modrinth:create:UjX6dr61') { transitive = false } // optional goggles API only
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -110,6 +124,14 @@ if (providers.gradleProperty('planetTests').isPresent()) {
     neoForge.runs {
         gameTestServer {
             type = 'gameTestServer'
+            systemProperty 'around_planet.gameTestDimensions', 'true'
+            if (providers.gradleProperty('planetMassTests').isPresent()) systemProperty 'around_planet.massTests', 'true'
+            if (providers.gradleProperty('planetVacuumTests').isPresent()) systemProperty 'around_planet.vacuumTests', 'true'
+            if (providers.gradleProperty('planetSolidTests').isPresent()) systemProperty 'around_planet.solidTests', 'true'
+            if (providers.gradleProperty('planetRocketTests').isPresent()) systemProperty 'around_planet.rocketTests', 'true'
+            if (providers.gradleProperty('planetShipLoaderTests').isPresent()) systemProperty 'around_planet.shipLoaderTests', 'true'
+            if (providers.gradleProperty('planetMoonTests').isPresent()) systemProperty 'around_planet.moonTests', 'true'
+            if (providers.gradleProperty('planetTestRunDir').isPresent()) gameDirectory = project.file(providers.gradleProperty('planetTestRunDir').get())
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
     }
@@ -118,6 +140,19 @@ if (providers.gradleProperty('planetTests').isPresent()) {
 if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     sourceSets {
         planetClientSmoke {
+            if (project.providers.gradleProperty('planetVacuumSmoke').isPresent()) java.include('**/VacuumClientSmoke.java')
+            else if (project.providers.gradleProperty('planetSolidRocketSmoke').isPresent()) java.include('**/SolidRocketClientSmoke.java')
+            else if (project.providers.gradleProperty('planetPlasmaSmoke').isPresent()) java.include('**/PlasmaClientSmoke.java')
+            else if (project.providers.gradleProperty('planetFlightToolsSmoke').isPresent()) java.include('**/FlightToolsClientSmoke.java')
+            else if (project.providers.gradleProperty('planetSurfacePlanetSmoke').isPresent()) java.include('**/SurfacePlanetSmoke.java')
+            else if (project.providers.gradleProperty('planetRocketSmoke').isPresent()) java.include('**/RocketClientSmoke.java')
+            else if (project.providers.gradleProperty('planetShipLoaderSmoke').isPresent()) java.include('**/ShipLoaderClientSmoke.java')
+            else if (project.providers.gradleProperty('planetExhaustSmoke').isPresent()) java.include('**/ExhaustClientSmoke.java')
+            else if (project.providers.gradleProperty('planetPropulsionSmoke').isPresent()) java.include('**/PropulsionClientSmoke.java')
+            else if (project.providers.gradleProperty('planetSensorMountSmoke').isPresent()) java.include('**/SensorMountSmoke.java')
+            else if (project.providers.gradleProperty('planetEmptyPerfSmoke').isPresent()) java.include('**/EmptyWorldPerformanceSmoke.java')
+            else if (project.providers.gradleProperty('planetLunarSkySmoke').isPresent()) java.include('**/LunarSurfaceSkySmoke.java', '**/SkyContrastGpuSmoke.java')
+            else if (project.providers.gradleProperty('planetSurfaceSmoke').isPresent()) java.include('**/SurfaceVisualSmoke.java')
             compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
             runtimeClasspath += output + sourceSets.main.output + sourceSets.main.runtimeClasspath
         }
@@ -126,10 +161,25 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     neoForge.runs.named('client') {
         programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('around-ew-smoke'))
         jvmArguments.add('-Xmx3G')
+        if (providers.gradleProperty('planetShipLoaderReload').isPresent()) jvmArguments.add('-Daround_planet.shipLoaderReload=true')
+        if (providers.gradleProperty('planetExhaustDepthSmoke').isPresent()) jvmArguments.add('-Daround_planet.exhaustDepthSmoke=true')
+        if (providers.gradleProperty('planetExhaustSmoke').isPresent()) jvmArguments.add('-Daround_planet.exhaustSmoke=true')
+        if (providers.gradleProperty('planetPropulsionSmoke').isPresent()) jvmArguments.add('-Daround_planet.propulsionSmoke=true')
+        if (providers.gradleProperty('planetSensorMountSmoke').isPresent()) jvmArguments.add('-Daround_planet.sensorMountSmoke=true')
         if (providers.gradleProperty('planetProgressiveTerrainSmoke').isPresent()) jvmArguments.add('-Daround_planet.progressiveTerrainSmoke=true')
         if (providers.gradleProperty('planetProgressiveSmoke').isPresent() || providers.gradleProperty('planetProgressiveTerrainSmoke').isPresent()) jvmArguments.add('-Daround_planet.progressiveSmoke=true')
         if (providers.gradleProperty('planetDiagnosticSmoke').isPresent()) jvmArguments.add('-Daround_planet.diagnosticSmoke=true')
         if (providers.gradleProperty('planetGenerationSmoke').isPresent()) jvmArguments.add('-Daround_planet.generationSmoke=true')
+        if (providers.gradleProperty('planetEmptyPerfSmoke').isPresent()) jvmArguments.addAll('-Daround_planet.emptyPerfSmoke=true', "-XX:StartFlightRecording=settings=profile,filename=${layout.buildDirectory.file('empty-world-performance.jfr').get().asFile.absolutePath},dumponexit=true")
+        if (providers.gradleProperty('planetLunarSkySmoke').isPresent()) jvmArguments.add('-Daround_planet.lunarSkySmoke=true')
+        if (providers.gradleProperty('planetSurfaceSmoke').isPresent()) jvmArguments.add('-Daround_planet.surfaceSmoke=true')
+        if (providers.gradleProperty('planetBareSpaceSmoke').isPresent()) jvmArguments.add('-Daround_planet.bareSpaceSmoke=true')
+        if (providers.gradleProperty('planetRendezvousReloadSmoke').isPresent()) jvmArguments.add('-Daround_planet.rendezvousReloadSmoke=true')
+        if (providers.gradleProperty('planetRendezvousSmoke').isPresent()) jvmArguments.add('-Daround_planet.rendezvousSmoke=true')
+        if (providers.gradleProperty('planetMoonSmoke').isPresent()) jvmArguments.add('-Daround_planet.moonSmoke=true')
+        if (providers.gradleProperty('planetManeuverSmoke').isPresent()) jvmArguments.add('-Daround_planet.maneuverSmoke=true')
+        if (providers.gradleProperty('planetAtlasSmoke').isPresent()) jvmArguments.add('-Daround_planet.atlasSmoke=true')
+        if (providers.gradleProperty('planetSpaceEntrySmoke').isPresent()) jvmArguments.add('-Daround_planet.spaceEntrySmoke=true')
         if (providers.gradleProperty('planetNorthSouthBorderSmoke').isPresent()) jvmArguments.add('-Daround_planet.northSouthBorderSmoke=true')
         if (providers.gradleProperty('planetSeatTransferSmoke').isPresent()) jvmArguments.addAll('-Daround_planet.seatTransferSmoke=true','-Daround_planet.traceShipTransfers=true')
         if (providers.gradleProperty('planetShipTransferSmoke').isPresent()) jvmArguments.addAll('-Daround_planet.shipTransferSmoke=true','-Daround_planet.traceShipTransfers=true')

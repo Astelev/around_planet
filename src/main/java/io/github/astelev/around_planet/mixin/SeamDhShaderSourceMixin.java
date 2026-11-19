@@ -9,6 +9,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class SeamDhShaderSourceMixin {
     @Inject(method="loadFile",at=@At("RETURN"),cancellable=true)
     private static void around_planet$exactSeamClip(String path,boolean absolute,CallbackInfoReturnable<String> cir) {
+        if(path.equals("assets/distanthorizons/shaders/terrain/gl/vert.vert")){
+            String source=cir.getReturnValue();String patched=source.replace("void main()","uniform float apCurveRadius;\nvoid main()").replace("gl_Position = uCombinedMatrix * vec4(vertexWorldPos, 1.0);","vec3 apPosition=vertexWorldPos; if(apCurveRadius>0.0) apPosition.y-=dot(apPosition.xz,apPosition.xz)/(2.0*apCurveRadius);\n    gl_Position = uCombinedMatrix * vec4(apPosition, 1.0);");
+            if(patched.equals(source))throw new IllegalStateException("Unsupported DH curvature shader");cir.setReturnValue(patched);return;
+        }
         if(!path.equals("assets/distanthorizons/shaders/terrain/gl/frag.frag"))return;
         String source=cir.getReturnValue();
         String replacement="uniform bool apChunkMaskEnabled;\nuniform sampler3D apChunkMask;\nuniform vec3 apChunkOffset;\n"

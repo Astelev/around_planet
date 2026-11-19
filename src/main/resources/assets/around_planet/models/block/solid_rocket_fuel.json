@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "around_planet:block/solid_rocket_fuel"
+  }
+}

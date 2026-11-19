@@ -1,0 +1,15 @@
+{
+  "loader": "neoforge:obj",
+  "model": "around_planet:models/block/solid_rocket_nozzle.obj",
+  "automatic_culling": false,
+  "shade_quads": true,
+  "emissive_ambient": false,
+  "flip_v": true,
+  "textures": {
+    "body": "minecraft:block/iron_block",
+    "collar": "minecraft:block/polished_deepslate",
+    "nozzle": "minecraft:block/polished_blackstone",
+    "inner": "minecraft:block/deepslate_tiles",
+    "particle": "minecraft:block/iron_block"
+  }
+}

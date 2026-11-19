@@ -1,0 +1,6 @@
+{
+  "message_id": "around_planet.vacuum",
+  "exhaustion": 0.0,
+  "scaling": "never",
+  "effects": "hurt"
+}
