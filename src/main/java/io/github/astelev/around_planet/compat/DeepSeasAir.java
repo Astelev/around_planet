@@ -1,6 +1,8 @@
 package io.github.astelev.around_planet.compat;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.block.entity.OxygeneDiffuserBlockEntity;
+import com.maxenonyme.createsubmarine.submarine.block.entity.HullControllerBlockEntity;
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import net.minecraft.core.BlockPos;
@@ -22,10 +24,18 @@ public final class DeepSeasAir {
             for(var room:CompartmentTracker.getCompartments(id)){
                 if(!room.sealed()||!room.internal().contains(eye)||CompartmentTracker.isBreached(id,room))continue;
                 for(var pos:emitters(level,ship)){
+                    if(!level.hasChunkAt(pos))continue;
+                    var source=level.getBlockEntity(pos);
+                    if(source instanceof HullControllerBlockEntity&&!source.isRemoved()&&level.getBlockState(pos).is(CreateSubmarine.CREATIVE_OXYGENATOR.get())){
+                        // Creative oxygenators are full cubes. Any face adjoining this room can
+                        // supply it, including a source mounted in a wall or ceiling.
+                        if(room.internal().contains(pos))return true;
+                        for(var side:net.minecraft.core.Direction.values())if(room.internal().contains(pos.relative(side)))return true;
+                    }
                     if(!room.internal().contains(pos)&&!room.internal().contains(pos.above()))continue;
-                    // Always verify current fuel and redstone. A drained or disabled diffuser must
-                    // not grant an extra cache interval of breathable air.
-                    if(level.hasChunkAt(pos)&&level.getBlockEntity(pos) instanceof OxygeneDiffuserBlockEntity diffuser&&diffuser.oxygenTank.getFluidAmount()>0&&level.hasNeighborSignal(pos))return true;
+                    // Live checks also invalidate a cached source immediately after removal,
+                    // replacement, loss of power or exhaustion of its native oxygen tank.
+                    if(source instanceof OxygeneDiffuserBlockEntity diffuser&&!diffuser.isRemoved()&&diffuser.oxygenTank.getFluidAmount()>0&&level.hasNeighborSignal(pos))return true;
                 }
             }
         }
@@ -35,7 +45,7 @@ public final class DeepSeasAir {
         var cache=CACHE.computeIfAbsent(level,k->new HashMap<>());var old=cache.get(ship.getUniqueId());long now=level.getGameTime();
         if(old!=null&&now-old.tick()<5)return old.positions();
         cache.keySet().removeIf(id->SubLevelContainer.getContainer(level).getSubLevel(id)==null);
-        var positions=new ArrayList<BlockPos>();for(var holder:ship.getPlot().getLoadedChunks())for(var be:holder.getChunk().getBlockEntities().values())if(be instanceof OxygeneDiffuserBlockEntity&&!be.isRemoved())positions.add(be.getBlockPos().immutable());
+        var positions=new ArrayList<BlockPos>();for(var holder:ship.getPlot().getLoadedChunks())for(var be:holder.getChunk().getBlockEntities().values())if((be instanceof OxygeneDiffuserBlockEntity||be instanceof HullControllerBlockEntity)&&!be.isRemoved())positions.add(be.getBlockPos().immutable());
         var sample=new Emitters(now,List.copyOf(positions));cache.put(ship.getUniqueId(),sample);return sample.positions();
     }
     public static void clear(ServerLevel level){CACHE.remove(level);}

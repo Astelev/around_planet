@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.67: [воздух от креативного оксигенатора Deep Seas](docs/creative-oxygenator-air.md).
+
 Обновление 0.11.0-alpha.66: [масса, центр масс и учёт многоблочных баков при пересборке](docs/pondus-mass-rebuild.md).
 
 Обновление 0.11.0-alpha.65: [дыхание в вакууме, оборудование Create и герметичные отсеки Deep Seas](docs/vacuum-and-deep-seas.md).
