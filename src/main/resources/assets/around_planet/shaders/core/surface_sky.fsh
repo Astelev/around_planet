@@ -2,6 +2,7 @@
 in vec3 rayDirection;
 uniform vec3 SkyColor;
 uniform vec3 SunDirection;
+uniform float SunAngularRadius;
 uniform float Darkness;
 uniform float Horizon;
 uniform vec3 MoonCenter;
@@ -51,12 +52,13 @@ void main() {
     if(Layer==0){fragColor=vec4(bg,1.0);return;}
     float above=smoothstep(Horizon-0.015,Horizon+0.015,ray.y);
     float sunDot=dot(ray,SunDirection);
-    float sunDisk=smoothstep(cos(0.014),cos(0.012),sunDot);
+    float sunDisk=smoothstep(cos(SunAngularRadius*1.08),cos(SunAngularRadius*.92),sunDot);
     // Compact corona plus a broad, smooth atmospheric aureole (stronger near the ground).
     float air=1.0-Darkness;
-    float sunHalo=exp((sunDot-1.0)*1800.0)*0.48
-                 +exp((sunDot-1.0)*180.0)*0.18*air
-                 +exp((sunDot-1.0)*35.0)*0.055*air;
+    float scaledSunDot=(sunDot-1.0)*(.013*.013)/max(.000001,SunAngularRadius*SunAngularRadius);
+    float sunHalo=exp(scaledSunDot*1800.0)*0.48
+                 +exp(scaledSunDot*180.0)*0.18*air
+                 +exp(scaledSunDot*35.0)*0.055*air;
     float sunAlpha=min(1.0,sunDisk+sunHalo)*Visibility*above;
     vec3 color=mix(bg,vec3(1.0,0.95,0.78),sunAlpha);
     float alpha=max(max(1.0-above,sunAlpha),planet.a*PlanetBlend);

@@ -16,7 +16,7 @@ public abstract class SpaceFogMixin {
             var frame=planet.frame(pos.x,pos.z);var look=camera.getLookVector();
             var normal=io.github.astelev.around_planet.space.SurfaceVisualMath.planetNormal(new io.github.astelev.around_planet.space.SpaceVector(look.x(),look.y(),look.z()),pos.y,planet.radius()).orElse(new io.github.astelev.around_planet.space.SpaceVector(0,1,0));
             var fixed=frame.toCosmic(normal);int color=io.github.astelev.around_planet.client.PlanetAtlasTexture.ready()?io.github.astelev.around_planet.client.PlanetAtlasTexture.sample(fixed.x(),fixed.y(),fixed.z()):0x47663D;
-            var sun=io.github.astelev.around_planet.space.PlanetDaylight.spin(mc.level).frame(planet,pos.x,pos.z).toLocal(io.github.astelev.around_planet.space.SpaceEnvironment.SUN_DIRECTION);
+            var sun=io.github.astelev.around_planet.space.PlanetDaylight.spin(mc.level).frame(planet,pos.x,pos.z).toLocal(io.github.astelev.around_planet.space.PlanetDaylight.sunlight(mc.level));
             float light=(float)(.045+.955*Math.max(0,normal.dot(sun))),mix=(float)d;
             fogRed=fogRed*(1-mix)+((color>>16&255)/255f*.8f+.15f*.2f)*light*mix;
             fogGreen=fogGreen*(1-mix)+((color>>8&255)/255f*.8f+.32f*.2f)*light*mix;

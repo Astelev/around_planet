@@ -210,6 +210,14 @@
         0,
         1
       ]
+    },
+    {
+      "name": "SunAngularRadius",
+      "type": "float",
+      "count": 1,
+      "values": [
+        0.013
+      ]
     }
   ],
   "blend": {

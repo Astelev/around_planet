@@ -25,8 +25,8 @@ public final class PlanetRotationGameTests {
             PlanetConfig.PLANET_SIZE.set(393216);h.assertTrue(PlanetDaylight.periodSeconds()==1800,"3x auto day was not 30 minutes");
             PlanetConfig.DAY_LENGTH_MINUTES.set(40.0);h.assertTrue(PlanetDaylight.periodSeconds()==2400,"Explicit day length ignored");
             level.setDayTime(12000);h.assertTrue(Math.abs(PlanetDaylight.time(level,0,0))<1e-10,"Local noon still uses vanilla day length");
-            h.assertTrue(Math.abs(PlanetDaylight.spin(level).angle())<1e-10,"Planet angle differs from local sky");
-            h.assertTrue(Math.abs(PlanetDaylight.spin(level).omega()-2*Math.PI/2400)<1e-10,"Launch/spin speed still uses 20 minutes");
+            h.assertTrue(Math.abs(PlanetDaylight.spin(level).angle()-(PlanetDaylight.system(level)==null?0:PlanetDaylight.system(level).solarAngle(level.getGameTime())))<1e-10,"Planet angle differs from local sky");
+            h.assertTrue(Math.abs(PlanetDaylight.spin(level).omega()-2*Math.PI/2400-(PlanetDaylight.system(level)==null?0:PlanetDaylight.system(level).solarMotion()))<1e-10,"Launch/spin speed still uses 20 minutes");
             level.setDayTime(36000);h.assertTrue(Math.abs(PlanetDaylight.time(level,0,0)-.5)<1e-10,"Half custom day did not reach local midnight");
             PlanetConfig.DAY_LENGTH_MINUTES.set(17.5);h.assertTrue(PlanetDaylight.periodSeconds()==1050,"Manual fractional minutes were rounded");
             h.succeed();

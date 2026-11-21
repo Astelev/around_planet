@@ -161,5 +161,11 @@
   "around_planet.vacuum.supplied": "Vacuum — breathing supply active",
   "around_planet.vacuum.exposed": "Vacuum — no breathing supply",
   "death.attack.around_planet.vacuum": "%1$s suffocated in vacuum",
-  "death.attack.around_planet.vacuum.player": "%1$s suffocated in vacuum while escaping %2$s"
+  "death.attack.around_planet.vacuum.player": "%1$s suffocated in vacuum while escaping %2$s",
+  "around_planet.celestial.sun": "Sun",
+  "around_planet.celestial.earth": "Earth",
+  "around_planet.celestial.moon": "Moon",
+  "around_planet.celestial.chart": "System: %s",
+  "around_planet.celestial.enter": "%s SOI entry",
+  "around_planet.celestial.exit": "%s SOI exit"
 }

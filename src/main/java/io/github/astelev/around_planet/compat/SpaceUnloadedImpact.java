@@ -20,7 +20,7 @@ public final class SpaceUnloadedImpact {
         for(var id:List.copyOf(data.ids())){
             var cell=cells.all().stream().filter(c->c.id().equals(id)).findFirst().orElse(null);
             var binding=dormant.get(id);if(cell==null&&binding==null)continue;
-            var path=data.get(id).orElseThrow();var nav=data.navigation(id).orElse(null);if(nav==null)continue;
+            var path=data.get(id).orElseThrow();if(CelestialSystem.SUN.equals(path.primary()))continue;var nav=data.navigation(id).orElse(null);if(nav==null)continue;
             var state=data.sample(id,level.getGameTime());var previous=last.put(id,new Sample(path.primary(),state.position()));
             boolean moon=CelestialSystem.MOON.equals(path.primary());
             var planet=moon&&data.system()!=null?MoonSurface.geometry(data.system()):nav.planet();

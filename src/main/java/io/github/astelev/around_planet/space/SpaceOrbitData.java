@@ -20,6 +20,9 @@ public final class SpaceOrbitData extends SavedData {
     private final Map<UUID,Integer> previewDepths=new HashMap<>();
     public int previewDepth(UUID id){return previewDepths.getOrDefault(id,6);}
     public void previewDepth(UUID id,int value){require(id);if(value<1||value>16)throw new IllegalArgumentException("Preview depth");previewDepths.put(id,value);setDirty();}
+    private final Set<UUID> solarImpacts=new HashSet<>();
+    public Set<UUID> solarImpacts(){return Set.copyOf(solarImpacts);}
+    public void solarImpact(UUID id){require(id);if(solarImpacts.add(id))setDirty();}
     private CelestialSystem system;
     public CelestialSystem system(){return system;}
     public void system(CelestialSystem value){if(!Objects.equals(system,value)){system=value;setDirty();}}
@@ -68,7 +71,7 @@ public final class SpaceOrbitData extends SavedData {
         Objects.requireNonNull(id);Objects.requireNonNull(trajectory);if(CelestialSystem.body(id))throw new IllegalArgumentException("Celestial bodies have prescribed ephemerides");
         if(!trajectory.equals(objects.put(id,trajectory)))setDirty();
     }
-    public void remove(UUID id){warningFallback.remove(id);forecastTurns.remove(id);previewDepths.remove(id);targets.remove(id);targets.values().removeIf(id::equals);if(maneuvers.remove(id)!=null | objects.remove(id)!=null | navigation.remove(id)!=null | reentries.remove(id)!=null | surfaceContacts.remove(id)!=null)setDirty();}
+    public void remove(UUID id){solarImpacts.remove(id);warningFallback.remove(id);forecastTurns.remove(id);previewDepths.remove(id);targets.remove(id);targets.values().removeIf(id::equals);if(maneuvers.remove(id)!=null | objects.remove(id)!=null | navigation.remove(id)!=null | reentries.remove(id)!=null | surfaceContacts.remove(id)!=null)setDirty();}
     public void impulse(UUID id,long gameTick,SpaceVector deltaVelocity){var before=require(id);var state=sample(id,gameTick);var parked=surfaceContacts.get(id);if(parked!=null){var p=navigation.get(id).planet();double phase=Math.atan2(state.position().x(),state.position().y())-parked.world().x()/p.radius();var frame=new PlanetSpin(phase,0).frame(p,parked.world().x(),parked.world().z());surfaceContacts.put(id,new SurfaceContact(parked.world(),parked.relativeVelocity().add(frame.toLocal(deltaVelocity))));}put(id,new SpaceTrajectory(require(id).primary(),gameTick,new SpaceState(state.position(),state.velocity().add(deltaVelocity)),require(id).mu()));
         var next=ManeuverGuidance.next(maneuvers(id),gameTick);
         if(next.isPresent()&&next.get().warningTicks(warningFallback.getOrDefault(id,600L))>0&&next.get().tick()-gameTick<=next.get().warningTicks(warningFallback.getOrDefault(id,600L))&&next.get().magnitude()>0){
@@ -85,7 +88,7 @@ public final class SpaceOrbitData extends SavedData {
         put(detached,trajectory);return trajectory;
     }
     /** Atomic virtual-time jump; Minecraft gameTime and physical cells remain untouched. */
-    public void warp(long now,long ticks){if(ticks<0)throw new IllegalArgumentException("Negative orbital warp");if(ticks==0)return;long future=Math.addExact(now,ticks);var advanced=new HashMap<UUID,SpaceTrajectory>();var plans=new HashMap<UUID,List<ManeuverNode>>();for(var e:objects.entrySet()){var path=e.getValue();var coast=reentries.containsKey(e.getKey())?path:PatchedConics.trace(path,now,future,system).finalPath();advanced.put(e.getKey(),reentries.containsKey(e.getKey())?path:new SpaceTrajectory(coast.primary(),now,coast.at(future),coast.mu()));}for(var e:maneuvers.entrySet()){var nodes=new ArrayList<ManeuverNode>();for(var n:e.getValue())nodes.add(new ManeuverNode(n.id(),Math.max(0,n.tick()-ticks),n.prograde(),n.normal(),n.radial(),n.warningSeconds()));plans.put(e.getKey(),List.copyOf(nodes));}if(system!=null)system=system.warp(ticks);objects.clear();objects.putAll(advanced);maneuvers.clear();maneuvers.putAll(plans);setDirty();}
+    public void warp(long now,long ticks){if(ticks<0)throw new IllegalArgumentException("Negative orbital warp");if(ticks==0)return;long future=Math.addExact(now,ticks);var hitSun=new HashSet<UUID>();var advanced=new HashMap<UUID,SpaceTrajectory>();var plans=new HashMap<UUID,List<ManeuverNode>>();for(var e:objects.entrySet()){var path=e.getValue();var flight=reentries.containsKey(e.getKey())?null:PatchedConics.trace(path,now,future,system);var coast=flight==null?path:flight.finalPath();if(flight!=null&&flight.solarImpact()){hitSun.add(e.getKey());coast=new SpaceTrajectory(coast.primary(),future,coast.at(flight.legs().getLast().until()),0);}advanced.put(e.getKey(),reentries.containsKey(e.getKey())?path:new SpaceTrajectory(coast.primary(),now,coast.at(future),coast.mu()));}for(var e:maneuvers.entrySet()){var nodes=new ArrayList<ManeuverNode>();for(var n:e.getValue())nodes.add(new ManeuverNode(n.id(),Math.max(0,n.tick()-ticks),n.prograde(),n.normal(),n.radial(),n.warningSeconds()));plans.put(e.getKey(),List.copyOf(nodes));}solarImpacts.addAll(hitSun);if(system!=null)system=system.warp(ticks);objects.clear();objects.putAll(advanced);maneuvers.clear();maneuvers.putAll(plans);setDirty();}
     private SpaceTrajectory require(UUID id){var value=objects.get(id);if(value==null)throw new IllegalArgumentException("Unknown space object: "+id);return value;}
     public static SpaceOrbitData load(CompoundTag tag,HolderLookup.Provider lookup) {
         if(tag.getInt("schema")!=1 || !tag.contains("objects",Tag.TAG_LIST))throw new IllegalArgumentException("Unsupported orbit save format");
@@ -108,11 +111,13 @@ public final class SpaceOrbitData extends SavedData {
             if(entry.contains("maneuvers",Tag.TAG_LIST)){var nodes=entry.getList("maneuvers",Tag.TAG_COMPOUND);var saved=new ArrayList<ManeuverNode>();var ids=new HashSet<UUID>();for(var rawNode:nodes){try{var n=(CompoundTag)rawNode;if(saved.size()>=ManeuverNode.MAX_NODES||!n.hasUUID("id")||!ids.add(n.getUUID("id")))continue;saved.add(new ManeuverNode(n.getUUID("id"),n.getLong("tick"),n.getDouble("prograde"),n.getDouble("normal"),n.getDouble("radial"),n.contains("warningTicks")?WarningDuration.seconds(n.getLong("warningTicks")):n.contains("warningSeconds")?n.getDouble("warningSeconds"):-1));}catch(IllegalArgumentException invalid){io.github.astelev.around_planet.AroundPlanet.LOGGER.warn("Skipping invalid saved maneuver for {}",entry.getUUID("id"));}}data.maneuvers.put(entry.getUUID("id"),List.copyOf(saved));}
             if(data.objects.putIfAbsent(entry.getUUID("id"),trajectory)!=null)throw new IllegalArgumentException("Duplicate orbit object ID");
         }
+        for(var raw:tag.getList("solarImpacts",Tag.TAG_STRING)){var id=UUID.fromString(raw.getAsString());if(data.objects.containsKey(id))data.solarImpacts.add(id);}
         return data;
     }
     private static SpaceVector readVector(CompoundTag t,String key){for(String axis:new String[]{"x","y","z"})if(!t.contains(key+axis,Tag.TAG_ANY_NUMERIC))throw new IllegalArgumentException("Missing frame axis");return new SpaceVector(t.getDouble(key+"x"),t.getDouble(key+"y"),t.getDouble(key+"z"));}
     private static void writeVector(CompoundTag t,String key,SpaceVector v){t.putDouble(key+"x",v.x());t.putDouble(key+"y",v.y());t.putDouble(key+"z",v.z());}
     @Override public CompoundTag save(CompoundTag tag,HolderLookup.Provider lookup) {
+        var solar=new ListTag();for(var id:solarImpacts)solar.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));tag.put("solarImpacts",solar);
         tag.putInt("schema",1);if(system!=null){var s=new CompoundTag();s.putDouble("radius",system.earthRadius());s.putDouble("mu",system.earthMu());s.putLong("clock",system.clockTicks());s.putDouble("entry",system.earthEntry());tag.put("celestialSystem",s);}var list=new ListTag();
         objects.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(item->{
             var e=new CompoundTag();var trajectory=item.getValue();var p=trajectory.initial().position();var v=trajectory.initial().velocity();

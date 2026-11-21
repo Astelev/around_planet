@@ -32,6 +32,7 @@ public final class SpaceShipTransfers {
         if(!level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD) || !PlanetConfig.SPEC.isLoaded()
                 )return;
         RECENT_RETURN.values().removeIf(until->until<level.getGameTime());
+        SpaceSolarImpact.check(level,container);
         SpaceCellHeight.relocate(level,container);SpacePlanetScale.check(level);if(level.getGameTime()%20==0)SpaceUnloadedImpact.check(level,container);
         var contactImpulses=SpaceOrbitData.get(level.getServer()).followContacts(PlanetDaylight.spin(level),level.getGameTime());
         for(var cell:SpaceCells.get(level).all()){var delta=contactImpulses.get(cell.id());if(delta!=null && delta.length()>1e-10)SpaceLocalPhysics.externalImpulse(level,cell,SpaceLocalPhysics.navigation(level,cell).frame().toLocal(delta));}

@@ -15,7 +15,7 @@ final class ManeuverMapLayer {
     ManeuverMapLayer(OrbitMapScreen map,UUID session){this.map=map;this.session=session;}
     ManeuverPreview preview(){return preview;}
     boolean inView(SpaceTrajectory path){return path.primary().equals(map.viewPrimary());}
-    boolean displayed(SpaceTrajectory path){return inView(path)||packet!=null&&packet.system()!=null&&CelestialSystem.EARTH.equals(map.viewPrimary())&&CelestialSystem.MOON.equals(path.primary());}
+    boolean displayed(SpaceTrajectory path){return OrbitChart.visible(path.primary(),map.viewPrimary());}
     SpaceVector display(SpaceTrajectory path,long tick,SpaceVector position){return packet==null?position:position.add(OrbitChart.offset(packet.system(),path.primary(),map.viewPrimary(),tick));}
     double pathRadius(SpaceTrajectory path){return packet!=null&&packet.system()!=null&&packet.system().managed(path.primary())?packet.system().radius(path.primary()):radius;}
     SpaceTrajectory pathForView(){if(preview!=null)for(var s:preview.segments())if(inView(s.trajectory()))return s.trajectory();var p=ManeuverClient.current();return p!=null&&inView(p.trajectory())?p.trajectory():null;}

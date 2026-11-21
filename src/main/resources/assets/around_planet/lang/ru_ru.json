@@ -161,5 +161,11 @@
   "around_planet.vacuum.supplied": "Вакуум — подача воздуха работает",
   "around_planet.vacuum.exposed": "Вакуум — нет подачи воздуха",
   "death.attack.around_planet.vacuum": "%1$s задохнулся в вакууме",
-  "death.attack.around_planet.vacuum.player": "%1$s задохнулся в вакууме, спасаясь от %2$s"
+  "death.attack.around_planet.vacuum.player": "%1$s задохнулся в вакууме, спасаясь от %2$s",
+  "around_planet.celestial.sun": "Солнце",
+  "around_planet.celestial.earth": "Земля",
+  "around_planet.celestial.moon": "Луна",
+  "around_planet.celestial.chart": "Система: %s",
+  "around_planet.celestial.enter": "Вход в сферу %s",
+  "around_planet.celestial.exit": "Выход из сферы %s"
 }

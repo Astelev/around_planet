@@ -125,6 +125,7 @@ if (providers.gradleProperty('planetTests').isPresent()) {
         gameTestServer {
             type = 'gameTestServer'
             systemProperty 'around_planet.gameTestDimensions', 'true'
+            if (providers.gradleProperty('planetSolarTests').isPresent()) systemProperty 'around_planet.solarTests', 'true'
             if (providers.gradleProperty('planetMassTests').isPresent()) systemProperty 'around_planet.massTests', 'true'
             if (providers.gradleProperty('planetVacuumTests').isPresent()) systemProperty 'around_planet.vacuumTests', 'true'
             if (providers.gradleProperty('planetSolidTests').isPresent()) systemProperty 'around_planet.solidTests', 'true'
@@ -140,7 +141,8 @@ if (providers.gradleProperty('planetTests').isPresent()) {
 if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     sourceSets {
         planetClientSmoke {
-            if (project.providers.gradleProperty('planetVacuumSmoke').isPresent()) java.include('**/VacuumClientSmoke.java')
+            if (project.providers.gradleProperty('planetSolarSmoke').isPresent()) java.include('**/SolarClientSmoke.java')
+            else if (project.providers.gradleProperty('planetVacuumSmoke').isPresent()) java.include('**/VacuumClientSmoke.java')
             else if (project.providers.gradleProperty('planetSolidRocketSmoke').isPresent()) java.include('**/SolidRocketClientSmoke.java')
             else if (project.providers.gradleProperty('planetPlasmaSmoke').isPresent()) java.include('**/PlasmaClientSmoke.java')
             else if (project.providers.gradleProperty('planetFlightToolsSmoke').isPresent()) java.include('**/FlightToolsClientSmoke.java')
@@ -162,6 +164,7 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
         programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('around-ew-smoke'))
         jvmArguments.add('-Xmx3G')
         if (providers.gradleProperty('planetShipLoaderReload').isPresent()) jvmArguments.add('-Daround_planet.shipLoaderReload=true')
+        if (providers.gradleProperty('planetSolarSmoke').isPresent()) jvmArguments.add('-Daround_planet.solarSmoke=true')
         if (providers.gradleProperty('planetExhaustDepthSmoke').isPresent()) jvmArguments.add('-Daround_planet.exhaustDepthSmoke=true')
         if (providers.gradleProperty('planetExhaustSmoke').isPresent()) jvmArguments.add('-Daround_planet.exhaustSmoke=true')
         if (providers.gradleProperty('planetPropulsionSmoke').isPresent()) jvmArguments.add('-Daround_planet.propulsionSmoke=true')

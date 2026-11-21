@@ -1,5 +1,5 @@
 package io.github.astelev.around_planet.space;
-/** Fixed inertial sky. Sunlight and the terminator stay inertial while surface geography rotates. */
+/** Shared sky math. SUN_DIRECTION is the initial/fallback direction before an ephemeris arrives. */
 public final class SpaceEnvironment {
     public static final SpaceVector SUN_DIRECTION=new SpaceVector(0,1,0);
     public static double illumination(SpaceVector normal){return .045+.955*Math.max(0,normal.dot(SUN_DIRECTION));}
