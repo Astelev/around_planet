@@ -24,6 +24,7 @@ public final class OrbitMapScreen extends Screen {
     private UUID focusId(){if(observer&&minecraft!=null&&minecraft.player!=null)return minecraft.player.getUUID();var r=RendezvousClient.current();var p=ManeuverClient.current();return r!=null?r.focus():p==null?null:p.focus();}
     private final ManeuverMapLayer maneuvers;private double pressX,pressY;private boolean mapPressed;
     private final OrbitSphereTexture sphere=new OrbitSphereTexture();
+    private List<OrbitSurfaces.Body> surfaces=List.of();private List<OrbitOcclusion.Sphere> occluders=List.of();
     private record Other(io.github.astelev.around_planet.network.SpaceMapPayload.Body body,OrbitPlot plot,SpaceVector position,int color){}
     private java.util.List<Other> others=java.util.List.of();private io.github.astelev.around_planet.network.SpaceMapPayload catalog;private String catalogChart;private CelestialSystem catalogSystem;
     private final OrbitCamera camera=new OrbitCamera();private SpaceStatusPayload sampled,sampledForPlot;private OrbitPlot plot;private boolean fitted;private boolean follow;private Button followButton;
@@ -60,6 +61,7 @@ public final class OrbitMapScreen extends Screen {
         g.drawWordWrap(font,Component.translatable("around_planet.map.controls"),12,height-37,maneuvers.editor()?right-left:width-24,0xFFBAC9DC);
         g.drawString(font,rendezvous.active()?Component.translatable("around_planet.rendezvous.legend",Component.literal("■").withStyle(net.minecraft.ChatFormatting.YELLOW),Component.literal("■").withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE),Component.literal("■").withStyle(net.minecraft.ChatFormatting.GOLD)):Component.translatable(maneuvers.hasPlan()?"around_planet.maneuver.legend":"around_planet.map.legend"),12,height-16,0xFF69E4DB,false);
         if(sampled==null || plot==null){g.drawCenteredString(font,Component.translatable("around_planet.map.waiting"),width/2,height/2,0xFFBAC9DC);super.render(g,mx,my,partial);return;}
+        surfaces=OrbitSurfaces.scene(lunar.system(),viewPrimary(),ManeuverClient.now());if(surfaces.isEmpty())surfaces=List.of(new OrbitSurfaces.Body(viewPrimary(),SpaceVector.ZERO,viewRadius(),SpaceEnvironment.SUN_DIRECTION));occluders=OrbitSurfaces.occluders(surfaces,camera);
         double speed=state().velocity().length();
         g.enableScissor(left,top,right,bottom);g.fill(left,top,right,bottom,0xFF0B1423);
         var planetCenter=project(SpaceVector.ZERO);double cx=planetCenter.x(),cy=planetCenter.y(),radius=viewRadius()*camera.scale(size());
@@ -67,7 +69,7 @@ public final class OrbitMapScreen extends Screen {
             globalAxes(g,true);
             for(var other:others)if(!rendezvous.isTarget(other.body.id()))arcs(g,other.plot,other.color,true,3);rendezvous.paths(g,true);if(!lunar.enabled())arcs(g,true);maneuvers.paths(g,true);
         });
-        sphere.render(g,camera,viewRadius(),left,top,right,bottom,PlanetDaylight.spin(minecraft.level,partial).angle(),viewPrimary(),lunar.system()==null?SpaceEnvironment.SUN_DIRECTION:lunar.system().sunlight(viewPrimary(),SpaceVector.ZERO,ManeuverClient.now()));
+        sphere.render(g,camera,surfaces,left,top,right,bottom,PlanetDaylight.spin(minecraft.level,partial).angle());
         g.drawManaged(()->{globalAxes(g,false);for(var other:others)if(!rendezvous.isTarget(other.body.id()))arcs(g,other.plot,other.color,false,3);rendezvous.paths(g,false);if(!lunar.enabled())arcs(g,false);maneuvers.paths(g,false);
             for(var other:others){if(rendezvous.isTarget(other.body.id()))continue;var p=other.position;var screen=project(p);boolean hover=Math.hypot(screen.x()-mx,screen.y()-my)<8;
                 marker(g,p,other.color,hover?other.body.name()+(other.body.loaded()?"":" · "+Component.translatable("around_planet.map.dormant").getString()):"");}
@@ -85,8 +87,11 @@ public final class OrbitMapScreen extends Screen {
             var start=project(axis.vector.scale(sign*viewRadius()));var end=project(axis.vector.scale(sign*length));
             if((end.depth()<0)!=behind)continue;
             int color=sign>0?axis.color:axis.dim();var clipped=OrbitCamera.clip(start.x(),start.y(),end.x(),end.y(),left+5,top+6,right-18,bottom-12);if(clipped==null)continue;
-            if(sign>0){line(g,clipped[0],clipped[1],clipped[2],clipped[3],color);arrowHead(g,clipped[0],clipped[1],clipped[2],clipped[3],color);}
-            else dashed(g,clipped[0],clipped[1],clipped[2],clipped[3],color);
+            for(var range:OrbitOcclusion.ranges(camera.direction(axis.vector.scale(sign*viewRadius())),camera.direction(axis.vector.scale(sign*length)),occluders,behind)){
+                var part=OrbitCamera.clip(start.x()+(end.x()-start.x())*range.from(),start.y()+(end.y()-start.y())*range.from(),start.x()+(end.x()-start.x())*range.until(),start.y()+(end.y()-start.y())*range.until(),left+5,top+6,right-18,bottom-12);if(part==null)continue;
+                if(sign>0)line(g,part[0],part[1],part[2],part[3],color);else dashed(g,part[0],part[1],part[2],part[3],color);
+            }
+            if(sign>0)arrowHead(g,clipped[0],clipped[1],clipped[2],clipped[3],color);
             g.drawString(font,(sign>0?"+":"−")+axis.name(),(int)clipped[2]+3,(int)clipped[3]-4,color,true);
         }
     }
@@ -105,11 +110,11 @@ public final class OrbitMapScreen extends Screen {
     }
     private void arcs(GuiGraphics g,boolean behind){arcs(g,plot,FUTURE,behind,1);}
     private void arcs(GuiGraphics g,OrbitPlot curve,int color,boolean behind,int stride){var points=curve.points();int dim=0xFF000000|((color&0xFEFEFE)>>>1);for(int i=0;i<points.size()-1;i+=stride)orbitLine(g,points.get(i),points.get(Math.min(points.size()-1,i+stride)),behind?dim:color,behind);}
-    void orbitLine(GuiGraphics g,SpaceVector a,SpaceVector b,int color,boolean behind){var aa=project(a);var bb=project(b);for(var r:OrbitOcclusion.ranges(camera.direction(a),camera.direction(b),viewRadius(),behind))line(g,aa.x()+(bb.x()-aa.x())*r.from(),aa.y()+(bb.y()-aa.y())*r.from(),aa.x()+(bb.x()-aa.x())*r.until(),aa.y()+(bb.y()-aa.y())*r.until(),color);}
+    void orbitLine(GuiGraphics g,SpaceVector a,SpaceVector b,int color,boolean behind){var aa=project(a);var bb=project(b);for(var r:OrbitOcclusion.ranges(camera.direction(a),camera.direction(b),occluders,behind))line(g,aa.x()+(bb.x()-aa.x())*r.from(),aa.y()+(bb.y()-aa.y())*r.from(),aa.x()+(bb.x()-aa.x())*r.until(),aa.y()+(bb.y()-aa.y())*r.until(),color);}
     void marker(GuiGraphics g,SpaceVector v,int color,String text){if(v==null)return;var p=project(v);if(p.x()<left || p.x()>right || p.y()<top || p.y()>bottom)return;
         var center=project(SpaceVector.ZERO);double scale=camera.scale(size()),x=p.x()-center.x(),y=p.y()-center.y();
-        if(!OrbitOcclusion.visible(camera.direction(v),viewRadius()))return;
-        g.fill((int)p.x()-2,(int)p.y()-2,(int)p.x()+3,(int)p.y()+3,color);if(!text.isEmpty()){var shown=font.plainSubstrByWidth(text,Math.max(20,right-left-12));int w=font.width(shown),labelX=Math.clamp((int)p.x()+6,left+3,Math.max(left+3,right-w-3)),labelY=Math.clamp((int)p.y()-4,top+2,bottom-10);var box=new LabelBox(labelX-2,labelY-1,w+4,11);if(labels.stream().noneMatch(box::intersects)){labels.add(box);g.fill(labelX-2,labelY-1,labelX+w+2,labelY+10,0xbb07101d);g.drawString(font,shown,labelX,labelY,color,true);}}
+        if(!OrbitSurfaces.markerVisible(v,surfaces,camera))return;
+        boolean globe=surfaces.stream().anyMatch(body->v.subtract(body.center()).length()<Math.max(1e-6,body.radius()*1e-9)&&body.radius()*camera.scale(size())>=3);if(!globe)g.fill((int)p.x()-2,(int)p.y()-2,(int)p.x()+3,(int)p.y()+3,color);if(!text.isEmpty()){var shown=font.plainSubstrByWidth(text,Math.max(20,right-left-12));int w=font.width(shown),labelX=Math.clamp((int)p.x()+6,left+3,Math.max(left+3,right-w-3)),labelY=Math.clamp((int)p.y()-4,top+2,bottom-10);var box=new LabelBox(labelX-2,labelY-1,w+4,11);if(labels.stream().noneMatch(box::intersects)){labels.add(box);g.fill(labelX-2,labelY-1,labelX+w+2,labelY+10,0xbb07101d);g.drawString(font,shown,labelX,labelY,color,true);}}
     }
     private void circle(GuiGraphics g,double cx,double cy,double r,int color,boolean solid){if(r<.5 || !Double.isFinite(r))return;
         if(solid){for(int y=Math.max(top,(int)Math.ceil(cy-r));y<Math.min(bottom,(int)Math.floor(cy+r)+1);y++){double d=y-cy,dx=Math.sqrt(Math.max(0,r*r-d*d));g.fill(Math.max(left,(int)Math.ceil(cx-dx)),y,Math.min(right,(int)Math.floor(cx+dx)+1),y+1,color);}}
@@ -117,7 +122,7 @@ public final class OrbitMapScreen extends Screen {
     }
     void line(GuiGraphics g,double ax,double ay,double bx,double by,int color){var c=OrbitCamera.clip(ax,ay,bx,by,left,top,right,bottom);if(c==null)return;double dx=c[2]-c[0],dy=c[3]-c[1],length=Math.hypot(dx,dy);if(length<.1)return;
         var pose=g.pose();pose.pushPose();pose.translate(c[0],c[1],0);pose.mulPose(Axis.ZP.rotation((float)Math.atan2(dy,dx)));g.fill(0,0,(int)Math.ceil(length),1,color);pose.popPose();}
-    boolean visible(SpaceVector v){var p=project(v);return p.x()>=left&&p.x()<=right&&p.y()>=top&&p.y()<=bottom&&OrbitOcclusion.visible(camera.direction(v),viewRadius());}
+    boolean visible(SpaceVector v){var p=project(v);return p.x()>=left&&p.x()<=right&&p.y()>=top&&p.y()<=bottom&&OrbitSurfaces.markerVisible(v,surfaces,camera);}
     @Override public boolean mouseClicked(double x,double y,int button){if(super.mouseClicked(x,y,button))return true;if(button==0&&x>=left&&x<=right&&y>=top&&y<=bottom){if(getFocused()!=null)getFocused().setFocused(false);setFocused(null);pressX=x;pressY=y;mapPressed=true;return true;}return false;}
     @Override public boolean mouseReleased(double x,double y,int button){if(button==0&&mapPressed){mapPressed=false;if(Math.hypot(x-pressX,y-pressY)<4){if(observer){for(var other:others){var point=project(other.position);if(Math.hypot(point.x()-x,point.y()-y)<10&&visible(other.position)){follow=false;camera.focus=other.position;return true;}}}if(!maneuvers.clickPriority(x,y)&&!lunar.select(x,y,maneuvers.preview())&&!rendezvous.select(x,y))maneuvers.click(x,y);}return true;}return super.mouseReleased(x,y,button);}
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){if(button==0&&mapPressed){camera.rotate(dx,dy);return true;}if((button==1 || button==2)&&x>=left&&x<=right&&y>=top&&y<=bottom){follow=false;if(followButton!=null)followButton.setMessage(followLabel());camera.pan(dx,dy,size());return true;}return super.mouseDragged(x,y,button,dx,dy);}
