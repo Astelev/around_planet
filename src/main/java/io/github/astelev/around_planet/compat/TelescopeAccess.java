@@ -19,7 +19,7 @@ public final class TelescopeAccess {
     public static boolean authorize(ServerPlayer p,BlockPos block){
         if(!p.level().dimension().equals(net.minecraft.world.level.Level.OVERWORLD)&&!p.level().dimension().equals(MoonSurface.dimension()))return false;
         sessions.put(p,new Session(block.immutable(),p.level().dimension().location()));if(!active(p))return false;
-        var data=SpaceOrbitData.get(p.getServer());if(data.system()==null){double r=new PlanetScale(PlanetConfig.PLANET_SIZE.get()).radius();data.system(new CelestialSystem(r,Math.max(.000001,PlanetConfig.SPACE_GRAVITY.get())*r*r,0,PlanetConfig.SPACE_ENTRY.get()));}
+        var data=SpaceOrbitData.get(p.getServer());if(data.system()==null){double r=new PlanetScale(PlanetConfig.PLANET_SIZE.get()).radius();data.system(new CelestialSystem(r,Math.max(.000001,PlanetConfig.SPACE_GRAVITY.get())*r*r,0,PlanetConfig.SPACE_ENTRY.get(),PlanetConfig.YEAR_LENGTH_DAYS.get()*PlanetDaylight.periodSeconds()));}
         return true;
     }
     public static void open(ServerPlayer p,BlockPos block){if(!authorize(p,block))return;

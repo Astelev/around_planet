@@ -92,7 +92,7 @@ public final class SpaceOrbitData extends SavedData {
     private SpaceTrajectory require(UUID id){var value=objects.get(id);if(value==null)throw new IllegalArgumentException("Unknown space object: "+id);return value;}
     public static SpaceOrbitData load(CompoundTag tag,HolderLookup.Provider lookup) {
         if(tag.getInt("schema")!=1 || !tag.contains("objects",Tag.TAG_LIST))throw new IllegalArgumentException("Unsupported orbit save format");
-        var data=new SpaceOrbitData();if(tag.contains("celestialSystem",Tag.TAG_COMPOUND)){var s=tag.getCompound("celestialSystem");data.system=new CelestialSystem(s.getDouble("radius"),s.getDouble("mu"),s.getLong("clock"),s.contains("entry")?s.getDouble("entry"):2000);}var entries=(ListTag)tag.get("objects");
+        var data=new SpaceOrbitData();if(tag.contains("celestialSystem",Tag.TAG_COMPOUND)){var s=tag.getCompound("celestialSystem");data.system=new CelestialSystem(s.getDouble("radius"),s.getDouble("mu"),s.getLong("clock"),s.contains("entry")?s.getDouble("entry"):2000,s.getDouble("yearSeconds"));}var entries=(ListTag)tag.get("objects");
         if(!entries.isEmpty() && entries.getElementType()!=Tag.TAG_COMPOUND)throw new IllegalArgumentException("Invalid orbit record list");
         for(var raw:entries) {
             var entry=(CompoundTag)raw;
@@ -118,7 +118,7 @@ public final class SpaceOrbitData extends SavedData {
     private static void writeVector(CompoundTag t,String key,SpaceVector v){t.putDouble(key+"x",v.x());t.putDouble(key+"y",v.y());t.putDouble(key+"z",v.z());}
     @Override public CompoundTag save(CompoundTag tag,HolderLookup.Provider lookup) {
         var solar=new ListTag();for(var id:solarImpacts)solar.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));tag.put("solarImpacts",solar);
-        tag.putInt("schema",1);if(system!=null){var s=new CompoundTag();s.putDouble("radius",system.earthRadius());s.putDouble("mu",system.earthMu());s.putLong("clock",system.clockTicks());s.putDouble("entry",system.earthEntry());tag.put("celestialSystem",s);}var list=new ListTag();
+        tag.putInt("schema",1);if(system!=null){var s=new CompoundTag();s.putDouble("radius",system.earthRadius());s.putDouble("mu",system.earthMu());s.putLong("clock",system.clockTicks());s.putDouble("entry",system.earthEntry());s.putDouble("yearSeconds",system.yearSeconds());tag.put("celestialSystem",s);}var list=new ListTag();
         objects.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(item->{
             var e=new CompoundTag();var trajectory=item.getValue();var p=trajectory.initial().position();var v=trajectory.initial().velocity();
             e.putUUID("id",item.getKey());e.putString("primary",trajectory.primary());e.putLong("epoch",trajectory.epochTick());e.putDouble("mu",trajectory.mu());

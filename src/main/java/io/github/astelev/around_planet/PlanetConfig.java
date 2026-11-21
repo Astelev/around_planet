@@ -6,7 +6,7 @@ public final class PlanetConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.ConfigValue<Integer> PLANET_SIZE;
     public static final java.util.function.IntSupplier BOUNDARY=()->PlanetConfig.PLANET_SIZE.get()/2,BOUNDARY_Z=BOUNDARY;
-    public static final ModConfigSpec.DoubleValue HYDROLOX_ENERGY,HYDROLOX_EFFICIENCY,FUEL_EFFICIENCY_MULTIPLIER,DAY_LENGTH_MINUTES;
+    public static final ModConfigSpec.DoubleValue HYDROLOX_ENERGY,HYDROLOX_EFFICIENCY,FUEL_EFFICIENCY_MULTIPLIER,DAY_LENGTH_MINUTES,YEAR_LENGTH_DAYS;
     public static final ModConfigSpec.DoubleValue SPACE_GRAVITY,SPACE_UNLOAD_SPEED,RENDEZVOUS_DISTANCE,RENDEZVOUS_SPEED,ATMOSPHERE_DRAG,REENTRY_SPEED;
     public static final ModConfigSpec.BooleanValue ENABLED,RETAIN_MESHES,DH_SEAM,SHIP_SEAM,SHIP_TRANSFER,TERRAIN_BLEND,DIAGNOSTICS,PROGRESSIVE,SPACE,SURFACE_CURVE,SURFACE_SKY,VACUUM;
     public static final ModConfigSpec.IntValue MOON_LANDING,SPACE_ENTRY,SPACE_Y,SKY_DARKEN,ATMOSPHERE_TOP,ATMOSPHERE_BOTTOM, ACTIVATION, RADIUS,SNAPSHOT_INTERVAL,SNAPSHOT_BUDGET,DH_PREVIEW,SHIP_BAND,GUARD_MARGIN,TERRAIN_BAND,MESH_MIB,MESH_SECTIONS,PROGRESSIVE_DETAIL,PROGRESSIVE_RADIUS,PROGRESSIVE_PENDING;
@@ -16,6 +16,7 @@ public final class PlanetConfig {
         PLANET_SIZE=b.comment("Equatorial circumference in blocks. Single source for both world borders (+/- half) and cosmic radius (circumference / 2pi).",
                 "Multiple of 32, from 256 to 59000000. Default preserves +/-65536 borders. Restart required.").define("circumferenceBlocks",131072,v->v instanceof Integer n && n>=256 && n<=59000000 && n%32==0);
         DAY_LENGTH_MINUTES=b.comment("Real minutes per solar day. 0 = auto from circumference, gravity and atmosphere top: circular speed at atmosphere top stays >= 3 times rotation speed, rounded UP to 5 whole minutes. Stock gravity/atmosphere: 1x=20, 2x=25, 3x=30 minutes. Positive value overrides auto.").defineInRange("dayLengthMinutes",0.0,0.0,10080.0);
+        YEAR_LENGTH_DAYS=b.comment("Earth year in configured solar days (dayLengthMinutes, including auto mode). 0 preserves the original solar scale (~88.4574 stock days). Sun mass and apparent radius stay fixed; orbit distance and Sun radius scale with period^(2/3). Very short years are limited so the Earth sphere still contains the lunar sphere. Restart required; changing this setting repositions Earth and Moon relative to solar trajectories, so recheck interplanetary plans.").defineInRange("yearLengthDays",0.0,0.0,1000000.0);
         b.pop();b.push("surfaceVisuals");
         SURFACE_CURVE=b.comment("Render camera-relative world curvature using the configured planet radius. Physics and world coordinates remain flat.").define("curvature",true);
         SURFACE_SKY=b.comment("Shared round Sun/Moon and stars with ordinary day/night cycle on the surface.").define("sky",true);

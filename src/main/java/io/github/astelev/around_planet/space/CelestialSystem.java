@@ -1,19 +1,23 @@
 package io.github.astelev.around_planet.space;
 import java.util.UUID;
 /** Prescribed circular ephemerides; every vessel remains relative to exactly one attracting body. */
-public record CelestialSystem(double earthRadius,double earthMu,long clockTicks,double earthEntry) {
+public record CelestialSystem(double earthRadius,double earthMu,long clockTicks,double earthEntry,double yearSeconds) {
+    public CelestialSystem(double radius,double mu,long clock,double entry){this(radius,mu,clock,entry,0);}
     public CelestialSystem(double radius,double mu,long clock){this(radius,mu,clock,2000);}
     public static final String SUN="around_planet:sun",EARTH="around_planet:overworld",MOON="around_planet:moon";
     public static final UUID MOON_ID=UUID.fromString("00000000-0000-0000-0000-00000000a001"),EARTH_ID=UUID.fromString("00000000-0000-0000-0000-00000000a002"),SUN_ID=UUID.fromString("00000000-0000-0000-0000-00000000a003");
-    public CelestialSystem{if(!Double.isFinite(earthEntry)||earthEntry<0)throw new IllegalArgumentException("Earth entry");if(!(earthRadius>0)||!(earthMu>0)||!Double.isFinite(earthRadius+earthMu))throw new IllegalArgumentException("Celestial scale");}
+    public CelestialSystem{if(!Double.isFinite(yearSeconds)||yearSeconds<0)throw new IllegalArgumentException("Earth year");if(!Double.isFinite(earthEntry)||earthEntry<0)throw new IllegalArgumentException("Earth entry");if(!(earthRadius>0)||!(earthMu>0)||!Double.isFinite(earthRadius+earthMu))throw new IllegalArgumentException("Celestial scale");}
     public boolean managed(String primary){return SUN.equals(primary)||EARTH.equals(primary)||MOON.equals(primary);}
     public static boolean body(UUID id){return MOON_ID.equals(id)||EARTH_ID.equals(id)||SUN_ID.equals(id);}
     public static String primary(UUID id){if(MOON_ID.equals(id))return MOON;if(EARTH_ID.equals(id))return EARTH;if(SUN_ID.equals(id))return SUN;throw new IllegalArgumentException("Unknown celestial body");}
     public static String name(UUID id){return MOON_ID.equals(id)?"Moon":SUN_ID.equals(id)?"Sun":"Earth";}
     public static String parent(String primary){return MOON.equals(primary)?EARTH:EARTH.equals(primary)?SUN:null;}
-    public double sunRadius(){return earthRadius*12;}
+    public double sunRadius(){return earthDistance()*12/512;}
     public double sunMu(){return earthMu*1000;}
-    public double earthDistance(){return earthRadius*512;}
+    public double earthDistance(){return yearSeconds==0?earthRadius*512:Math.cbrt(sunMu()*Math.pow(effectiveYearSeconds()/(2*Math.PI),2));}
+    /** Smallest year that leaves the entire Moon sphere safely inside the Earth sphere. */
+    public double minimumYearSeconds(){double d=(distance()+soi())*1.05/Math.pow(earthMu/sunMu(),.4);return 2*Math.PI*Math.sqrt(d*d*d/sunMu());}
+    public double effectiveYearSeconds(){return yearSeconds==0?2*Math.PI*Math.sqrt(Math.pow(earthRadius*512,3)/sunMu()):Math.max(yearSeconds,minimumYearSeconds());}
     public double earthSoi(){return earthDistance()*Math.pow(earthMu/sunMu(),.4);}
     public double solarMotion(){return Math.sqrt(sunMu()/Math.pow(earthDistance(),3));}
     public double solarPeriod(){return 2*Math.PI/solarMotion();}
@@ -41,5 +45,5 @@ public record CelestialSystem(double earthRadius,double earthMu,long clockTicks,
     public double targetMu(UUID body,String chart){return SUN_ID.equals(body)||SUN.equals(chart)?sunMu():earthMu;}
     public SpaceState target(UUID body,String primary,long tick){return relative(primary,origin(primary(body),tick),tick);}
     public SpaceVector sunlight(String primary,SpaceVector position,long tick){var p=global(primary,new SpaceState(position,SpaceVector.ZERO),tick).position().scale(-1);return p.length()>1e-12?p.scale(1/p.length()):SpaceEnvironment.SUN_DIRECTION;}
-    public CelestialSystem warp(long ticks){return new CelestialSystem(earthRadius,earthMu,Math.addExact(clockTicks,ticks),earthEntry);}
+    public CelestialSystem warp(long ticks){return new CelestialSystem(earthRadius,earthMu,Math.addExact(clockTicks,ticks),earthEntry,yearSeconds);}
 }
