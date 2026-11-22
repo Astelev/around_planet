@@ -1,0 +1,6 @@
+{
+  "selector": "around_planet:solid_rocket_fuel",
+  "properties": {
+    "sable:mass": 64
+  }
+}

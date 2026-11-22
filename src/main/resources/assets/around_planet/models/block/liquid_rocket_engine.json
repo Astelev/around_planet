@@ -1,0 +1,60 @@
+{
+  "loader": "neoforge:obj",
+  "model": "around_planet:models/block/liquid_rocket_engine.obj",
+  "automatic_culling": false,
+  "shade_quads": true,
+  "emissive_ambient": false,
+  "flip_v": true,
+  "textures": {
+    "nozzle": "minecraft:block/polished_deepslate",
+    "body": "minecraft:block/iron_block",
+    "band": "minecraft:block/cyan_concrete",
+    "pipe": "minecraft:block/copper_block",
+    "inner": "minecraft:block/polished_blackstone",
+    "dark": "minecraft:block/deepslate_tiles",
+    "particle": "minecraft:block/iron_block"
+  },
+  "display": {
+    "gui": {
+      "rotation": [
+        30,
+        225,
+        0
+      ],
+      "translation": [
+        0,
+        3,
+        0
+      ],
+      "scale": [
+        0.48,
+        0.48,
+        0.48
+      ]
+    },
+    "ground": {
+      "translation": [
+        0,
+        5,
+        0
+      ],
+      "scale": [
+        0.3,
+        0.3,
+        0.3
+      ]
+    },
+    "fixed": {
+      "translation": [
+        0,
+        3,
+        0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    }
+  }
+}

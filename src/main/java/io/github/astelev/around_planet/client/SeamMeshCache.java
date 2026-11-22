@@ -193,6 +193,7 @@ public final class SeamMeshCache {
         });
     }
     @SubscribeEvent public static void render(RenderLevelStageEvent event) {
+        if(SpaceRenderView.active())return;
         var s=state;var mc=Minecraft.getInstance();
         if(s==null || mc.level!=s.level || mc.player==null)return;
         var camera=event.getCamera().getPosition();

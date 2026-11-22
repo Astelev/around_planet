@@ -26,8 +26,10 @@ public final class SeamServerDiagnostics {
             text.append(" player{id=").append(p.getId()).append(" dim=").append(p.level().dimension().location()).append(" xyz=").append(p.position())
                     .append(" seamDistance=").append(t.distanceToSeam(p.getX())).append(" knownMotion=").append(p.getKnownMovement())
                     .append(" local5x5[ready/unlit/missing]=").append(ready).append('/').append(unlit).append('/').append(missing)
+                    .append(" space=").append(io.github.astelev.around_planet.space.SpaceCells.contains(p))
                     .append(" loaded=").append(p.serverLevel().getChunkSource().getLoadedChunksCount()).append(' ').append(TransferService.diagnostics(p)).append('}');
         }
+        if(net.neoforged.fml.ModList.get().isLoaded("sable"))text.append(" spaceCells=").append(io.github.astelev.around_planet.space.SpaceCells.get(e.getServer().overworld()).all().stream().limit(8).map(c->c.id()+"@("+c.x()+","+c.y()+","+c.z()+")").toList());
         text.append(" dhQueues=").append(SeamDiagnostics.queues());SeamDiagnostics.report("server",text.toString());
     }
     @SubscribeEvent public static void load(ChunkEvent.Load e){chunk(e,true);}

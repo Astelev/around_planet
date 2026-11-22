@@ -1,0 +1,13 @@
+package io.github.astelev.around_planet.space;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+class ConfigurableYearTest {
+ private final CelestialSystem original=new CelestialSystem(131072/(2*Math.PI),9.81*Math.pow(131072/(2*Math.PI),2),1234);
+ private CelestialSystem year(double seconds){return new CelestialSystem(original.earthRadius(),original.earthMu(),original.clockTicks(),2000,seconds);}
+ @Test void zeroRetainsOriginalScale(){assertEquals(original.earthRadius()*512,original.earthDistance());assertEquals(original.earthRadius()*12,original.sunRadius());assertEquals(29.485794494263047,original.solarPeriod()/3600,1e-10);}
+ @Test void doubleYearChangesDistanceRadiusAndSpeedByKeplerScaling(){var longer=year(original.solarPeriod()*2);double factor=Math.pow(2,2.0/3);assertEquals(original.solarPeriod()*2,longer.solarPeriod(),1e-8);assertEquals(original.earthDistance()*factor,longer.earthDistance(),1e-7);assertEquals(original.sunRadius()*factor,longer.sunRadius(),1e-8);assertEquals(original.sunMu(),longer.sunMu());assertEquals(original.sunRadius()/original.earthDistance(),longer.sunRadius()/longer.earthDistance(),1e-15);assertEquals(Math.pow(2,-1.0/3),longer.earth(0).velocity().length()/original.earth(0).velocity().length(),1e-12);assertEquals(.25,Math.pow(original.sunRadius()/longer.sunRadius(),3),1e-12);}
+ @Test void explicitDaysUseConfiguredSolarDay(){for(double day:new double[]{1200,1800,3600}){var s=year(120*day);assertEquals(120,s.solarPeriod()/day,1e-10);}}
+ @Test void tooShortYearKeepsMoonSphereAndEarthOutsideSun(){var s=year(1);assertEquals(s.minimumYearSeconds(),s.solarPeriod(),1e-8);assertTrue(s.earthSoi()>s.distance()+s.soi());assertTrue(s.earthDistance()-s.earthSoi()>s.solarDestructionRadius());}
+ @Test void warpAndFrameChangesRetainCustomYear(){var s=year(200*1200);assertEquals(s.yearSeconds(),s.warp(1000).yearSeconds());assertEquals(s.earth(1000),s.warp(1000).earth(0));long tick=500000;var state=new SpaceState(new SpaceVector(40000,50000,200),new SpaceVector(-20,300,10));for(String body:new String[]{CelestialSystem.EARTH,CelestialSystem.MOON}){var global=s.global(body,state,tick);var restored=s.relative(body,global,tick);assertTrue(restored.position().subtract(state.position()).length()<1e-7);assertTrue(restored.velocity().subtract(state.velocity()).length()<1e-8);}var sunlight=s.sunlight(CelestialSystem.EARTH,SpaceVector.ZERO,tick);var unrotated=new PlanetSpin(s.solarAngle(tick),0).unrotate(sunlight);assertTrue(unrotated.subtract(SpaceEnvironment.SUN_DIRECTION).length()<1e-10);}
+ @Test void invalidYearIsRejected(){for(double n:new double[]{-1,Double.NaN,Double.POSITIVE_INFINITY})assertThrows(IllegalArgumentException.class,()->year(n));}
+}

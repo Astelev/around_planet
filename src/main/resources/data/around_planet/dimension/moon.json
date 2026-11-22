@@ -1,0 +1,12 @@
+{
+  "type": "around_planet:moon",
+  "generator": {
+    "type": "around_planet:moon",
+    "biome_source": {
+      "plains": "around_planet:moon_plains",
+      "mare": "around_planet:moon_mare",
+      "rim": "around_planet:moon_crater_mountains",
+      "basin": "around_planet:moon_crater_basin"
+    }
+  }
+}

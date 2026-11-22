@@ -1,0 +1,41 @@
+package io.github.astelev.around_planet.gametest;
+import io.github.astelev.around_planet.*;
+import io.github.astelev.around_planet.client.*;
+import io.github.astelev.around_planet.network.*;
+import io.github.astelev.around_planet.space.*;
+import net.minecraft.client.Minecraft;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import java.util.*;
+/** Real GPU/network integration in a copied test world. Excluded from production. */
+@EventBusSubscriber(modid="around_planet",value=Dist.CLIENT)
+public final class SolarClientSmoke {
+ private static final UUID ID=UUID.fromString("00000000-0000-0000-1111-000000000068");
+ private static int ticks,phase,started;private static volatile Throwable failure;private static SpaceVector previousLight;private static volatile long clock;
+ @SubscribeEvent public static void tick(ClientTickEvent.Post event){if(!Boolean.getBoolean("around_planet.solarSmoke"))return;var mc=Minecraft.getInstance();ticks++;if(failure!=null)throw new AssertionError("Solar server fixture",failure);if(ticks>2200)throw new AssertionError("Solar smoke timeout phase="+phase);
+  if(mc.screen instanceof net.minecraft.client.gui.screens.BackupConfirmScreen){for(var widget:mc.screen.children())if(widget instanceof net.minecraft.client.gui.components.Button b&&b.getMessage().getString().contains("I know")){b.onPress();return;}}
+  if(mc.level==null||mc.player==null||mc.getSingleplayerServer()==null||ticks<100)return;
+  if(phase==0){phase=1;started=ticks;server(mc,()->setup(mc));return;}
+  var status=SpaceHud.current();var sys=CelestialSky.current();if(status==null||!status.active()||sys==null||sys.clockTicks()!=clock||status.system()==null||status.system().clockTicks()!=clock)return;
+  if(phase<=2){look(mc,new SpaceVector(0,-1,0));if(ticks-started<70)return;require(SpaceSkyRenderer.planetFrames>20,"Space sky did not draw");checkLighting(sys,mc.level.getGameTime());shot(mc,phase==1?"solar68-earth-space.png":"solar68-year-quarter.png");
+   if(phase==1){previousLight=sys.sunlight(CelestialSystem.EARTH,SpaceVector.ZERO,mc.level.getGameTime());phase=2;started=ticks;server(mc,()->{var l=mc.getSingleplayerServer().overworld();var data=SpaceOrbitData.get(l.getServer());var old=data.system();var next=old.warp(Math.round(old.solarPeriod()*20/4));clock=next.clockTicks();data.system(next);ManeuverPayload.refresh(l.players().getFirst(),ID);});return;}
+   require(previousLight.dot(sys.sunlight(CelestialSystem.EARTH,SpaceVector.ZERO,mc.level.getGameTime()))<.1,"Sun remained fixed after quarter year");phase=3;started=ticks;mc.setScreen(new OrbitMapScreen());return;
+  }
+  if(phase>=3&&phase<=5){if(!(mc.screen instanceof OrbitMapScreen map))return;String expected=phase==3?CelestialSystem.SUN:phase==4?CelestialSystem.EARTH:CelestialSystem.MOON;String actual=chart(map);if(!actual.equals(expected)){viewButton(map).onPress();started=ticks;return;}if(ticks-started<30)return;require(mapHasOnlyAllowedBodies(map,expected),"Outer orbit leaked into local map");shot(mc,"solar68-map-"+(phase==3?"sun":phase==4?"earth":"moon")+".png");if(phase<5){phase++;started=ticks;return;}phase=6;started=ticks;mc.setScreen(null);server(mc,()->{var l=mc.getSingleplayerServer().overworld();var data=SpaceOrbitData.get(l.getServer());var model=data.system();double r=model.earthDistance()/2;data.put(ID,new SpaceTrajectory(CelestialSystem.SUN,l.getGameTime(),new SpaceState(new SpaceVector(0,r,0),new SpaceVector(-Math.sqrt(model.sunMu()/r),0,0)),model.sunMu()));ManeuverPayload.refresh(l.players().getFirst(),ID);});return;}
+  if(phase==6){if(!status.primary().equals(CelestialSystem.SUN))return;look(mc,new SpaceVector(-status.x(),-status.y(),-status.z()));if(ticks-started<70)return;shot(mc,"solar68-solar-space.png");require(SpaceSkyRenderer.planetFrames>100,"Solar chart did not draw sky bodies");AroundPlanet.LOGGER.info("SOLAR_CLIENT_PASS Earth/Sun sky, dynamic terminator, Sun/Earth/Moon map hierarchy, sunlight uniforms and network ephemeris");phase=7;mc.stop();}
+ }
+ public static void setup(Minecraft mc){var l=mc.getSingleplayerServer().overworld();var p=l.players().getFirst();p.setGameMode(net.minecraft.world.level.GameType.CREATIVE);p.setNoGravity(true);p.getAbilities().flying=true;p.onUpdateAbilities();p.teleportTo(40000,6144,0);l.setWeatherParameters(60000,0,false,false);l.setDayTime(6000);l.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DAYLIGHT).set(false,l.getServer());PlanetConfig.ENABLED.set(true);PlanetConfig.SURFACE_SKY.set(true);PlanetConfig.VACUUM.set(false);
+  var cells=SpaceCells.get(l);for(var cell:cells.all())cells.remove(l,cell);var data=SpaceOrbitData.get(l.getServer());for(var id:data.ids())data.remove(id);var planet=new PlanetScale(PlanetConfig.PLANET_SIZE.get()).geometry();var sys=new CelestialSystem(planet.radius(),PlanetConfig.SPACE_GRAVITY.get()*planet.radius()*planet.radius(),0);data.system(sys);clock=0;var cell=new SpaceCells.Cell(ID,73,40000,6144,0,0,2200,0,List.of(UUID.randomUUID()));cells.add(l,cell);put(data,ID,CelestialSystem.EARTH,sys,planet,l.getGameTime(),sys.earthRadius()+12000);for(var body:new String[]{CelestialSystem.SUN,CelestialSystem.EARTH,CelestialSystem.MOON})put(data,UUID.randomUUID(),body,sys,planet,l.getGameTime(),body.equals(CelestialSystem.SUN)?sys.earthDistance()*.8:sys.radius(body)*2);ManeuverPayload.refresh(p,ID);
+ }
+ private static void put(SpaceOrbitData data,UUID id,String primary,CelestialSystem sys,PlanetGeometry planet,long now,double r){data.put(id,new SpaceTrajectory(primary,now,new SpaceState(new SpaceVector(0,r,0),new SpaceVector(-Math.sqrt(sys.mu(primary)/r),0,0)),sys.mu(primary)));data.navigate(id,new SpaceNavigation(planet,SpaceFrame.IDENTITY));}
+ private static void checkLighting(CelestialSystem system,long tick){try{var f=SpaceSkyRenderer.class.getDeclaredField("planetShader");f.setAccessible(true);var shader=(net.minecraft.client.renderer.ShaderInstance)f.get(null);require(shader!=null,"Planet shader absent");int location=org.lwjgl.opengl.GL20.glGetUniformLocation(shader.getId(),"SunDirection");float[] v=new float[3];org.lwjgl.opengl.GL20.glGetUniformfv(shader.getId(),location,v);var light=new SpaceVector(v[0],v[1],v[2]);var earth=system.sunlight(CelestialSystem.EARTH,SpaceVector.ZERO,tick);var moon=system.sunlight(CelestialSystem.MOON,SpaceVector.ZERO,tick);require(Math.min(light.subtract(earth).length(),light.subtract(moon).length())<.0001,"GPU light not synchronized to solar ephemeris: "+light);}catch(ReflectiveOperationException e){throw new AssertionError(e);}}
+ private static String chart(OrbitMapScreen map){try{var f=OrbitMapScreen.class.getDeclaredMethod("viewPrimary");f.setAccessible(true);return (String)f.invoke(map);}catch(ReflectiveOperationException e){throw new AssertionError(e);}}
+ private static boolean mapHasOnlyAllowedBodies(OrbitMapScreen map,String primary){try{var f=OrbitMapScreen.class.getDeclaredField("others");f.setAccessible(true);var list=(List<?>)f.get(map);require(!list.isEmpty(),"No map catalog objects");for(var item:list){var method=item.getClass().getDeclaredMethod("body");method.setAccessible(true);var body=(SpaceMapPayload.Body)method.invoke(item);if(!OrbitChart.visible(body.primary(),primary))return false;}return true;}catch(ReflectiveOperationException e){throw new AssertionError(e);}}
+ private static net.minecraft.client.gui.components.Button viewButton(OrbitMapScreen map){return map.children().stream().filter(w->w instanceof net.minecraft.client.gui.components.Button b&&b.getX()==map.width-300).map(net.minecraft.client.gui.components.Button.class::cast).findFirst().orElseThrow();}
+ private static void look(Minecraft mc,SpaceVector d){mc.player.setYRot((float)Math.toDegrees(Math.atan2(-d.x(),d.z())));mc.player.setXRot((float)Math.toDegrees(Math.atan2(-d.y(),Math.hypot(d.x(),d.z()))));}
+ private static void shot(Minecraft mc,String name){net.minecraft.client.Screenshot.grab(mc.gameDirectory,name,mc.getMainRenderTarget(),m->{});}
+ private static void server(Minecraft mc,Runnable task){mc.getSingleplayerServer().execute(()->{try{task.run();}catch(Throwable t){failure=t;}});}
+ private static void require(boolean b,String message){if(!b)throw new AssertionError(message);}
+}

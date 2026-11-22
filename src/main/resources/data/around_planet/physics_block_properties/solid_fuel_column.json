@@ -1,0 +1,6 @@
+{
+  "selector": "around_planet:solid_fuel_column",
+  "properties": {
+    "sable:mass": 8
+  }
+}
