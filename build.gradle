@@ -143,7 +143,7 @@ if (providers.gradleProperty('planetTests').isPresent()) {
 if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     sourceSets {
         planetClientSmoke {
-            if (project.providers.gradleProperty('planetRegolithSmoke').isPresent()) java.include('**/RegolithClientSmoke.java')
+            if (project.providers.gradleProperty('planetRegolithSmoke').isPresent()) java.include('**/RegolithClientSmoke.java', '**/MoonCompatibilityChecks.java')
             else if (project.providers.gradleProperty('planetMapSurfacesSmoke').isPresent()) java.include('**/MapSurfacesClientSmoke.java', '**/SolarClientSmoke.java')
             else if (project.providers.gradleProperty('planetSolarSmoke').isPresent()) java.include('**/SolarClientSmoke.java')
             else if (project.providers.gradleProperty('planetVacuumSmoke').isPresent()) java.include('**/VacuumClientSmoke.java')
@@ -168,6 +168,7 @@ if (providers.gradleProperty('planetClientSmoke').isPresent()) {
         programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('quickPlayWorld').getOrElse('around-ew-smoke'))
         jvmArguments.add('-Xmx3G')
         if (providers.gradleProperty('planetShipLoaderReload').isPresent()) jvmArguments.add('-Daround_planet.shipLoaderReload=true')
+        if (providers.gradleProperty('planetMoonCompatSmoke').isPresent()) jvmArguments.add('-Daround_planet.moonCompatSmoke=true')
         if (providers.gradleProperty('planetRegolithSmoke').isPresent()) jvmArguments.add('-Daround_planet.regolithSmoke=true')
         if (providers.gradleProperty('planetMapSurfacesSmoke').isPresent()) jvmArguments.add('-Daround_planet.mapSurfacesSmoke=true')
         if (providers.gradleProperty('planetSolarSmoke').isPresent()) jvmArguments.add('-Daround_planet.solarSmoke=true')

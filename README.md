@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.74: [лунный DH-генератор, отключение AeroWorks и неровный кратерный рельеф](docs/lunar-compatibility-and-roughness.md).
+
 Обновление 0.11.0-alpha.73: [исправление падения на частицах реголита](docs/regolith-tint-crash.md).
 
 Обновление 0.11.0-alpha.72: [реголит, четыре лунных биома, кратеры и полярный лёд](docs/lunar-terrain.md).

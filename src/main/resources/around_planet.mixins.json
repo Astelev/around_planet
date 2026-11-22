@@ -71,7 +71,9 @@
     "MassLevelAccessor",
     "PondusMassBuildMixin",
     "PondusInventoryLedgerMixin",
-    "PondusInventorySeedMixin"
+    "PondusInventorySeedMixin",
+    "AeroLunarWindMixin",
+    "AeroLunarFieldMixin"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -137,6 +139,7 @@
     "ExhaustCloudProjectionMixin",
     "SpaceLightmapMixin",
     "PlasmaHullBlocksMixin",
-    "PlasmaHullChunksMixin"
+    "PlasmaHullChunksMixin",
+    "AeroLunarVisualMixin"
   ]
 }
