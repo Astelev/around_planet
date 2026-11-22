@@ -169,5 +169,10 @@
   "around_planet.celestial.enter": "Вход в сферу %s",
   "around_planet.celestial.exit": "Выход из сферы %s",
   "block.around_planet.rsu_distributor": "Распределитель рабочего тела RSU",
-  "around_planet.rsu_distributor.status": "Рабочее тело: %s / %s мВ · истечение 800 м/с"
+  "around_planet.rsu_distributor.status": "Рабочее тело: %s / %s мВ · истечение 800 м/с",
+  "block.around_planet.regolith": "Реголит",
+  "biome.around_planet.moon_plains": "Лунные равнины",
+  "biome.around_planet.moon_mare": "Лунное море",
+  "biome.around_planet.moon_crater_mountains": "Кратерные горы",
+  "biome.around_planet.moon_crater_basin": "Кратерная котловина"
 }

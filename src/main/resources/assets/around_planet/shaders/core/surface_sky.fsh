@@ -7,6 +7,8 @@ uniform float Darkness;
 uniform float Horizon;
 uniform vec3 MoonCenter;
 uniform float MoonRadius;
+uniform sampler2D MoonAtlas;
+uniform int HasMoonAtlas;
 uniform vec3 MoonTextureX;
 uniform vec3 MoonTextureZ;
 uniform float Visibility;
@@ -70,12 +72,14 @@ void main() {
         vec3 normal=normalize(ray*hit-MoonCenter);
         float light=0.045+0.955*max(0.0,dot(normal,SunDirection));
         float nx=dot(normal,MoonTextureX),nz=dot(normal,MoonTextureZ);
-        float albedo=(155.0+20.0*sin(nx*43.0)*cos(nz*31.0))/255.0;
+        float ny=dot(normal,cross(MoonTextureZ,MoonTextureX));
+        vec2 moonUv=vec2(atan(nx,ny)/6.28318530718+.5,asin(clamp(nz,-1.0,1.0))/3.14159065359+.5);
+        vec3 albedo=HasMoonAtlas!=0?texture(MoonAtlas,moonUv).rgb:vec3(.6);
         // Daylight is scattered in front of the Moon too: its unlit hemisphere must not
         // paint a black disc over the blue sky. Fade this veil continuously with altitude.
         float daylight=smoothstep(-0.10,0.25,SunDirection.y)*(1.0-Darkness);
         float lunarTransmission=mix(1.0,0.22,daylight);
-        vec3 moonColor=mix(bg,vec3(albedo*light),lunarTransmission);
+        vec3 moonColor=mix(bg,albedo*light,lunarTransmission);
         float a=(1.0-smoothstep(0.98,1.0,d2))*Visibility*above;
         color=mix(color,moonColor,a);alpha=max(alpha,a);
     }

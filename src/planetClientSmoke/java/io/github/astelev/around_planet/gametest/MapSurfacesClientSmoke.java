@@ -16,10 +16,11 @@ public final class MapSurfacesClientSmoke {
   if(mc.screen instanceof net.minecraft.client.gui.screens.BackupConfirmScreen){for(var w:mc.screen.children())if(w instanceof net.minecraft.client.gui.components.Button b&&b.getMessage().getString().contains("I know")){b.onPress();return;}}
   if(mc.level==null||mc.player==null||mc.getSingleplayerServer()==null||ticks<100)return;
   if(phase==0){phase=1;mc.getSingleplayerServer().execute(()->{try{SolarClientSmoke.setup(mc);var l=mc.getSingleplayerServer().overworld();int[] pixels=new int[PlanetAtlas.SIZE];java.util.Arrays.fill(pixels,0x20a040);var tag=new net.minecraft.nbt.CompoundTag();tag.putInt("Version",3);tag.putLong("Seed",l.getSeed());tag.putInt("Circumference",PlanetConfig.PLANET_SIZE.get());tag.putInt("Progress",PlanetAtlas.SIZE);tag.putIntArray("Pixels",pixels);l.getDataStorage().set(PlanetAtlasData.ID,PlanetAtlasData.load(tag,l.registryAccess()));ready=true;}catch(Throwable t){failure=t;}});return;}
-  var status=SpaceHud.current();var sys=CelestialSky.current();if(!ready||status==null||!status.active()||sys==null||ManeuverClient.current()==null||!PlanetAtlasTexture.ready())return;
+  var status=SpaceHud.current();var sys=CelestialSky.current();if(!ready||status==null||!status.active()||sys==null||ManeuverClient.current()==null||!PlanetAtlasTexture.ready()||!MoonAtlasTexture.ready())return;
   if(!(mc.screen instanceof OrbitMapScreen)){mc.setScreen(new OrbitMapScreen());started=ticks;return;}
   var map=(OrbitMapScreen)mc.screen;String wanted=phase==2?CelestialSystem.SUN:phase==5?CelestialSystem.MOON:CelestialSystem.EARTH;
   if(!chart(map).equals(wanted)){viewButton(map).onPress();configured=-1;started=ticks;return;}
+  if(!(Boolean)field(map,"fitted")){started=ticks;return;}
   var camera=camera(map);var moon=sys.moon(ManeuverClient.now()).position();
   if(configured!=phase){configured=phase;started=ticks;
    if(phase==3||phase==4){var z=new SpaceVector(0,0,1);var right=phase==3?z.cross(moon):moon.cross(z);camera.fit(new SpaceState(right,SpaceVector.ZERO),sys.earthRadius()*3);camera.pitch=0;}
@@ -33,7 +34,7 @@ public final class MapSurfacesClientSmoke {
   AroundPlanet.LOGGER.info("MAP_SURFACE_PHASE phase={} primary={} center={}",phase,wanted,Integer.toHexString(color));phase++;configured=-1;started=ticks;
   if(phase==6){AroundPlanet.LOGGER.info("MAP_SURFACES_CLIENT_PASS Moon in Earth chart; Earth in Sun chart with shared atlas; front/rear Moon depth; standalone Moon; one reused bounded image");mc.setScreen(null);mc.stop();}
  }
- private static boolean gray(int c){int r=c&255,g=(c>>>8)&255,b=(c>>>16)&255;return (c>>>24)>200&&r>15&&Math.abs(r-g)<2&&Math.abs(g-b)<2;}
+ private static boolean gray(int c){int r=c&255,g=(c>>>8)&255,b=(c>>>16)&255;return (c>>>24)>200&&r>15&&Math.abs(r-g)<45&&Math.abs(g-b)<45;}
  private static boolean green(int c){int r=c&255,g=(c>>>8)&255,b=(c>>>16)&255;return (c>>>24)>200&&g>r*2&&g>b;}
  private static Object field(Object target,String name){try{var f=target.getClass().getDeclaredField(name);f.setAccessible(true);return f.get(target);}catch(ReflectiveOperationException e){throw new AssertionError(e);}}
  private static OrbitCamera camera(OrbitMapScreen map){return (OrbitCamera)field(map,"camera");}

@@ -29,7 +29,7 @@ public final class SurfaceSkyRenderer {
             shader.safeGetUniform("SkyColor").set((float)sky.x,(float)sky.y,(float)sky.z);shader.safeGetUniform("SunDirection").set((float)sun.x(),(float)sun.y(),(float)sun.z());
             var geometry=new PlanetScale(PlanetConfig.PLANET_SIZE.get()).geometry();
             var fixedFrame=geometry.frame(camera.getPosition().x,camera.getPosition().z);
-            PlanetAtlasTexture.bind(shader);shader.safeGetUniform("PlanetBlend").set((float)dark);
+            PlanetAtlasTexture.bind(shader);MoonAtlasTexture.bindSurface(shader);shader.safeGetUniform("PlanetBlend").set((float)dark);
             shader.safeGetUniform("PlanetObserver").set((float)(1+Math.max(0,camera.getPosition().y)/geometry.radius()));
             var east=fixedFrame.east();var up=fixedFrame.up();var south=fixedFrame.south();
             shader.safeGetUniform("PlanetEast").set((float)east.x(),(float)east.y(),(float)east.z());

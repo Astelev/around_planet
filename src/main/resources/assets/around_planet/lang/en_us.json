@@ -169,5 +169,10 @@
   "around_planet.celestial.enter": "%s SOI entry",
   "around_planet.celestial.exit": "%s SOI exit",
   "block.around_planet.rsu_distributor": "RSU Propellant Distributor",
-  "around_planet.rsu_distributor.status": "Propellant: %s / %s mB · exhaust 800 m/s"
+  "around_planet.rsu_distributor.status": "Propellant: %s / %s mB · exhaust 800 m/s",
+  "block.around_planet.regolith": "Regolith",
+  "biome.around_planet.moon_plains": "Lunar Plains",
+  "biome.around_planet.moon_mare": "Lunar Mare",
+  "biome.around_planet.moon_crater_mountains": "Crater Mountains",
+  "biome.around_planet.moon_crater_basin": "Crater Basin"
 }

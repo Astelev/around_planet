@@ -125,6 +125,7 @@ if (providers.gradleProperty('planetTests').isPresent()) {
         gameTestServer {
             type = 'gameTestServer'
             systemProperty 'around_planet.gameTestDimensions', 'true'
+            if (providers.gradleProperty('planetTerrainTests').isPresent()) systemProperty 'around_planet.terrainTests', 'true'
             if (providers.gradleProperty('planetRsuTests').isPresent()) systemProperty 'around_planet.rsuTests', 'true'
             if (providers.gradleProperty('planetSolarTests').isPresent()) systemProperty 'around_planet.solarTests', 'true'
             if (providers.gradleProperty('planetMassTests').isPresent()) systemProperty 'around_planet.massTests', 'true'

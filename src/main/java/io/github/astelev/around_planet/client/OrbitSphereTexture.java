@@ -22,7 +22,7 @@ public final class OrbitSphereTexture implements AutoCloseable {
             var light=body.sunlight();light=new SpaceVector(Math.rint(light.x()*2048)/2048,Math.rint(light.y()*2048)/2048,Math.rint(light.z()*2048)/2048);
             projected.add(new Projected(body.primary(),Math.rint(center.x()*2)/2,Math.rint(center.y()*2)/2,Math.rint((center.depth()-focusDepth)*scale*2)/2,r,light));
         }
-        var next=new Key(left,top,w,h,PlanetAtlasTexture.revision,angle,camera.yaw,camera.pitch,camera.basisVersion,List.copyOf(projected));
+        var next=new Key(left,top,w,h,PlanetAtlasTexture.revision+MoonAtlasTexture.revision,angle,camera.yaw,camera.pitch,camera.basisVersion,List.copyOf(projected));
         if(!next.equals(key)){
             if(texture==null||texture.getPixels().getWidth()!=iw||texture.getPixels().getHeight()!=ih){close();texture=new DynamicTexture(new NativeImage(iw,ih,true));id=Minecraft.getInstance().getTextureManager().register("around_planet_orbit_sphere",texture);}
             var image=texture.getPixels();var spin=new PlanetSpin(angle,PlanetSpin.OMEGA);var vx=camera.fromView(1,0,0);var vy=camera.fromView(0,1,0);var vz=camera.fromView(0,0,1);
@@ -38,7 +38,7 @@ public final class OrbitSphereTexture implements AutoCloseable {
     }
     private static int color(Projected body,SpaceVector inertial,double nz,PlanetSpin spin){
         if(CelestialSystem.SUN.equals(body.primary())){int green=(int)(190+45*nz),blue=(int)(80+80*nz);return 0xff000000|blue<<16|green<<8|255;}
-        if(CelestialSystem.MOON.equals(body.primary())){double light=.15+.85*Math.max(0,inertial.dot(body.light()));int v=(int)((155+22*Math.sin(inertial.x()*43)*Math.cos(inertial.z()*31))*light);return 0xff000000|v<<16|v<<8|v;}
+        if(CelestialSystem.MOON.equals(body.primary())){double light=.15+.85*Math.max(0,inertial.dot(body.light()));int rgb=MoonAtlasTexture.ready()?MoonAtlasTexture.sample(inertial.x(),inertial.y(),inertial.z()):0x999999;int r=(int)((rgb>>16&255)*light),g=(int)((rgb>>8&255)*light),b=(int)((rgb&255)*light);return 0xff000000|b<<16|g<<8|r;}
         var normal=spin.unrotate(inertial);if(!PlanetAtlasTexture.ready())return SphereGrid.color(normal.x(),normal.y(),normal.z(),inertial.dot(body.light()));
         int rgb=PlanetAtlasTexture.sample(normal.x(),normal.y(),normal.z());double light=.4+.6*Math.max(0,inertial.dot(body.light()));int red=(int)(((rgb>>>16)&255)*light),green=(int)(((rgb>>>8)&255)*light),blue=(int)((rgb&255)*light);return 0xff000000|blue<<16|green<<8|red;
     }
