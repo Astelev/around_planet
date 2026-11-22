@@ -167,5 +167,7 @@
   "around_planet.celestial.moon": "Moon",
   "around_planet.celestial.chart": "System: %s",
   "around_planet.celestial.enter": "%s SOI entry",
-  "around_planet.celestial.exit": "%s SOI exit"
+  "around_planet.celestial.exit": "%s SOI exit",
+  "block.around_planet.rsu_distributor": "RSU Propellant Distributor",
+  "around_planet.rsu_distributor.status": "Propellant: %s / %s mB · exhaust 800 m/s"
 }

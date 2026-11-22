@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.71: [рабочее тело RSU и корабельный распределитель](docs/rsu-propellant-distributor.md).
+
 Обновление 0.11.0-alpha.70: [настройка длительности земного года](docs/configurable-year.md).
 
 Обновление 0.11.0-alpha.69: [поверхности дочерних тел на орбитальной карте](docs/orbit-child-surfaces.md).

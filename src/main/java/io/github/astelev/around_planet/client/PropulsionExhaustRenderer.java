@@ -20,14 +20,14 @@ public final class PropulsionExhaustRenderer implements BlockEntityRenderer<Prop
     @SubscribeEvent public static void register(net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers e){e.registerBlockEntityRenderer(PropulsionRegistry.TYPE.get(),PropulsionExhaustRenderer::new);}
     @SubscribeEvent public static void shaders(net.neoforged.neoforge.client.event.RegisterShadersEvent e)throws java.io.IOException{e.registerShader(new ShaderInstance(e.getResourceProvider(),net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("around_planet","rendertype_exhaust"),DefaultVertexFormat.POSITION_TEX_COLOR),s->shader=s);}
     @Override public void render(PropulsionBlockEntity be,float partial,PoseStack pose,MultiBufferSource buffers,int light,int overlay){
-        if(shader==null||be.getLevel()==null||be.kind()==PropulsionRegistry.Kind.DAMPER||be.thrust()<=0)return;
+        if(shader==null||be.getLevel()==null||(be.kind()==PropulsionRegistry.Kind.DAMPER||be.kind()==PropulsionRegistry.Kind.DISTRIBUTOR)||be.thrust()<=0)return;
         boolean rsu=be.kind()==PropulsionRegistry.Kind.RSU;int count=rsu?4:1;boolean active=false;for(int i=0;i<count;i++)active|=be.signal(i)>0;if(!active)return;
         long start=io.github.astelev.around_planet.diagnostics.SeamDiagnostics.start();var frame=OrbitalSensorBlock.frame(be.getBlockState());var r=frame.right();var f=frame.forward();var u=frame.up();var vertices=DeferredExhaust.vertices();
         pose.pushPose();pose.translate(.5,.5,.5);pose.mulPose(new org.joml.Quaternionf().setFromNormalized(new org.joml.Matrix3f((float)r.x(),(float)r.y(),(float)r.z(),(float)f.x(),(float)f.y(),(float)f.z(),(float)u.x(),(float)u.y(),(float)u.z())));
         if(be.kind()==PropulsionRegistry.Kind.LIQUID||be.kind()==PropulsionRegistry.Kind.SOLID)nozzleGlow(pose,buffers,be);
         double time=be.getLevel().getGameTime()+partial;lastFlowTime=(float)((time%24000)/20.0);shader.safeGetUniform("FlowTime").set(lastFlowTime);double sin=Math.sin(Math.PI/8),cos=Math.cos(Math.PI/8);
         for(int i=0;i<count;i++){
-            var jet=ExhaustMath.jet(be.thrust(),be.signal(i),rsu,time*.8+((be.getBlockPos().asLong()+i*31)&255));if(!jet.visible())continue;
+            var jet=ExhaustMath.jet(be.thrust()*(rsu?be.rsuPower():1),be.signal(i),rsu,time*.8+((be.getBlockPos().asLong()+i*31)&255));if(!jet.visible())continue;
             pose.pushPose();var direction=new org.joml.Vector3f(0,-1,0);
             if(rsu){float x=0,z=0;switch(i){case 0->z=-1;case 1->x=1;case 2->z=1;default->x=-1;}pose.translate(x*(1+cos)/8,(1.75+2*sin)/16-.5,z*(1+cos)/8);direction.set((float)(x*cos),(float)sin,(float)(z*cos));}
             // The liquid bell extends 10 model pixels below the block; start just beyond its lip.

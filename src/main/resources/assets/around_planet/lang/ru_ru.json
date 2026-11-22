@@ -167,5 +167,7 @@
   "around_planet.celestial.moon": "Луна",
   "around_planet.celestial.chart": "Система: %s",
   "around_planet.celestial.enter": "Вход в сферу %s",
-  "around_planet.celestial.exit": "Выход из сферы %s"
+  "around_planet.celestial.exit": "Выход из сферы %s",
+  "block.around_planet.rsu_distributor": "Распределитель рабочего тела RSU",
+  "around_planet.rsu_distributor.status": "Рабочее тело: %s / %s мВ · истечение 800 м/с"
 }
