@@ -25,7 +25,7 @@ public record CelestialSystem(double earthRadius,double earthMu,long clockTicks,
     public double solarDestructionRadius(){return sunRadius()*1.05;}
     public SpaceState earth(long tick){return earthSeconds(tick/20.0);}
     public SpaceState earthSeconds(double seconds){double a=Math.IEEEremainder((seconds+clockTicks/20.0)*solarMotion(),2*Math.PI),c=Math.cos(a),s=Math.sin(a),d=earthDistance(),v=d*solarMotion();return new SpaceState(new SpaceVector(-d*s,-d*c,0),new SpaceVector(-v*c,v*s,0));}
-    public double moonRadius(){return earthRadius*.2724;}
+    public double moonRadius(){return MoonScale.fromEarthRadius(earthRadius).radius();}
     public double distance(){return earthRadius*12;}
     public double moonMu(){return earthMu*.0123;}
     public double soi(){return distance()*Math.pow(moonMu()/earthMu,.4);}

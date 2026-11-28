@@ -6,7 +6,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-/** Only explicitly bound Overworld borders are changed. Saved vanilla border settings remain intact. */
+/** Only explicitly bound planetary borders are changed. Saved vanilla border settings remain intact. */
 public final class PlanetBorders {
     public static final double GUARD_MARGIN = 1024;
     public static double guardMargin() {

@@ -1,0 +1,50 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "type": "create:mechanical_crafting",
+  "accept_mirrored": true,
+  "pattern": [
+    "IPI",
+    "BHB",
+    " R "
+  ],
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "P": {
+      "type": "around_planet:qualified_part",
+      "part": "impeller",
+      "minimum": {
+        "wear_resistance": 0.3,
+        "working_temperature": 0,
+        "load_capacity": 0,
+        "corrosion_resistance": 0
+      }
+    },
+    "B": {
+      "item": "minecraft:bucket"
+    },
+    "H": {
+      "type": "around_planet:qualified_part",
+      "part": "precision_housing",
+      "minimum": {
+        "wear_resistance": 0,
+        "working_temperature": 0,
+        "load_capacity": 0.3,
+        "corrosion_resistance": 0
+      }
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "result": {
+    "id": "around_planet:rsu_distributor",
+    "count": 1
+  }
+}

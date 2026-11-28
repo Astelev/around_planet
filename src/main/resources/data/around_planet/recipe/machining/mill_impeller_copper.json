@@ -1,0 +1,32 @@
+{
+  "type": "around_planet:machining",
+  "machine": "mill",
+  "ingredients": [
+    {
+      "tag": "c:storage_blocks/copper",
+      "count": 1
+    }
+  ],
+  "results": [
+    {
+      "id": "around_planet:impeller",
+      "count": 1,
+      "components": {
+        "around_planet:manufactured_part": {
+          "material": "around_planet:copper",
+          "stats": {
+            "wear_resistance": 0.3,
+            "working_temperature": 600,
+            "load_capacity": 0.4,
+            "corrosion_resistance": 0.75
+          },
+          "color": 12745297,
+          "environment": "ground"
+        }
+      }
+    }
+  ],
+  "processingTime": 180,
+  "energy_per_tick": 60,
+  "orbital_processing_ticks": 135
+}

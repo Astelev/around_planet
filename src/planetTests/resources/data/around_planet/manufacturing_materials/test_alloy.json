@@ -1,0 +1,16 @@
+{
+  "block": {
+    "item": "minecraft:gold_block"
+  },
+  "dust": {
+    "item": "minecraft:glowstone_dust"
+  },
+  "stats": {
+    "wear_resistance": 0.8,
+    "working_temperature": 1700,
+    "load_capacity": 0.8,
+    "corrosion_resistance": 0.8
+  },
+  "color": 16766720,
+  "priority": 10
+}

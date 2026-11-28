@@ -33,13 +33,19 @@ public final class SpaceImpactGameTests {
   if(moon){cells.remove(level,cell);SpaceDormantData.get(level.getServer()).put(new SpaceDormantData.Binding(id,"impact",new SpaceVector(20000,9000,0),2200,nativeIds.subList(0,2).stream().map(ship->new SpaceDormantData.Member(ship,SpaceVector.ZERO,SpaceVector.ZERO,SpaceVector.ZERO)).toList()));}
   if(cold){double r=planet.radius()+8000,mu=sys.earthMu();long halfPeriod=Math.round(Math.PI*Math.sqrt(r*r*r/mu)*20);data.put(id,new SpaceTrajectory(CelestialSystem.EARTH,level.getGameTime()-halfPeriod,new SpaceState(new SpaceVector(0,r,0),new SpaceVector(Math.sqrt(mu/r),0,0)),mu));}
   c.getHoldingChunkMap().saveAll();c.getHoldingChunkMap().getStorage().flush();
-  var removedPointers=new HashSet<dev.ryanhcode.sable.sublevel.storage.holding.SavedSubLevelPointer>();if(!awake&&!cold)for(var ship:nativeIds.subList(0,2)){var record=c.getHoldingChunkMap().getHoldingSubLevel(ship);h.assertTrue(record!=null&&record.pointer()!=null,"Fixture did not persist native pointer");removedPointers.add(record.pointer().local());}
+  var removedPointers=new HashSet<dev.ryanhcode.sable.sublevel.storage.holding.SavedSubLevelPointer>();if(!awake&&!cold)for(var ship:nativeIds.subList(0,2)){var pointer=storedPointer(c,ship,chunk);h.assertTrue(pointer!=null,"Fixture did not persist native pointer");removedPointers.add(pointer);}
   SpaceUnloadedImpact.check(level,c);
-  if(awake||cold){h.assertTrue(data.get(id).isPresent()&&cells.forShip(nativeIds.getFirst())!=null&&c.getHoldingChunkMap().getHoldingSubLevel(nativeIds.get(1))!=null,"Loaded group was deleted");}
+  if(awake||cold){h.assertTrue(data.get(id).isPresent()&&cells.forShip(nativeIds.getFirst())!=null&&storedPointer(c,nativeIds.get(1),chunk)!=null,"Coasting/loaded orbit or stored body was deleted");}
   else{h.assertTrue(data.get(id).isEmpty()&&SpaceDormantData.get(level.getServer()).get(id)==null&&cells.forShip(nativeIds.getFirst())==null,"Impacted orbit remained registered");for(var ship:nativeIds.subList(0,2)){h.assertTrue(c.getHoldingChunkMap().getHoldingSubLevel(ship)==null&&!((SpaceHoldingAccess)c.getHoldingChunkMap()).around_planet$queued(ship),"Impacted native body remained in holding");h.assertTrue(cargo.all().stream().noneMatch(r->r.ship().equals(ship)),"Cargo address remained");}}
-  h.assertTrue(c.getHoldingChunkMap().getHoldingSubLevel(nativeIds.get(2))!=null,"Unrelated body in same holding chunk was deleted");
+  h.assertTrue(storedPointer(c,nativeIds.get(2),chunk)!=null,"Unrelated body in same holding chunk was deleted");
   c.getHoldingChunkMap().saveAll();c.getHoldingChunkMap().getStorage().flush();var saved=c.getHoldingChunkMap().getStorage().attemptLoadHoldingChunk(chunk);
   if(!awake&&!cold&&saved!=null)h.assertTrue(saved.getSubLevelPointers().stream().noneMatch(removedPointers::contains),"Deleted body pointer was saved again: removed="+removedPointers+" saved="+saved.getSubLevelPointers());
   h.succeed();
  }catch(java.io.IOException ex){throw new AssertionError(ex);}finally{if(cell!=null)cells.remove(level,cell);data.remove(id);data.system(oldSystem);SpaceDormantData.get(level.getServer()).remove(id);SpaceUnloadedImpact.clear(level);for(var ship:nativeIds){cargo.remove(ship);var nativeBody=c.getSubLevel(ship);if(nativeBody!=null)c.removeSubLevel(nativeBody,SubLevelRemovalReason.REMOVED);else ((SpaceHoldingAccess)c.getHoldingChunkMap()).around_planet$discard(ship,new ChunkPos(1250,0));}}});}
+ // saveAll may evict a cold holding index. Verify durable data rather than incidental cache residency.
+ private static dev.ryanhcode.sable.sublevel.storage.holding.SavedSubLevelPointer storedPointer(dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer container,UUID id,ChunkPos chunk){
+  var map=container.getHoldingChunkMap();var memory=map.getHoldingSubLevel(id);if(memory!=null&&memory.pointer()!=null)return memory.pointer().local();
+  var saved=map.getStorage().attemptLoadHoldingChunk(chunk);if(saved!=null)for(var pointer:saved.getSubLevelPointers()){var data=map.getStorage().attemptLoadSubLevel(chunk,pointer);if(data!=null&&data.uuid().equals(id))return pointer;}
+  return null;
+ }
 }

@@ -1,0 +1,54 @@
+{
+  "keys": [
+    {
+      "name": "results",
+      "role": "output",
+      "type": {
+        "type": "list",
+        "component": "item_stack"
+      }
+    },
+    {
+      "name": "ingredients",
+      "role": "input",
+      "type": {
+        "type": "list",
+        "component": "flat_sized_ingredient"
+      }
+    },
+    {
+      "name": "machine",
+      "role": "other",
+      "type": "string"
+    },
+    {
+      "name": "processingTime",
+      "role": "other",
+      "type": "ticks"
+    },
+    {
+      "name": "energy_per_tick",
+      "role": "other",
+      "type": "int",
+      "optional": 60,
+      "function_names": [
+        "energyPerTick"
+      ]
+    },
+    {
+      "name": "environment",
+      "role": "other",
+      "type": "string",
+      "optional": "any"
+    },
+    {
+      "name": "orbital_processing_ticks",
+      "role": "other",
+      "type": "int",
+      "optional": 0,
+      "function_names": [
+        "orbitalProcessingTicks"
+      ]
+    }
+  ]
+}
