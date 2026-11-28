@@ -64,7 +64,7 @@ public final class ManufacturingClientSmoke {
     if (phase == 1 && ticks - start > 50) {
       mc.player.setYRot(180);
       mc.player.setXRot(12);
-      shot(mc, "manufacturing-machines-alpha75.png");
+      shot(mc, "manufacturing-machines-alpha76.png");
       phase = 2;
       start = ticks;
       return;
@@ -98,14 +98,31 @@ public final class ManufacturingClientSmoke {
       if (menu.quickMoveStack(mc.player, 2) != ItemStack.EMPTY)
         throw new AssertionError("Ghost preview extractable");
       int choice = index == 1 ? PartKind.IMPELLER.ordinal() : PartKind.LAVAL_NOZZLE.ordinal();
-      mc.gameMode.handleInventoryButtonClick(menu.containerId, choice);
+      var stack = new ItemStack(ManufacturingRegistry.PARTS.get(PartKind.values()[choice]).get());
+      if (net.neoforged.fml.ModList.get().isLoaded("jei")) {
+        var runtime = io.github.astelev.around_planet.compat.jei.ManufacturingJei.runtime;
+        if (runtime == null) return;
+        var handler = runtime.getScreenHelper().getGhostIngredientHandler(screen).orElseThrow();
+        var typed =
+            runtime
+                .getIngredientManager()
+                .createTypedIngredient(mezz.jei.api.constants.VanillaTypes.ITEM_STACK, stack)
+                .orElseThrow();
+        var targets = handler.getTargetsTyped(screen, typed, true);
+        if (targets.size() != 1) throw new AssertionError("JEI ghost target missing");
+        targets.getFirst().accept(stack);
+      } else screen.acceptGhostFilter(stack);
       phase = 4;
       start = ticks;
       return;
     }
     if (phase == 4 && mc.screen instanceof ManufacturingScreen screen && ticks - start > 25) {
       int choice = index == 1 ? PartKind.IMPELLER.ordinal() : PartKind.LAVAL_NOZZLE.ordinal();
-      if (screen.getMenu().data.get(0) != choice)
+      if (!screen
+          .getMenu()
+          .getSlot(ManufacturingMenu.FILTER_SLOT)
+          .getItem()
+          .is(ManufacturingRegistry.PARTS.get(PartKind.values()[choice]).get()))
         throw new AssertionError("Selection not synchronized");
       mc.getSingleplayerServer()
           .execute(
@@ -116,7 +133,7 @@ public final class ManufacturingClientSmoke {
                 be.items.setStackInSlot(1, ItemStack.EMPTY);
                 be.energy.restore(200000);
               });
-      shot(mc, "manufacturing-" + MachineKind.values()[index].getSerializedName() + "-alpha75.png");
+      shot(mc, "manufacturing-" + MachineKind.values()[index].getSerializedName() + "-alpha76.png");
       phase = 5;
       start = ticks;
       return;
@@ -153,8 +170,51 @@ public final class ManufacturingClientSmoke {
       } else {
         AroundPlanet.LOGGER.info(
             "MANUFACTURING_CLIENT_PASS threeMenus=true outputComponents=true"
-                + " selectionRoundTrip=true energyAbove65535=true ghostProtected=true");
+                + " filterRoundTrip=true energyAbove65535=true ghostProtected=true");
         phase = 7;
+        start = ticks;
+        if (!net.neoforged.fml.ModList.get().isLoaded("jei")) {
+          mc.stop();
+          return;
+        }
+        var runtime = io.github.astelev.around_planet.compat.jei.ManufacturingJei.runtime;
+        for (var kind : MachineKind.values()) {
+          var type = io.github.astelev.around_planet.compat.jei.ManufacturingJei.TYPES.get(kind);
+          var recipes = runtime.getRecipeManager().createRecipeLookup(type).get().toList();
+          if (recipes.size() < (kind == MachineKind.PRINTER ? 16 : 8))
+            throw new AssertionError("JEI recipes missing for " + kind);
+          if (runtime.getRecipeManager().getRecipeCategory(type) == null)
+            throw new AssertionError("JEI category missing");
+        }
+        index = 0;
+        runtime
+            .getRecipesGui()
+            .showTypes(
+                java.util.List.of(
+                    io.github.astelev.around_planet.compat.jei.ManufacturingJei.TYPES.get(
+                        MachineKind.values()[index])));
+      }
+    }
+    if (phase == 7 && ticks - start > 25) {
+      shot(
+          mc,
+          "manufacturing-jei-" + MachineKind.values()[index].getSerializedName() + "-alpha76.png");
+      var runtime = io.github.astelev.around_planet.compat.jei.ManufacturingJei.runtime;
+      if (!runtime.getRecipesGui().isOpen()
+          || runtime.getRecipesGui().getVisibleRecipeLayouts().isEmpty())
+        throw new AssertionError("JEI recipe screen empty");
+      if (++index < 3) {
+        runtime
+            .getRecipesGui()
+            .showTypes(
+                java.util.List.of(
+                    io.github.astelev.around_planet.compat.jei.ManufacturingJei.TYPES.get(
+                        MachineKind.values()[index])));
+        start = ticks;
+      } else {
+        AroundPlanet.LOGGER.info(
+            "MANUFACTURING_JEI_CLIENT_PASS categories=3 realGhostDrop=true recipesVisible=true");
+        phase = 8;
         mc.stop();
       }
     }
@@ -162,6 +222,7 @@ public final class ManufacturingClientSmoke {
 
   private static void setup(Minecraft mc) {
     var l = mc.getSingleplayerServer().overworld();
+    l.setDayTime(6000);
     var p = l.players().getFirst();
     p.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
     p.setNoGravity(true);

@@ -69,6 +69,34 @@ public final class ManufacturingBlock extends BaseEntityBlock {
   }
 
   @Override
+  protected net.minecraft.world.ItemInteractionResult useItemOn(
+      net.minecraft.world.item.ItemStack stack,
+      BlockState state,
+      net.minecraft.world.level.Level level,
+      BlockPos pos,
+      net.minecraft.world.entity.player.Player player,
+      net.minecraft.world.InteractionHand hand,
+      net.minecraft.world.phys.BlockHitResult hit) {
+    if (stack.getItem() instanceof PartItem
+        || net.neoforged.fml.ModList.get().isLoaded("create")
+            && io.github.astelev.around_planet.compat.ManufacturingCreateFilter.isFilter(stack)) {
+      if (!player.isSpectator()
+          && player.mayBuild()
+          && level.getBlockEntity(pos) instanceof ManufacturingBlockEntity be) {
+        if (!level.isClientSide) {
+          be.setFilter(stack);
+          player.displayClientMessage(
+              net.minecraft.network.chat.Component.translatable(
+                  "around_planet.manufacturing.filter_set", stack.getHoverName()),
+              true);
+        }
+        return net.minecraft.world.ItemInteractionResult.sidedSuccess(level.isClientSide);
+      }
+    }
+    return net.minecraft.world.ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+  }
+
+  @Override
   protected net.minecraft.world.InteractionResult useWithoutItem(
       BlockState s,
       net.minecraft.world.level.Level l,

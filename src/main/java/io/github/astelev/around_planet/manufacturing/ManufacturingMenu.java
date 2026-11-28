@@ -11,6 +11,9 @@ public final class ManufacturingMenu extends AbstractContainerMenu {
   public final MachineKind kind;
   private final net.minecraft.world.SimpleContainer preview =
       new net.minecraft.world.SimpleContainer(1);
+  private final net.minecraft.world.SimpleContainer filter =
+      new net.minecraft.world.SimpleContainer(1);
+  public static final int FILTER_SLOT = 2, PREVIEW_SLOT = 3, PLAYER_SLOTS = 4;
   public final ContainerData data;
 
   public static ManufacturingMenu client(
@@ -61,6 +64,19 @@ public final class ManufacturingMenu extends AbstractContainerMenu {
             return false;
           }
         });
+    filter.setItem(0, be.filter());
+    addSlot(
+        new Slot(filter, 0, 80, 38) {
+          @Override
+          public boolean mayPlace(ItemStack stack) {
+            return false;
+          }
+
+          @Override
+          public boolean mayPickup(Player player) {
+            return false;
+          }
+        });
     addSlot(
         new Slot(preview, 0, 80, 73) {
           @Override
@@ -82,7 +98,10 @@ public final class ManufacturingMenu extends AbstractContainerMenu {
 
   @Override
   public void broadcastChanges() {
-    if (!machine.getLevel().isClientSide) preview.setItem(0, machine.preview());
+    if (!machine.getLevel().isClientSide) {
+      preview.setItem(0, machine.preview());
+      filter.setItem(0, machine.filter());
+    }
     super.broadcastChanges();
   }
 
@@ -92,13 +111,27 @@ public final class ManufacturingMenu extends AbstractContainerMenu {
   }
 
   @Override
-  public boolean clickMenuButton(Player p, int id) {
-    if (!stillValid(p)
-        || p.isSpectator()
-        || id < 0
-        || id >= PartKind.values().length
-        || !kind.supports(PartKind.values()[id])) return false;
-    machine.select(PartKind.values()[id]);
+  public void clicked(int slot, int button, ClickType type, Player player) {
+    if (slot == FILTER_SLOT) {
+      if (!player.level().isClientSide
+          && stillValid(player)
+          && !player.isSpectator()
+          && player.mayBuild()
+          && (type == ClickType.PICKUP || type == ClickType.QUICK_MOVE)) {
+        if (type == ClickType.QUICK_MOVE || button == 1) machine.setFilter(ItemStack.EMPTY);
+        else if (getCarried().isEmpty()) machine.cycleFilter();
+        else machine.setFilter(getCarried());
+        broadcastChanges();
+      }
+      return;
+    }
+    if (slot == PREVIEW_SLOT) return;
+    super.clicked(slot, button, type, player);
+  }
+
+  public boolean setGhostFilter(Player player, ItemStack stack) {
+    if (!stillValid(player) || player.isSpectator() || !player.mayBuild()) return false;
+    machine.setFilter(stack);
     broadcastChanges();
     return true;
   }
@@ -117,18 +150,21 @@ public final class ManufacturingMenu extends AbstractContainerMenu {
 
   @Override
   public boolean canTakeItemForPickAll(ItemStack s, Slot slot) {
-    return slot.index != 2 && super.canTakeItemForPickAll(s, slot);
+    return slot.index != FILTER_SLOT
+        && slot.index != PREVIEW_SLOT
+        && super.canTakeItemForPickAll(s, slot);
   }
 
   @Override
   public ItemStack quickMoveStack(Player p, int index) {
-    if (index == 2 || index < 0 || index >= slots.size()) return ItemStack.EMPTY;
+    if (index == FILTER_SLOT || index == PREVIEW_SLOT || index < 0 || index >= slots.size())
+      return ItemStack.EMPTY;
     var slot = slots.get(index);
     if (!slot.hasItem()) return ItemStack.EMPTY;
     var stack = slot.getItem();
     var copy = stack.copy();
     if (index < 2) {
-      if (!moveItemStackTo(stack, 3, slots.size(), true)) return ItemStack.EMPTY;
+      if (!moveItemStackTo(stack, PLAYER_SLOTS, slots.size(), true)) return ItemStack.EMPTY;
     } else if (!moveItemStackTo(stack, 0, 1, false)) return ItemStack.EMPTY;
     if (stack.isEmpty()) slot.setByPlayer(ItemStack.EMPTY);
     else slot.setChanged();

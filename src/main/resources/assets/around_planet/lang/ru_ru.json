@@ -208,5 +208,12 @@
   "around_planet.manufacturing.status.1": "Обработка",
   "around_planet.manufacturing.status.2": "Недостаточно сырья",
   "around_planet.manufacturing.status.3": "Выход заполнен",
-  "around_planet.manufacturing.status.4": "Недостаточно FE"
+  "around_planet.manufacturing.status.4": "Недостаточно FE",
+  "around_planet.manufacturing.output_filter": "Фильтр",
+  "around_planet.manufacturing.filter_help": "ЛКМ без предмета — следующий результат. Образец или фильтр Create — задать фильтр. ПКМ — очистить. Поддерживается перетаскивание из JEI.",
+  "around_planet.manufacturing.env.any": "Любая среда",
+  "around_planet.manufacturing.jei_cost": "%s с · %s FE/т · %s FE",
+  "around_planet.manufacturing.jei_orbit": "Космос: %s с · %s FE",
+  "around_planet.manufacturing.filter_set": "Фильтр результата: %s",
+  "around_planet.manufacturing.jei_environment": "Среда: %s"
 }

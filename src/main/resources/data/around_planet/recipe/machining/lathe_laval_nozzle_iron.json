@@ -1,0 +1,32 @@
+{
+  "type": "around_planet:machining",
+  "machine": "lathe",
+  "ingredients": [
+    {
+      "tag": "c:storage_blocks/iron",
+      "count": 1
+    }
+  ],
+  "results": [
+    {
+      "id": "around_planet:laval_nozzle",
+      "count": 1,
+      "components": {
+        "around_planet:manufactured_part": {
+          "material": "around_planet:iron",
+          "stats": {
+            "wear_resistance": 0.65,
+            "working_temperature": 1200,
+            "load_capacity": 0.7,
+            "corrosion_resistance": 0.35
+          },
+          "color": 13225682,
+          "environment": "ground"
+        }
+      }
+    }
+  ],
+  "processingTime": 160,
+  "energy_per_tick": 60,
+  "orbital_processing_ticks": 120
+}

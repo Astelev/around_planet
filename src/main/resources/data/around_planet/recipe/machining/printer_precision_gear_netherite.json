@@ -1,0 +1,32 @@
+{
+  "type": "around_planet:machining",
+  "machine": "printer",
+  "ingredients": [
+    {
+      "tag": "c:dusts/netherite",
+      "count": 4
+    }
+  ],
+  "results": [
+    {
+      "id": "around_planet:precision_gear",
+      "count": 1,
+      "components": {
+        "around_planet:manufactured_part": {
+          "material": "around_planet:netherite",
+          "stats": {
+            "wear_resistance": 0.95,
+            "working_temperature": 2400,
+            "load_capacity": 0.95,
+            "corrosion_resistance": 0.95
+          },
+          "color": 6444637,
+          "environment": "ground"
+        }
+      }
+    }
+  ],
+  "processingTime": 300,
+  "energy_per_tick": 100,
+  "orbital_processing_ticks": 225
+}

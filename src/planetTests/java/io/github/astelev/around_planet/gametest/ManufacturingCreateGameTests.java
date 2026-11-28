@@ -102,4 +102,36 @@ public final class ManufacturingCreateGameTests {
     group.calcStats();
     return com.simibubi.create.content.kinetics.crafter.MechanicalCraftingInput.of(group);
   }
+
+  @GameTest(template = "empty", templateNamespace = "around_planet", timeoutTicks = 100)
+  public static void nativeCreateListFilterControlsOutput(GameTestHelper h) {
+    var be = machine(h, MachineKind.LATHE);
+    var filter =
+        new ItemStack(
+            net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                ResourceLocation.parse("create:filter")));
+    filter.set(
+        com.simibubi.create.AllDataComponents.FILTER_ITEMS,
+        net.minecraft.world.item.component.ItemContainerContents.fromItems(
+            java.util.List.of(
+                new ItemStack(ManufacturingRegistry.PARTS.get(PartKind.PRECISION_GEAR).get()))));
+    be.setFilter(filter);
+    be.items.setStackInSlot(0, new ItemStack(Items.IRON_BLOCK));
+    be.energy.restore(100000);
+    tick(be, 160);
+    h.assertTrue(
+        be.items
+            .getStackInSlot(1)
+            .is(ManufacturingRegistry.PARTS.get(PartKind.PRECISION_GEAR).get()),
+        "Native Create list filter ignored");
+    filter.set(com.simibubi.create.AllDataComponents.FILTER_ITEMS_BLACKLIST, true);
+    be.setFilter(filter);
+    be.items.setStackInSlot(0, new ItemStack(Items.IRON_BLOCK));
+    be.items.setStackInSlot(1, ItemStack.EMPTY);
+    tick(be, 160);
+    h.assertTrue(
+        be.items.getStackInSlot(1).is(ManufacturingRegistry.PARTS.get(PartKind.LAVAL_NOZZLE).get()),
+        "Native Create blacklist ignored");
+    h.succeed();
+  }
 }

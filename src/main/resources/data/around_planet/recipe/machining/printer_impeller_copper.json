@@ -1,0 +1,32 @@
+{
+  "type": "around_planet:machining",
+  "machine": "printer",
+  "ingredients": [
+    {
+      "tag": "c:dusts/copper",
+      "count": 4
+    }
+  ],
+  "results": [
+    {
+      "id": "around_planet:impeller",
+      "count": 1,
+      "components": {
+        "around_planet:manufactured_part": {
+          "material": "around_planet:copper",
+          "stats": {
+            "wear_resistance": 0.3,
+            "working_temperature": 600,
+            "load_capacity": 0.4,
+            "corrosion_resistance": 0.75
+          },
+          "color": 12745297,
+          "environment": "ground"
+        }
+      }
+    }
+  ],
+  "processingTime": 300,
+  "energy_per_tick": 100,
+  "orbital_processing_ticks": 225
+}

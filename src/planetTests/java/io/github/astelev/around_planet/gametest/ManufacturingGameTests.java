@@ -15,7 +15,9 @@ public final class ManufacturingGameTests {
     var p = h.absolutePos(new BlockPos(1, 2, 1));
     h.getLevel()
         .setBlockAndUpdate(p, ManufacturingRegistry.MACHINES.get(kind).get().defaultBlockState());
-    return (ManufacturingBlockEntity) h.getLevel().getBlockEntity(p);
+    var be = (ManufacturingBlockEntity) h.getLevel().getBlockEntity(p);
+    be.select(kind.first());
+    return be;
   }
 
   static void tick(ManufacturingBlockEntity be, int count) {
@@ -181,15 +183,126 @@ public final class ManufacturingGameTests {
             1);
     h.assertTrue(requirement.test(orbital), "Custom orbital material rejected");
     var recipe =
-        h.getLevel()
+        h
+            .getLevel()
             .getRecipeManager()
             .getAllRecipesFor(ManufacturingRegistry.RECIPE_TYPE.get())
-            .getFirst()
+            .stream()
+            .filter(r -> r.id().getPath().endsWith("lathe_laval_nozzle_iron"))
+            .findFirst()
+            .orElseThrow()
             .value();
     h.assertTrue(
         recipe.processingTicks("orbit") < recipe.processingTicks("ground")
             && recipe.processingTicks("moon") == recipe.ticks(),
         "Orbital efficiency bonus incorrect");
+    h.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "around_planet", timeoutTicks = 100)
+  public static void filterIsGhostAndMigratesPreviousSelection(GameTestHelper h) {
+    var be = machine(h, MachineKind.LATHE);
+    be.items.setStackInSlot(0, new ItemStack(Items.IRON_BLOCK));
+    be.energy.restore(100000);
+    tick(be, 40);
+    h.assertTrue(be.progress == 40, "Missing initial work");
+    be.setFilter(new ItemStack(ManufacturingRegistry.PARTS.get(PartKind.LAVAL_NOZZLE).get(), 16));
+    h.assertTrue(
+        be.progress == 0 && be.filter().getCount() == 1,
+        "Filter consumed a stack or retained old work");
+    tick(be, 160);
+    h.assertTrue(
+        be.items.getStackInSlot(1).is(ManufacturingRegistry.PARTS.get(PartKind.LAVAL_NOZZLE).get()),
+        "Filter did not select result");
+    var n = be.saveWithFullMetadata(h.getLevel().registryAccess());
+    n.remove("OutputFilter");
+    n.putString("Selected", "precision_gear");
+    var old = new ManufacturingBlockEntity(be.getBlockPos(), be.getBlockState());
+    old.setLevel(h.getLevel());
+    old.loadWithComponents(n, h.getLevel().registryAccess());
+    h.assertTrue(
+        old.filter().is(ManufacturingRegistry.PARTS.get(PartKind.PRECISION_GEAR).get()),
+        "Old selection not migrated");
+    be.items.setStackInSlot(0, new ItemStack(Items.IRON_BLOCK));
+    be.items.setStackInSlot(1, ItemStack.EMPTY);
+    be.setFilter(new ItemStack(Items.DIAMOND));
+    int energy = be.energy.getEnergyStored();
+    tick(be, 300);
+    h.assertTrue(
+        be.items.getStackInSlot(1).isEmpty() && be.energy.getEnergyStored() == energy,
+        "Nonmatching filter spent resources");
+    be.setFilter(ItemStack.EMPTY);
+    be.cycleFilter();
+    var first = be.filter();
+    be.cycleFilter();
+    h.assertTrue(
+        !first.isEmpty()
+            && !ItemStack.isSameItem(first, be.filter())
+            && be.items.getStackInSlot(0).getCount() == 1
+            && be.energy.getEnergyStored() == energy,
+        "Recipe cycling without JEI consumed resources or could not choose another part");
+    h.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "around_planet", timeoutTicks = 100)
+  public static void kubeJsCanAddReplaceAndRemoveStandardRecipes(GameTestHelper h) {
+    if (!net.neoforged.fml.ModList.get().isLoaded("kubejs")) {
+      h.succeed();
+      return;
+    }
+    var manager = h.getLevel().getRecipeManager();
+    var probe = manager.byKey(ResourceLocation.parse("around_planet:machining/kube_probe"));
+    if (probe.isEmpty()) {
+      h.assertTrue(
+          !Boolean.getBoolean("around_planet.kubeManufacturingTests"),
+          "KubeJS test script missing");
+      h.succeed();
+      return;
+    }
+    h.assertTrue(
+        manager.byKey(ResourceLocation.parse("kubejs:manufacturing_probe")).isPresent(),
+        "KubeJS custom addition missing");
+    var be = machine(h, MachineKind.PRINTER);
+    be.setFilter(new ItemStack(Items.EMERALD));
+    be.items.setStackInSlot(0, new ItemStack(Items.CHARCOAL, 4));
+    be.energy.restore(1000);
+    tick(be, 4);
+    h.assertTrue(
+        be.items.getStackInSlot(1).is(Items.EMERALD)
+            && be.items.getStackInSlot(1).getCount() == 2
+            && be.items.getStackInSlot(0).getCount() == 1
+            && be.energy.getEnergyStored() == 960,
+        "KubeJS add/replace: output="
+            + be.items.getStackInSlot(1)
+            + " input="
+            + be.items.getStackInSlot(0)
+            + " energy="
+            + be.energy.getEnergyStored()
+            + " progress="
+            + be.progress
+            + " recipe="
+            + MachiningRecipe.CODEC
+                .codec()
+                .encodeStart(
+                    h.getLevel()
+                        .registryAccess()
+                        .createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE),
+                    (MachiningRecipe) probe.orElseThrow().value())
+                .getOrThrow());
+    h.assertTrue(
+        manager.byKey(ResourceLocation.parse("around_planet:machining/kube_removed")).isEmpty(),
+        "KubeJS removal ignored");
+    h.getLevel().removeBlock(be.getBlockPos(), false);
+    be = machine(h, MachineKind.MILL);
+    be.setFilter(new ItemStack(Items.GOLD_INGOT));
+    be.items.setStackInSlot(0, new ItemStack(Items.CLAY_BALL, 3));
+    be.energy.restore(1000);
+    tick(be, 8);
+    h.assertTrue(
+        be.items.getStackInSlot(1).is(Items.GOLD_INGOT)
+            && be.items.getStackInSlot(1).getCount() == 2
+            && be.energy.getEnergyStored() == 880,
+        "Typed KubeJS builder/setters did not work");
     h.succeed();
   }
 }

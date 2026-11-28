@@ -2,17 +2,20 @@ package io.github.astelev.around_planet.manufacturing;
 
 import com.mojang.serialization.*;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.core.HolderLookup;
+import java.util.List;
+import net.minecraft.core.*;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.common.crafting.SizedIngredient;
 
-/** Generic process; the selected material supplies input tags and resulting properties. */
+/**
+ * Explicit processing inputs/outputs: visible to recipe browsers and editable with event.custom.
+ */
 public record MachiningRecipe(
     MachineKind machine,
-    PartKind part,
-    int inputCount,
-    int outputCount,
+    List<SizedIngredient> inputs,
+    List<ItemStack> results,
     int ticks,
     int energy,
     String environment,
@@ -23,18 +26,19 @@ public record MachiningRecipe(
           i ->
               i.group(
                       MachineKind.CODEC.fieldOf("machine").forGetter(MachiningRecipe::machine),
-                      PartKind.CODEC.fieldOf("part").forGetter(MachiningRecipe::part),
-                      Codec.intRange(1, 64)
-                          .fieldOf("input_count")
-                          .forGetter(MachiningRecipe::inputCount),
-                      Codec.intRange(1, 64)
-                          .optionalFieldOf("output_count", 1)
-                          .forGetter(MachiningRecipe::outputCount),
+                      SizedIngredient.FLAT_CODEC
+                          .listOf(1, 64)
+                          .fieldOf("ingredients")
+                          .forGetter(MachiningRecipe::inputs),
+                      ItemStack.STRICT_CODEC
+                          .listOf(1, 1)
+                          .fieldOf("results")
+                          .forGetter(MachiningRecipe::results),
                       Codec.intRange(1, 72000)
-                          .fieldOf("processing_ticks")
+                          .fieldOf("processingTime")
                           .forGetter(MachiningRecipe::ticks),
                       Codec.intRange(1, 200000)
-                          .fieldOf("energy_per_tick")
+                          .optionalFieldOf("energy_per_tick", 60)
                           .forGetter(MachiningRecipe::energy),
                       Codec.STRING
                           .optionalFieldOf("environment", "any")
@@ -45,35 +49,57 @@ public record MachiningRecipe(
                   .apply(i, MachiningRecipe::new));
 
   public MachiningRecipe {
-    if (!machine.supports(part))
-      throw new IllegalArgumentException("Unsupported machine/part combination");
+    inputs = List.copyOf(inputs);
+    results = results.stream().map(ItemStack::copy).toList();
+    if (inputs.isEmpty()
+        || inputs.stream().mapToLong(SizedIngredient::count).sum() > 64
+        || results.size() != 1)
+      throw new IllegalArgumentException(
+          "Machining needs one input stack (at most 64 items) and one result stack");
+  }
+
+  public int inputCount() {
+    return inputs.stream().mapToInt(SizedIngredient::count).sum();
+  }
+
+  public boolean accepts(ItemStack stack) {
+    return inputs.stream().allMatch(i -> i.ingredient().test(stack));
   }
 
   public int processingTicks(String env) {
     return env.equals("orbit") && orbitalTicks > 0 ? orbitalTicks : ticks;
   }
 
+  public ItemStack result(String env) {
+    var out = results.getFirst().copy();
+    var data = out.get(ManufacturingRegistry.PART_DATA.get());
+    if (data != null)
+      out.set(
+          ManufacturingRegistry.PART_DATA.get(),
+          new PartData(data.material(), data.stats(), env, data.color()));
+    return out;
+  }
+
   @Override
-  public boolean matches(SingleRecipeInput input, Level level) {
-    return input.item().getCount() >= inputCount
-        && MaterialDefinitions.find(input.item(), machine == MachineKind.PRINTER).isPresent();
+  public NonNullList<Ingredient> getIngredients() {
+    var list = NonNullList.<Ingredient>create();
+    inputs.forEach(i -> list.add(i.ingredient()));
+    return list;
+  }
+
+  @Override
+  public boolean matches(SingleRecipeInput input, Level l) {
+    return accepts(input.item()) && input.item().getCount() >= inputCount();
   }
 
   @Override
   public ItemStack assemble(SingleRecipeInput input, HolderLookup.Provider lookup) {
-    return MaterialDefinitions.find(input.item(), machine == MachineKind.PRINTER)
-        .map(m -> result(m, "ground"))
-        .orElse(ItemStack.EMPTY);
-  }
-
-  public ItemStack result(MaterialDefinitions.Material m, String env) {
-    return ManufacturingRegistry.part(
-        part, new PartData(m.id(), m.stats(), env, m.color()), outputCount);
+    return result("ground");
   }
 
   @Override
   public ItemStack getResultItem(HolderLookup.Provider lookup) {
-    return new ItemStack(ManufacturingRegistry.PARTS.get(part).get());
+    return result(environment.equals("any") ? "ground" : environment);
   }
 
   @Override

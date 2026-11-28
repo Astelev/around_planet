@@ -208,5 +208,12 @@
   "around_planet.manufacturing.status.1": "Processing",
   "around_planet.manufacturing.status.2": "Not enough material",
   "around_planet.manufacturing.status.3": "Output blocked",
-  "around_planet.manufacturing.status.4": "Not enough FE"
+  "around_planet.manufacturing.status.4": "Not enough FE",
+  "around_planet.manufacturing.output_filter": "Filter",
+  "around_planet.manufacturing.filter_help": "Empty cursor: cycle recipe outputs. Set an item or Create filter as a sample. Right-click to clear. Supports dragging from JEI.",
+  "around_planet.manufacturing.env.any": "Any environment",
+  "around_planet.manufacturing.jei_cost": "%s s · %s FE/t · %s FE",
+  "around_planet.manufacturing.jei_orbit": "Orbit: %s s · %s FE",
+  "around_planet.manufacturing.filter_set": "Output filter: %s",
+  "around_planet.manufacturing.jei_environment": "Environment: %s"
 }

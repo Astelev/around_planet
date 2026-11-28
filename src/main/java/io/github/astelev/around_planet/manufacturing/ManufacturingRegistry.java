@@ -132,6 +132,7 @@ public final class ManufacturingRegistry {
     SERIALIZERS.register(bus);
     MENUS.register(bus);
     bus.addListener(ManufacturingRegistry::capabilities);
+    bus.addListener(io.github.astelev.around_planet.network.ManufacturingFilterPayload::register);
     bus.addListener(
         (net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent e) -> {
           if (e.getTabKey().equals(CreativeModeTabs.REDSTONE_BLOCKS)) {

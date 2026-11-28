@@ -16,8 +16,9 @@ public final class ManufacturingBlockEntity extends BlockEntity
     implements net.minecraft.world.MenuProvider {
   public static final int CAPACITY = 200000;
   public int progress, total, status;
-  private PartKind selected;
   private String job = "";
+  private MachiningRecipe cachedRecipe;
+  private String cachedRecipeKey = "";
   private boolean loading;
   public final ItemStackHandler items =
       new ItemStackHandler(2) {
@@ -77,25 +78,73 @@ public final class ManufacturingBlockEntity extends BlockEntity
 
   public ManufacturingBlockEntity(BlockPos p, BlockState s) {
     super(ManufacturingRegistry.TYPE.get(), p, s);
-    selected = kind().first();
   }
 
   public MachineKind kind() {
     return ((ManufacturingBlock) getBlockState().getBlock()).kind;
   }
 
+  private ItemStack filter = ItemStack.EMPTY;
+
+  public ItemStack filter() {
+    return filter.copy();
+  }
+
+  public void setFilter(ItemStack stack) {
+    var next = stack.copyWithCount(1);
+    if (ItemStack.isSameItemSameComponents(filter, next)) return;
+    filter = next;
+    progress = 0;
+    job = "";
+    setChanged();
+  }
+
+  /**
+   * Kept for saved alpha.75 selections and server integrations; the actual selector is the filter.
+   */
   public PartKind selected() {
-    return selected;
+    return filter.getItem() instanceof PartItem p ? p.kind : kind().first();
   }
 
   public void select(PartKind p) {
-    if (!kind().supports(p)) return;
-    if (p != selected) {
-      selected = p;
-      progress = 0;
-      job = "";
-      setChanged();
-    }
+    if (kind().supports(p)) setFilter(new ItemStack(ManufacturingRegistry.PARTS.get(p).get()));
+  }
+
+  /** Cycle real recipe outputs without consuming an example item, including when JEI is absent. */
+  public void cycleFilter() {
+    if (level == null) return;
+    var options = new java.util.LinkedHashMap<Item, ItemStack>();
+    level.getRecipeManager().getAllRecipesFor(ManufacturingRegistry.RECIPE_TYPE.get()).stream()
+        .filter(
+            r ->
+                r.value().machine() == kind()
+                    && (items.getStackInSlot(0).isEmpty()
+                        || r.value().accepts(items.getStackInSlot(0)))
+                    && (r.value().environment().equals("any")
+                        || r.value().environment().equals(environment())))
+        .sorted(java.util.Comparator.comparing(r -> r.id().toString()))
+        .forEach(
+            r -> {
+              var result = r.value().result(environment());
+              options.putIfAbsent(result.getItem(), result);
+            });
+    var values = new java.util.ArrayList<>(options.values());
+    if (values.isEmpty()) return;
+    int current = -1;
+    for (int i = 0; i < values.size(); i++)
+      if (ItemStack.isSameItem(filter, values.get(i))) {
+        current = i;
+        break;
+      }
+    setFilter(values.get((current + 1) % values.size()));
+  }
+
+  public boolean acceptsResult(ItemStack stack) {
+    if (filter.isEmpty()) return true;
+    if (net.neoforged.fml.ModList.get().isLoaded("create"))
+      return io.github.astelev.around_planet.compat.ManufacturingCreateFilter.test(
+          level, filter, stack);
+    return ItemStack.isSameItem(filter, stack);
   }
 
   public String environment() {
@@ -122,7 +171,8 @@ public final class ManufacturingBlockEntity extends BlockEntity
         .filter(
             r ->
                 r.value().machine() == kind()
-                    && r.value().part() == selected
+                    && r.value().accepts(items.getStackInSlot(0))
+                    && acceptsResult(r.value().result(environment()))
                     && (r.value().environment().equals("any")
                         || r.value().environment().equals(environment())))
         .sorted(java.util.Comparator.comparing(r -> r.id().toString()))
@@ -132,11 +182,7 @@ public final class ManufacturingBlockEntity extends BlockEntity
 
   public ItemStack preview() {
     var r = recipe();
-    return r == null
-        ? ItemStack.EMPTY
-        : MaterialDefinitions.find(items.getStackInSlot(0), kind() == MachineKind.PRINTER)
-            .map(m -> r.value().result(m, environment()))
-            .orElse(ItemStack.EMPTY);
+    return r == null ? ItemStack.EMPTY : r.value().result(environment());
   }
 
   private static boolean fits(ItemStack existing, ItemStack result) {
@@ -154,9 +200,8 @@ public final class ManufacturingBlockEntity extends BlockEntity
 
   private void work() {
     var holder = recipe();
-    var material = MaterialDefinitions.find(items.getStackInSlot(0), kind() == MachineKind.PRINTER);
     status = 0;
-    if (holder == null || material.isEmpty()) {
+    if (holder == null) {
       if (progress != 0) {
         progress = 0;
         job = "";
@@ -165,18 +210,29 @@ public final class ManufacturingBlockEntity extends BlockEntity
       return;
     }
     var r = holder.value();
-    var result = r.result(material.get(), environment());
+    var result = r.result(environment());
     total = r.processingTicks(environment());
+    if (cachedRecipe != r) {
+      cachedRecipe = r;
+      cachedRecipeKey =
+          MachiningRecipe.CODEC
+              .codec()
+              .encodeStart(
+                  level
+                      .registryAccess()
+                      .createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE),
+                  r)
+              .getOrThrow()
+              .toString();
+    }
     String key =
         holder.id()
             + "/"
-            + material.get().id()
-            + "/"
-            + material.get().stats()
-            + "/"
             + environment()
             + "/"
-            + r;
+            + cachedRecipeKey
+            + "/"
+            + items.getStackInSlot(0).getComponents();
     if (!key.equals(job)) {
       job = key;
       progress = 0;
@@ -249,7 +305,7 @@ public final class ManufacturingBlockEntity extends BlockEntity
     super.saveAdditional(n, r);
     n.put("Items", items.serializeNBT(r));
     n.putInt("Energy", energy.getEnergyStored());
-    n.putString("Selected", selected.getSerializedName());
+    n.put("OutputFilter", filter.saveOptional(r));
     n.putInt("Progress", progress);
     n.putString("Job", job);
   }
@@ -264,12 +320,15 @@ public final class ManufacturingBlockEntity extends BlockEntity
       loading = false;
     }
     energy.restore(n.getInt("Energy"));
-    try {
-      selected = PartKind.valueOf(n.getString("Selected").toUpperCase(java.util.Locale.ROOT));
-    } catch (IllegalArgumentException e) {
-      selected = kind().first();
+    if (n.contains("OutputFilter"))
+      filter = ItemStack.parseOptional(r, n.getCompound("OutputFilter")).copyWithCount(1);
+    else if (n.contains("Selected")) {
+      try {
+        select(PartKind.valueOf(n.getString("Selected").toUpperCase(java.util.Locale.ROOT)));
+      } catch (IllegalArgumentException ignored) {
+        filter = ItemStack.EMPTY;
+      }
     }
-    if (!kind().supports(selected)) selected = kind().first();
     progress = Math.clamp(n.getInt("Progress"), 0, 72000);
     job = n.getString("Job");
   }

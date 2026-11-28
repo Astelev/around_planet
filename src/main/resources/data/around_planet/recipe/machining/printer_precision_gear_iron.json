@@ -1,0 +1,32 @@
+{
+  "type": "around_planet:machining",
+  "machine": "printer",
+  "ingredients": [
+    {
+      "tag": "c:dusts/iron",
+      "count": 4
+    }
+  ],
+  "results": [
+    {
+      "id": "around_planet:precision_gear",
+      "count": 1,
+      "components": {
+        "around_planet:manufactured_part": {
+          "material": "around_planet:iron",
+          "stats": {
+            "wear_resistance": 0.65,
+            "working_temperature": 1200,
+            "load_capacity": 0.7,
+            "corrosion_resistance": 0.35
+          },
+          "color": 13225682,
+          "environment": "ground"
+        }
+      }
+    }
+  ],
+  "processingTime": 300,
+  "energy_per_tick": 100,
+  "orbital_processing_ticks": 225
+}

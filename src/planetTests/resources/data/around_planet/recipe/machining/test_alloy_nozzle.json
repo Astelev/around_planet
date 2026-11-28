@@ -1,0 +1,29 @@
+{
+  "type": "around_planet:machining",
+  "machine": "lathe",
+  "ingredients": [
+    {
+      "item": "minecraft:gold_block"
+    }
+  ],
+  "results": [
+    {
+      "id": "around_planet:laval_nozzle",
+      "components": {
+        "around_planet:manufactured_part": {
+          "material": "around_planet:test_alloy",
+          "stats": {
+            "wear_resistance": 0.8,
+            "working_temperature": 1700,
+            "load_capacity": 0.8,
+            "corrosion_resistance": 0.8
+          },
+          "color": 16766720
+        }
+      }
+    }
+  ],
+  "processingTime": 160,
+  "orbital_processing_ticks": 120,
+  "energy_per_tick": 60
+}

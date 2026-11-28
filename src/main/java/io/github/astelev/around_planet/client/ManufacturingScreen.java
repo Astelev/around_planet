@@ -2,14 +2,10 @@ package io.github.astelev.around_planet.client;
 
 import io.github.astelev.around_planet.manufacturing.*;
 import net.minecraft.client.gui.*;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 
 public final class ManufacturingScreen extends AbstractContainerScreen<ManufacturingMenu> {
-  private final java.util.Map<PartKind, Button> selectionButtons =
-      new java.util.EnumMap<>(PartKind.class);
-
   public ManufacturingScreen(
       ManufacturingMenu menu,
       net.minecraft.world.entity.player.Inventory inventory,
@@ -20,28 +16,14 @@ public final class ManufacturingScreen extends AbstractContainerScreen<Manufactu
     inventoryLabelY = 109;
   }
 
-  @Override
-  protected void init() {
-    super.init();
-    selectionButtons.clear();
-    int n = 0;
-    for (var part : PartKind.values())
-      if (menu.kind.supports(part)) {
-        int id = part.ordinal();
-        var button =
-            Button.builder(
-                    Component.translatable(
-                        "around_planet.manufacturing.select." + part.getSerializedName()),
-                    b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id))
-                .bounds(leftPos + 5 + (n % 2) * 84, topPos + 27 + (n / 2) * 18, 82, 17)
-                .build();
-        button.setTooltip(
-            net.minecraft.client.gui.components.Tooltip.create(
-                Component.translatable("item.around_planet." + part.getSerializedName())));
-        addRenderableWidget(button);
-        selectionButtons.put(part, button);
-        n++;
-      }
+  public net.minecraft.client.renderer.Rect2i filterArea() {
+    return new net.minecraft.client.renderer.Rect2i(leftPos + 79, topPos + 37, 18, 18);
+  }
+
+  public void acceptGhostFilter(net.minecraft.world.item.ItemStack stack) {
+    net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+        new io.github.astelev.around_planet.network.ManufacturingFilterPayload(
+            menu.containerId, stack.copyWithCount(1)));
   }
 
   @Override
@@ -50,7 +32,15 @@ public final class ManufacturingScreen extends AbstractContainerScreen<Manufactu
     g.renderOutline(leftPos, topPos, imageWidth, imageHeight, 0xff6c8494);
     for (var slot : menu.slots) {
       int x = leftPos + slot.x, y = topPos + slot.y;
-      g.fill(x - 1, y - 1, x + 17, y + 17, slot.index == 2 ? 0xff254758 : 0xff080f16);
+      g.fill(
+          x - 1,
+          y - 1,
+          x + 17,
+          y + 17,
+          slot.index == ManufacturingMenu.FILTER_SLOT
+                  || slot.index == ManufacturingMenu.PREVIEW_SLOT
+              ? 0xff254758
+              : 0xff080f16);
       g.renderOutline(x - 1, y - 1, 18, 18, 0xff657582);
     }
     int width = menu.total() > 0 ? Math.clamp(menu.progress() * 106 / menu.total(), 0, 106) : 0;
@@ -64,6 +54,13 @@ public final class ManufacturingScreen extends AbstractContainerScreen<Manufactu
   @Override
   protected void renderLabels(GuiGraphics g, int mx, int my) {
     g.drawString(font, title, 8, 7, 0xffe5edf4, false);
+    g.drawString(
+        font,
+        Component.translatable("around_planet.manufacturing.output_filter"),
+        8,
+        42,
+        0xffa9d9df,
+        false);
     g.drawString(
         font,
         Component.translatable(
@@ -96,8 +93,14 @@ public final class ManufacturingScreen extends AbstractContainerScreen<Manufactu
 
   @Override
   public void render(GuiGraphics g, int mx, int my, float dt) {
-    selectionButtons.forEach((part, button) -> button.active = part.ordinal() != menu.data.get(0));
     super.render(g, mx, my, dt);
     renderTooltip(g, mx, my);
+    if (filterArea().contains(mx, my)
+        && menu.getSlot(ManufacturingMenu.FILTER_SLOT).getItem().isEmpty())
+      g.renderTooltip(
+          font,
+          font.split(Component.translatable("around_planet.manufacturing.filter_help"), 210),
+          mx,
+          my);
   }
 }
