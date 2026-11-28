@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.77: [лунные переходы через границы и единственный фильтр в меню станка](docs/lunar-seams-and-machine-menu.md).
+
 Обновление 0.11.0-alpha.76: [фильтры станков, категории JEI и схема рецептов KubeJS](docs/manufacturing-filters-and-recipes.md).
 
 Обновление 0.11.0-alpha.75: [станки на FE, материалы и детали для механической сборки Create](docs/precision-manufacturing.md).

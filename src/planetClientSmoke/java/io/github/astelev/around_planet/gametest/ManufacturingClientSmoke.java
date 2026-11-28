@@ -64,7 +64,7 @@ public final class ManufacturingClientSmoke {
     if (phase == 1 && ticks - start > 50) {
       mc.player.setYRot(180);
       mc.player.setXRot(12);
-      shot(mc, "manufacturing-machines-alpha76.png");
+      shot(mc, "manufacturing-machines-alpha77.png");
       phase = 2;
       start = ticks;
       return;
@@ -94,6 +94,7 @@ public final class ManufacturingClientSmoke {
     }
     if (phase == 3 && mc.screen instanceof ManufacturingScreen screen && ticks - start > 20) {
       var menu = screen.getMenu();
+      if (menu.slots.size() != 39) throw new AssertionError("Redundant preview slot still exists");
       if (menu.energy() < 65536) throw new AssertionError("FE sync truncated: " + menu.energy());
       if (menu.quickMoveStack(mc.player, 2) != ItemStack.EMPTY)
         throw new AssertionError("Ghost preview extractable");
@@ -133,7 +134,7 @@ public final class ManufacturingClientSmoke {
                 be.items.setStackInSlot(1, ItemStack.EMPTY);
                 be.energy.restore(200000);
               });
-      shot(mc, "manufacturing-" + MachineKind.values()[index].getSerializedName() + "-alpha76.png");
+      shot(mc, "manufacturing-" + MachineKind.values()[index].getSerializedName() + "-alpha77.png");
       phase = 5;
       start = ticks;
       return;
@@ -198,10 +199,9 @@ public final class ManufacturingClientSmoke {
     if (phase == 7 && ticks - start > 25) {
       shot(
           mc,
-          "manufacturing-jei-" + MachineKind.values()[index].getSerializedName() + "-alpha76.png");
+          "manufacturing-jei-" + MachineKind.values()[index].getSerializedName() + "-alpha77.png");
       var runtime = io.github.astelev.around_planet.compat.jei.ManufacturingJei.runtime;
-      if (!runtime.getRecipesGui().isOpen()
-          || runtime.getRecipesGui().getVisibleRecipeLayouts().isEmpty())
+      if (mc.screen == null || !mc.screen.getClass().getName().startsWith("mezz.jei."))
         throw new AssertionError("JEI recipe screen empty");
       if (++index < 3) {
         runtime
@@ -215,8 +215,54 @@ public final class ManufacturingClientSmoke {
         AroundPlanet.LOGGER.info(
             "MANUFACTURING_JEI_CLIENT_PASS categories=3 realGhostDrop=true recipesVisible=true");
         phase = 8;
-        mc.stop();
+        start = ticks;
+        mc.setScreen(null);
+        mc.getSingleplayerServer()
+            .execute(
+                () -> {
+                  try {
+                    var moon =
+                        mc.getSingleplayerServer()
+                            .getLevel(
+                                io.github.astelev.around_planet.space.MoonSurface.dimension());
+                    var seam =
+                        io.github.astelev.around_planet.border.PlanetBorders.get(
+                            moon.getWorldBorder());
+                    if (seam == null)
+                      throw new AssertionError("Moon server border not bound on world load");
+                    var player = mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+                    player.teleportTo(moon, seam.east() + 2.5, 450, 40, java.util.Set.of(), 90, 10);
+                  } catch (Throwable error) {
+                    failure = error;
+                  }
+                });
       }
+    }
+    if (phase == 8
+        && mc.level
+            .dimension()
+            .equals(io.github.astelev.around_planet.space.MoonSurface.dimension())
+        && ticks - start > 80) {
+      var scale =
+          io.github.astelev.around_planet.space.MoonScale.fromEarthCircumference(
+              io.github.astelev.around_planet.PlanetConfig.PLANET_SIZE.get());
+      var seam =
+          io.github.astelev.around_planet.border.PlanetBorders.get(mc.level.getWorldBorder());
+      if (seam == null
+          || seam.width() != scale.circumference()
+          || mc.level.getWorldBorder().getMaxZ() != scale.boundaryZ())
+        throw new AssertionError("Client Moon border has wrong scale");
+      if (mc.player.getX() > 0) return;
+      if (Math.abs(mc.player.getX() + scale.boundaryX() - 2.5) > 2)
+        throw new AssertionError("Player seam transfer used wrong width");
+      shot(mc, "moon-seam-alpha77.png");
+      AroundPlanet.LOGGER.info(
+          "MOON_BORDER_CLIENT_PASS width={} halfZ={} crossedPlayerX={}",
+          seam.width(),
+          scale.boundaryZ(),
+          mc.player.getX());
+      phase = 9;
+      mc.stop();
     }
   }
 

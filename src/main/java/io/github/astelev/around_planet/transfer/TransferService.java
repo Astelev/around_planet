@@ -58,14 +58,16 @@ public final class TransferService {
     @SubscribeEvent
     public static void load(LevelEvent.Load event) {
         var level = event.getLevel();
-        if (!(level instanceof Level world) || !world.dimension().equals(Level.OVERWORLD)
-                || !PlanetConfig.SPEC.isLoaded() || !PlanetConfig.ENABLED.getAsBoolean()) return;
+        if (!(level instanceof Level world) || !PlanetConfig.SPEC.isLoaded() || !PlanetConfig.ENABLED.getAsBoolean()) return;
+        boolean moon=world.dimension().equals(io.github.astelev.around_planet.space.MoonSurface.dimension());
+        if(!moon&&!world.dimension().equals(Level.OVERWORLD))return;
         try {
-            var topology=EastWestTopology.atBoundary(PlanetConfig.BOUNDARY.getAsInt());
-            PlanetBorders.bind(world.getWorldBorder(), topology,PlanetConfig.BOUNDARY_Z.getAsInt());
-            if (world instanceof ServerLevel) AroundPlanet.LOGGER.info("East/west seams: X={} and X={}, circumference={} blocks",
-                    topology.west(),topology.east(),topology.width());
-            if (world instanceof ServerLevel) AroundPlanet.LOGGER.info("Solid north/south borders: Z=±{} blocks",PlanetConfig.BOUNDARY_Z.getAsInt());
+            var lunar=moon?io.github.astelev.around_planet.space.MoonScale.fromEarthCircumference(PlanetConfig.PLANET_SIZE.get()):null;
+            int halfX=moon?lunar.boundaryX():PlanetConfig.BOUNDARY.getAsInt();
+            int halfZ=moon?lunar.boundaryZ():PlanetConfig.BOUNDARY_Z.getAsInt();
+            var topology=EastWestTopology.atBoundary(halfX);
+            PlanetBorders.bind(world.getWorldBorder(), topology,halfZ);
+            if (world instanceof ServerLevel) AroundPlanet.LOGGER.info("Planet borders dim={} X=±{} circumference={} north/south Z=±{}",world.dimension().location(),halfX,topology.width(),halfZ);
         } catch (IllegalArgumentException exception) {
             AroundPlanet.LOGGER.error("East/west transfer disabled: {}", exception.getMessage());
         }

@@ -37,12 +37,10 @@ public final class ManufacturingScreen extends AbstractContainerScreen<Manufactu
           y - 1,
           x + 17,
           y + 17,
-          slot.index == ManufacturingMenu.FILTER_SLOT
-                  || slot.index == ManufacturingMenu.PREVIEW_SLOT
-              ? 0xff254758
-              : 0xff080f16);
+          slot.index == ManufacturingMenu.FILTER_SLOT ? 0xff254758 : 0xff080f16);
       g.renderOutline(x - 1, y - 1, 18, 18, 0xff657582);
     }
+    g.drawString(font, ">", leftPos + 80, topPos + 77, 0xff90b6ca, false);
     int width = menu.total() > 0 ? Math.clamp(menu.progress() * 106 / menu.total(), 0, 106) : 0;
     g.fill(leftPos + 35, topPos + 96, leftPos + 141, topPos + 100, 0xff080f16);
     g.fill(leftPos + 35, topPos + 96, leftPos + 35 + width, topPos + 100, 0xff65cfaa);

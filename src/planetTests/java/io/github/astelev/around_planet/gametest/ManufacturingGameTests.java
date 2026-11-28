@@ -305,4 +305,29 @@ public final class ManufacturingGameTests {
         "Typed KubeJS builder/setters did not work");
     h.succeed();
   }
+
+  @GameTest(template = "empty", templateNamespace = "around_planet", timeoutTicks = 100)
+  public static void menuHasOnlyFilterAndRealInputOutput(GameTestHelper h) {
+    var be = machine(h, MachineKind.LATHE);
+    var player = net.neoforged.neoforge.common.util.FakePlayerFactory.getMinecraft(h.getLevel());
+    player.setPos(
+        be.getBlockPos().getX() + .5, be.getBlockPos().getY(), be.getBlockPos().getZ() + .5);
+    var menu = new ManufacturingMenu(17, player.getInventory(), be);
+    h.assertTrue(
+        menu.slots.size() == 39 && ManufacturingMenu.PLAYER_SLOTS == 3,
+        "Redundant preview slot remains or player slots shifted incorrectly");
+    player.getInventory().setItem(9, new ItemStack(Items.IRON_BLOCK));
+    menu.quickMoveStack(player, 3);
+    h.assertTrue(
+        be.items.getStackInSlot(0).is(Items.IRON_BLOCK)
+            && player.getInventory().getItem(9).isEmpty(),
+        "First inventory slot no longer shift-transfers input");
+    h.assertTrue(
+        menu.quickMoveStack(player, ManufacturingMenu.FILTER_SLOT).isEmpty(),
+        "Ghost filter can be extracted");
+    menu.clicked(
+        ManufacturingMenu.FILTER_SLOT, 0, net.minecraft.world.inventory.ClickType.PICKUP, player);
+    h.assertTrue(!be.filter().isEmpty(), "The remaining filter slot is not clickable");
+    h.succeed();
+  }
 }

@@ -5,15 +5,13 @@ import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.SlotItemHandler;
 
-/** Server-owned selection; preview slot cannot be picked up, shifted, dragged or automated. */
+/** Server-owned ghost filter; only input/output slots contain real inventory items. */
 public final class ManufacturingMenu extends AbstractContainerMenu {
   public final ManufacturingBlockEntity machine;
   public final MachineKind kind;
-  private final net.minecraft.world.SimpleContainer preview =
-      new net.minecraft.world.SimpleContainer(1);
   private final net.minecraft.world.SimpleContainer filter =
       new net.minecraft.world.SimpleContainer(1);
-  public static final int FILTER_SLOT = 2, PREVIEW_SLOT = 3, PLAYER_SLOTS = 4;
+  public static final int FILTER_SLOT = 2, PLAYER_SLOTS = 3;
   public final ContainerData data;
 
   public static ManufacturingMenu client(
@@ -77,18 +75,6 @@ public final class ManufacturingMenu extends AbstractContainerMenu {
             return false;
           }
         });
-    addSlot(
-        new Slot(preview, 0, 80, 73) {
-          @Override
-          public boolean mayPlace(ItemStack s) {
-            return false;
-          }
-
-          @Override
-          public boolean mayPickup(Player p) {
-            return false;
-          }
-        });
     for (int row = 0; row < 3; row++)
       for (int col = 0; col < 9; col++)
         addSlot(new Slot(inv, 9 + row * 9 + col, 8 + col * 18, 121 + row * 18));
@@ -99,7 +85,6 @@ public final class ManufacturingMenu extends AbstractContainerMenu {
   @Override
   public void broadcastChanges() {
     if (!machine.getLevel().isClientSide) {
-      preview.setItem(0, machine.preview());
       filter.setItem(0, machine.filter());
     }
     super.broadcastChanges();
@@ -125,7 +110,6 @@ public final class ManufacturingMenu extends AbstractContainerMenu {
       }
       return;
     }
-    if (slot == PREVIEW_SLOT) return;
     super.clicked(slot, button, type, player);
   }
 
@@ -150,15 +134,12 @@ public final class ManufacturingMenu extends AbstractContainerMenu {
 
   @Override
   public boolean canTakeItemForPickAll(ItemStack s, Slot slot) {
-    return slot.index != FILTER_SLOT
-        && slot.index != PREVIEW_SLOT
-        && super.canTakeItemForPickAll(s, slot);
+    return slot.index != FILTER_SLOT && super.canTakeItemForPickAll(s, slot);
   }
 
   @Override
   public ItemStack quickMoveStack(Player p, int index) {
-    if (index == FILTER_SLOT || index == PREVIEW_SLOT || index < 0 || index >= slots.size())
-      return ItemStack.EMPTY;
+    if (index == FILTER_SLOT || index < 0 || index >= slots.size()) return ItemStack.EMPTY;
     var slot = slots.get(index);
     if (!slot.hasItem()) return ItemStack.EMPTY;
     var stack = slot.getItem();

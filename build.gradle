@@ -134,6 +134,7 @@ if (providers.gradleProperty('planetTests').isPresent()) {
             type = 'gameTestServer'
             systemProperty 'around_planet.gameTestDimensions', 'true'
             if (providers.gradleProperty('planetKubeTests').isPresent()) systemProperty 'around_planet.kubeManufacturingTests', 'true'
+            if (providers.gradleProperty('planetMoonBorderTests').isPresent()) systemProperty 'around_planet.moonBorderTests', 'true'
             if (providers.gradleProperty('planetManufacturingTests').isPresent()) systemProperty 'around_planet.manufacturingTests', 'true'
             if (providers.gradleProperty('planetTerrainTests').isPresent()) systemProperty 'around_planet.terrainTests', 'true'
             if (providers.gradleProperty('planetRsuTests').isPresent()) systemProperty 'around_planet.rsuTests', 'true'
