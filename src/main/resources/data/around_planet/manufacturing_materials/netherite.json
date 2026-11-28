@@ -1,0 +1,15 @@
+{
+  "block": {
+    "tag": "c:storage_blocks/netherite"
+  },
+  "dust": {
+    "tag": "c:dusts/netherite"
+  },
+  "stats": {
+    "wear_resistance": 0.95,
+    "working_temperature": 2400,
+    "load_capacity": 0.95,
+    "corrosion_resistance": 0.95
+  },
+  "color": 6444637
+}

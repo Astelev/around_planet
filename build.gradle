@@ -125,6 +125,7 @@ if (providers.gradleProperty('planetTests').isPresent()) {
         gameTestServer {
             type = 'gameTestServer'
             systemProperty 'around_planet.gameTestDimensions', 'true'
+            if (providers.gradleProperty('planetManufacturingTests').isPresent()) systemProperty 'around_planet.manufacturingTests', 'true'
             if (providers.gradleProperty('planetTerrainTests').isPresent()) systemProperty 'around_planet.terrainTests', 'true'
             if (providers.gradleProperty('planetRsuTests').isPresent()) systemProperty 'around_planet.rsuTests', 'true'
             if (providers.gradleProperty('planetSolarTests').isPresent()) systemProperty 'around_planet.solarTests', 'true'
@@ -143,7 +144,8 @@ if (providers.gradleProperty('planetTests').isPresent()) {
 if (providers.gradleProperty('planetClientSmoke').isPresent()) {
     sourceSets {
         planetClientSmoke {
-            if (project.providers.gradleProperty('planetRegolithSmoke').isPresent()) java.include('**/RegolithClientSmoke.java', '**/MoonCompatibilityChecks.java')
+            if (project.providers.gradleProperty('planetManufacturingSmoke').isPresent()) java.include('**/ManufacturingClientSmoke.java')
+            else if (project.providers.gradleProperty('planetRegolithSmoke').isPresent()) java.include('**/RegolithClientSmoke.java', '**/MoonCompatibilityChecks.java')
             else if (project.providers.gradleProperty('planetMapSurfacesSmoke').isPresent()) java.include('**/MapSurfacesClientSmoke.java', '**/SolarClientSmoke.java')
             else if (project.providers.gradleProperty('planetSolarSmoke').isPresent()) java.include('**/SolarClientSmoke.java')
             else if (project.providers.gradleProperty('planetVacuumSmoke').isPresent()) java.include('**/VacuumClientSmoke.java')

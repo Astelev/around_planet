@@ -6,6 +6,9 @@
     "around_planet:liquid_rocket_engine",
     "around_planet:solid_fuel_column",
     "around_planet:solid_rocket_nozzle",
-    "around_planet:rsu_distributor"
+    "around_planet:rsu_distributor",
+    "around_planet:lathe",
+    "around_planet:mill",
+    "around_planet:printer"
   ]
 }

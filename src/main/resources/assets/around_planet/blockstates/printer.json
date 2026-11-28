@@ -1,0 +1,36 @@
+{
+  "variants": {
+    "facing=north,lit=false": {
+      "model": "around_planet:block/printer",
+      "y": 0
+    },
+    "facing=north,lit=true": {
+      "model": "around_planet:block/printer_active",
+      "y": 0
+    },
+    "facing=east,lit=false": {
+      "model": "around_planet:block/printer",
+      "y": 90
+    },
+    "facing=east,lit=true": {
+      "model": "around_planet:block/printer_active",
+      "y": 90
+    },
+    "facing=south,lit=false": {
+      "model": "around_planet:block/printer",
+      "y": 180
+    },
+    "facing=south,lit=true": {
+      "model": "around_planet:block/printer_active",
+      "y": 180
+    },
+    "facing=west,lit=false": {
+      "model": "around_planet:block/printer",
+      "y": 270
+    },
+    "facing=west,lit=true": {
+      "model": "around_planet:block/printer_active",
+      "y": 270
+    }
+  }
+}

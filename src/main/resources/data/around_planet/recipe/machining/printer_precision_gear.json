@@ -1,0 +1,10 @@
+{
+  "type": "around_planet:machining",
+  "machine": "printer",
+  "part": "precision_gear",
+  "input_count": 4,
+  "output_count": 1,
+  "processing_ticks": 300,
+  "energy_per_tick": 100,
+  "orbital_processing_ticks": 225
+}

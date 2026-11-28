@@ -1,0 +1,15 @@
+{
+  "block": {
+    "tag": "c:storage_blocks/copper"
+  },
+  "dust": {
+    "tag": "c:dusts/copper"
+  },
+  "stats": {
+    "wear_resistance": 0.3,
+    "working_temperature": 600,
+    "load_capacity": 0.4,
+    "corrosion_resistance": 0.75
+  },
+  "color": 12745297
+}

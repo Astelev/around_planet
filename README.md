@@ -1,3 +1,5 @@
+Обновление 0.11.0-alpha.75: [станки на FE, материалы и детали для механической сборки Create](docs/precision-manufacturing.md).
+
 Обновление 0.11.0-alpha.74: [лунный DH-генератор, отключение AeroWorks и неровный кратерный рельеф](docs/lunar-compatibility-and-roughness.md).
 
 Обновление 0.11.0-alpha.73: [исправление падения на частицах реголита](docs/regolith-tint-crash.md).

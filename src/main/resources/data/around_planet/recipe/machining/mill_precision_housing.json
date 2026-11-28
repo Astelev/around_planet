@@ -1,0 +1,10 @@
+{
+  "type": "around_planet:machining",
+  "machine": "mill",
+  "part": "precision_housing",
+  "input_count": 1,
+  "output_count": 1,
+  "processing_ticks": 180,
+  "energy_per_tick": 60,
+  "orbital_processing_ticks": 135
+}

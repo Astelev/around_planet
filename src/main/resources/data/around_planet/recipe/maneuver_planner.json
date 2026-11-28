@@ -1,22 +1,43 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "type": "create:mechanical_crafting",
+  "accept_mirrored": true,
   "pattern": [
-    "ICI",
-    "RQR",
-    "III"
+    "RGR",
+    "CHC",
+    " R "
   ],
   "key": {
-    "I": {
-      "item": "minecraft:iron_ingot"
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "G": {
+      "type": "around_planet:qualified_part",
+      "part": "precision_gear",
+      "minimum": {
+        "wear_resistance": 0.2,
+        "working_temperature": 0,
+        "load_capacity": 0,
+        "corrosion_resistance": 0
+      }
     },
     "C": {
       "item": "minecraft:compass"
     },
-    "R": {
-      "item": "minecraft:redstone"
-    },
-    "Q": {
-      "item": "minecraft:quartz"
+    "H": {
+      "type": "around_planet:qualified_part",
+      "part": "precision_housing",
+      "minimum": {
+        "wear_resistance": 0,
+        "working_temperature": 0,
+        "load_capacity": 0.3,
+        "corrosion_resistance": 0.6
+      }
     }
   },
   "result": {

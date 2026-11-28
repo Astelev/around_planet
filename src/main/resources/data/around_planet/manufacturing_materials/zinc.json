@@ -1,0 +1,15 @@
+{
+  "block": {
+    "tag": "c:storage_blocks/zinc"
+  },
+  "dust": {
+    "tag": "c:dusts/zinc"
+  },
+  "stats": {
+    "wear_resistance": 0.2,
+    "working_temperature": 300,
+    "load_capacity": 0.3,
+    "corrosion_resistance": 0.65
+  },
+  "color": 10268582
+}
